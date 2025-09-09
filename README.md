@@ -7,7 +7,7 @@ Go port of the [Graphiti](https://github.com/getzep/graphiti) temporal knowledge
 - **Temporal Knowledge Graphs**: Bi-temporal data model with explicit tracking of event occurrence times
 - **Hybrid Search**: Combines semantic embeddings, keyword search (BM25), and graph traversal
 - **Multiple Backends**: Support for Neo4j and other graph databases
-- **LLM Integration**: Built-in support for OpenAI and other language models
+- **LLM Integration**: Built-in support for OpenAI and OpenAI-compatible services (Ollama, LocalAI, vLLM, etc.)
 - **Go Idioms**: Follows Go conventions and coding patterns similar to [go-light-rag](https://github.com/MegaGrindStone/go-light-rag)
 
 ## Installation
@@ -158,6 +158,7 @@ The library is structured into several key packages:
 - **[API Reference](docs/API_REFERENCE.md)**: Complete API documentation
 - **[Architecture](docs/ARCHITECTURE.md)**: Design principles and components
 - **[Examples](docs/EXAMPLES.md)**: Practical usage examples
+- **[OpenAI-Compatible Services](docs/OPENAI_COMPATIBLE.md)**: Using local LLMs and alternative providers
 - **[FAQ](docs/FAQ.md)**: Common questions and troubleshooting
 
 ## Examples
