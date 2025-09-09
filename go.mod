@@ -3,6 +3,7 @@ module github.com/getzep/go-graphiti
 go 1.24.0
 
 require (
+	// github.com/kuzudb/go-kuzu - to be added when available
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.0
 	github.com/sashabaranov/go-openai v1.38.0
 	github.com/stretchr/testify v1.10.0

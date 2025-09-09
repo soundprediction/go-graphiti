@@ -10,7 +10,7 @@ Graphiti is designed for building temporally-aware knowledge graphs for AI agent
 
 - **Temporal Knowledge Graphs**: Bi-temporal data model with explicit tracking of event occurrence times
 - **Hybrid Search**: Combines semantic embeddings, keyword search (BM25), and graph traversal
-- **Multiple Backends**: Support for Neo4j and other graph databases
+- **Multiple Backends**: Support for Neo4j and Kuzu graph databases
 - **LLM Integration**: Built-in support for OpenAI and OpenAI-compatible services (Ollama, LocalAI, vLLM, etc.)
 - **Go Idioms**: Follows Go conventions and coding patterns similar to [go-light-rag](https://github.com/MegaGrindStone/go-light-rag)
 
@@ -25,7 +25,7 @@ go get github.com/soundprediction/go-graphiti
 ### Prerequisites
 
 - Go 1.24+
-- Neo4j database (local or cloud)
+- Graph database (Neo4j or Kuzu)
 - OpenAI API key
 
 ### Environment Variables
@@ -163,6 +163,7 @@ The library is structured into several key packages:
 - **[Architecture](docs/ARCHITECTURE.md)**: Design principles and components
 - **[Examples](docs/EXAMPLES.md)**: Practical usage examples
 - **[OpenAI-Compatible Services](docs/OPENAI_COMPATIBLE.md)**: Using local LLMs and alternative providers
+- **[Kuzu Setup Guide](docs/KUZU_SETUP.md)**: Using the embedded Kuzu graph database
 - **[FAQ](docs/FAQ.md)**: Common questions and troubleshooting
 
 ## Examples
