@@ -17,8 +17,8 @@ import (
     "log"
     "time"
 
-    "github.com/getzep/go-graphiti"
-    "github.com/getzep/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 func buildKnowledge(client graphiti.Graphiti) {
