@@ -198,7 +198,7 @@ go run main.go
 
 ## Contributing
 
-This project follows the same patterns as [go-light-rag](https://github.com/MegaGrindStone/go-light-rag) for consistency. Contributions are welcome!
+This project follows the same patterns as [go-light-rag](https://github.com/soundprediction/go-light-rag) for consistency. Contributions are welcome!
 
 ## License
 
@@ -207,4 +207,4 @@ Apache 2.0 License - see the original [Graphiti license](https://github.com/getz
 ## Acknowledgments
 
 - Original [Graphiti](https://github.com/getzep/graphiti) Python library by Zep
-- [go-light-rag](https://github.com/MegaGrindStone/go-light-rag) for Go patterns and inspiration
+- [go-light-rag](https://github.com/soundprediction/go-light-rag) for Go patterns and inspiration
