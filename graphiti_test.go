@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getzep/go-graphiti"
-	"github.com/getzep/go-graphiti/pkg/driver"
-	"github.com/getzep/go-graphiti/pkg/llm"
-	"github.com/getzep/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti"
+	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -246,7 +246,7 @@ func TestClient_Search(t *testing.T) {
 
 func TestSearchConfig(t *testing.T) {
 	config := graphiti.NewDefaultSearchConfig()
-	
+
 	assert.Equal(t, 20, config.Limit)
 	assert.Equal(t, 2, config.CenterNodeDistance)
 	assert.Equal(t, 0.0, config.MinScore)

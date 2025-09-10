@@ -3,7 +3,7 @@ package llm_test
 import (
 	"testing"
 
-	"github.com/getzep/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,7 +82,7 @@ func TestNewOpenAICompatibleClient(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client, err := llm.NewOpenAICompatibleClient(tt.baseURL, tt.apiKey, tt.model, tt.config)
-			
+
 			if tt.shouldError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)
@@ -103,7 +103,7 @@ func TestConvenienceFunctions(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, client)
 		assert.NoError(t, client.Close())
-		
+
 		// Test with default URL (empty string)
 		client2, err := llm.NewOllamaClient("", "llama2:7b", llm.Config{})
 		require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestConvenienceFunctions(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, client)
 		assert.NoError(t, client.Close())
-		
+
 		// Test with default URL
 		client2, err := llm.NewLocalAIClient("", "gpt-3.5-turbo", llm.Config{})
 		require.NoError(t, err)

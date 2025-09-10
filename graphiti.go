@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/getzep/go-graphiti/pkg/driver"
-	"github.com/getzep/go-graphiti/pkg/embedder"
-	"github.com/getzep/go-graphiti/pkg/llm"
-	"github.com/getzep/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-graphiti/pkg/embedder"
+	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // Graphiti is the main interface for interacting with temporal knowledge graphs.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/getzep/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/db"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"

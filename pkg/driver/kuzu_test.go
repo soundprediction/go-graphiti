@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getzep/go-graphiti/pkg/driver"
-	"github.com/getzep/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

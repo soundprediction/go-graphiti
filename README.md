@@ -47,10 +47,10 @@ import (
     "log"
     "time"
 
-    "github.com/getzep/go-graphiti"
-    "github.com/getzep/go-graphiti/pkg/driver"
-    "github.com/getzep/go-graphiti/pkg/embedder"
-    "github.com/getzep/go-graphiti/pkg/llm"
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-graphiti/pkg/embedder"
+    "github.com/soundprediction/go-graphiti/pkg/llm"
 )
 
 func main() {
@@ -171,6 +171,8 @@ The library is structured into several key packages:
 See the `examples/` directory for complete usage examples:
 
 - `examples/basic/`: Basic usage with Neo4j
+- `examples/kuzu_ollama/`: Local setup with Kuzu + Ollama (maximum privacy)
+- `examples/openai_compatible/`: Using various OpenAI-compatible services
 - More examples in [docs/EXAMPLES.md](docs/EXAMPLES.md)
 
 ## Development

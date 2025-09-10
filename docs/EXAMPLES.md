@@ -17,8 +17,8 @@ import (
     "log"
     "time"
 
-    "github.com/getzep/go-graphiti"
-    "github.com/getzep/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 func buildKnowledge(client graphiti.Graphiti) {
@@ -460,6 +460,97 @@ func personalKnowledgeManagement(client graphiti.Graphiti) {
         }
     }
 }
+```
+
+## Local Setup Examples
+
+### Complete Local Setup with Kuzu + Ollama
+
+For maximum privacy and control, you can run go-graphiti entirely locally using:
+- **Kuzu**: Embedded graph database (no server required)
+- **Ollama**: Local LLM inference (no cloud API required)  
+- **Local embeddings**: Optional local embedding service
+
+**Complete example**: See [`examples/kuzu_ollama/`](../examples/kuzu_ollama/) for a full working example.
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-graphiti/pkg/embedder"
+    "github.com/soundprediction/go-graphiti/pkg/llm"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // 1. Embedded graph database (local file)
+    kuzuDriver, err := driver.NewKuzuDriver("./my_graph.db")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer kuzuDriver.Close(ctx)
+
+    // 2. Local LLM inference with Ollama
+    ollama, err := llm.NewOllamaClient("", "llama2:7b", llm.Config{
+        Temperature: &[]float32{0.7}[0],
+        MaxTokens:   &[]int{1000}[0],
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer ollama.Close()
+
+    // 3. Embeddings (could be local too)
+    embedder := embedder.NewOpenAIEmbedder("", embedder.Config{
+        Model: "text-embedding-3-small",
+    })
+    defer embedder.Close()
+
+    // 4. Create fully local Graphiti client
+    client := graphiti.NewClient(kuzuDriver, ollama, embedder, &graphiti.Config{
+        GroupID: "local-setup",
+    })
+    defer client.Close(ctx)
+
+    // Use normally - everything runs locally!
+    // (Current implementation uses stub drivers)
+    log.Println("Local Graphiti client ready!")
+}
+```
+
+**Benefits of Local Setup**:
+- 🔒 **Privacy**: All data stays on your machine
+- ⚡ **Performance**: No network latency for graph queries
+- 💰 **Cost**: No cloud hosting or API charges
+- 🛠️ **Development**: Easy to version control and test
+
+**Requirements**:
+- Ollama installed and running (`ollama serve`)
+- Model downloaded (`ollama pull llama2:7b`)
+- Sufficient RAM for local model (4-8GB recommended)
+
+**Current Status**: Kuzu driver is implemented as a stub. Full functionality will be available when the Kuzu Go library is released.
+
+### Alternative Local LLM Services
+
+You can also use other local LLM services:
+
+```go
+// LocalAI
+localAI, err := llm.NewLocalAIClient("http://localhost:8080", "gpt-3.5-turbo", llm.Config{})
+
+// vLLM server  
+vllm, err := llm.NewVLLMClient("http://localhost:8000", "microsoft/DialoGPT-medium", llm.Config{})
+
+// Any OpenAI-compatible service
+custom, err := llm.NewOpenAICompatibleClient("http://localhost:1234", "", "my-model", llm.Config{})
 ```
 
 ## Utility Functions

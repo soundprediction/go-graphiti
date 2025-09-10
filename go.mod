@@ -1,4 +1,4 @@
-module github.com/getzep/go-graphiti
+module github.com/soundprediction/go-graphiti
 
 go 1.24.0
 

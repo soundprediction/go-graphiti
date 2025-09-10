@@ -21,7 +21,9 @@ type Client interface {
 
 // Config holds configuration for embedding clients.
 type Config struct {
-	Model      string `json:"model"`
-	BatchSize  int    `json:"batch_size"`
-	Dimensions int    `json:"dimensions"`
+	Model      string            `json:"model"`
+	BatchSize  int               `json:"batch_size"`
+	Dimensions int               `json:"dimensions"`
+	BaseURL    string            `json:"base_url,omitempty"`    // Custom base URL for OpenAI-compatible services
+	Headers    map[string]string `json:"headers,omitempty"`     // Additional headers for requests
 }

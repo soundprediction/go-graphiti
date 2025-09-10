@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/getzep/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // KuzuDriver implements the GraphDriver interface for Kuzu databases.

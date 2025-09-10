@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/getzep/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // GraphDriver defines the interface for graph database operations.

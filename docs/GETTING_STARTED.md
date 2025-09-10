@@ -11,7 +11,7 @@ This guide will help you get started with go-graphiti, a temporal knowledge grap
 ## Installation
 
 ```bash
-go get github.com/getzep/go-graphiti
+go get github.com/soundprediction/go-graphiti
 ```
 
 ## Basic Setup
@@ -71,11 +71,11 @@ import (
     "os"
     "time"
 
-    "github.com/getzep/go-graphiti"
-    "github.com/getzep/go-graphiti/pkg/driver"
-    "github.com/getzep/go-graphiti/pkg/embedder"
-    "github.com/getzep/go-graphiti/pkg/llm"
-    "github.com/getzep/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-graphiti/pkg/embedder"
+    "github.com/soundprediction/go-graphiti/pkg/llm"
+    "github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 func main() {

@@ -14,8 +14,19 @@ type OpenAIEmbedder struct {
 }
 
 // NewOpenAIEmbedder creates a new OpenAI embedder client.
+// Supports OpenAI-compatible services through custom BaseURL configuration.
 func NewOpenAIEmbedder(apiKey string, config Config) *OpenAIEmbedder {
-	client := openai.NewClient(apiKey)
+	var client *openai.Client
+	
+	if config.BaseURL != "" {
+		// Create client with custom base URL for OpenAI-compatible services
+		clientConfig := openai.DefaultConfig(apiKey)
+		clientConfig.BaseURL = config.BaseURL
+		client = openai.NewClientWithConfig(clientConfig)
+	} else {
+		// Use default OpenAI client
+		client = openai.NewClient(apiKey)
+	}
 	
 	if config.Model == "" {
 		config.Model = "text-embedding-ada-002"
@@ -98,6 +109,11 @@ func (e *OpenAIEmbedder) embedBatch(ctx context.Context, texts []string) ([][]fl
 	req := openai.EmbeddingRequest{
 		Input: texts,
 		Model: openai.EmbeddingModel(e.config.Model),
+	}
+	
+	// Add custom dimensions if specified (useful for OpenAI-compatible services)
+	if e.config.Dimensions > 0 {
+		req.Dimensions = e.config.Dimensions
 	}
 	
 	resp, err := e.client.CreateEmbeddings(ctx, req)

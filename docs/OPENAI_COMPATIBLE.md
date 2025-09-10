@@ -24,7 +24,7 @@ go-graphiti includes support for any service that implements the OpenAI API spec
 ### Generic OpenAI-Compatible Client
 
 ```go
-import "github.com/getzep/go-graphiti/pkg/llm"
+import "github.com/soundprediction/go-graphiti/pkg/llm"
 
 // Create a client for any OpenAI-compatible service
 client, err := llm.NewOpenAICompatibleClient(
