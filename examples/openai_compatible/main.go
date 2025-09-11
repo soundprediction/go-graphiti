@@ -50,10 +50,11 @@ func runOllamaExample() error {
 	fmt.Println("Creating Ollama client...")
 	
 	// Create Ollama client (assumes Ollama is running on localhost:11434)
-	client, err := llm.NewOllamaClient(
-		"http://localhost:11434", // Ollama default URL
-		"llama2:7b",              // Model name
+	client, err := llm.NewOpenAIClient(
+		"", // No API key needed for Ollama
 		llm.Config{
+			BaseURL:     "http://localhost:11434", // Ollama default URL
+			Model:       "llama2:7b",              // Model name
 			Temperature: &[]float32{0.7}[0],
 			MaxTokens:   &[]int{100}[0],
 		},
@@ -88,10 +89,11 @@ func runLocalAIExample() error {
 	fmt.Println("Creating LocalAI client...")
 	
 	// Create LocalAI client
-	client, err := llm.NewLocalAIClient(
-		"http://localhost:8080", // LocalAI default URL
-		"gpt-3.5-turbo",         // Model name configured in LocalAI
+	client, err := llm.NewOpenAIClient(
+		"", // No API key needed for LocalAI
 		llm.Config{
+			BaseURL:     "http://localhost:8080", // LocalAI default URL
+			Model:       "gpt-3.5-turbo",         // Model name configured in LocalAI
 			Temperature: &[]float32{0.8}[0],
 		},
 	)
@@ -121,10 +123,11 @@ func runVLLMExample() error {
 	fmt.Println("Creating vLLM client...")
 	
 	// Create vLLM client
-	client, err := llm.NewVLLMClient(
-		"http://vllm-server:8000", // vLLM server URL
-		"microsoft/DialoGPT-medium", // Model name
+	client, err := llm.NewOpenAIClient(
+		"", // No API key needed for vLLM
 		llm.Config{
+			BaseURL:   "http://vllm-server:8000", // vLLM server URL
+			Model:     "microsoft/DialoGPT-medium", // Model name
 			MaxTokens: &[]int{150}[0],
 		},
 	)
@@ -153,11 +156,11 @@ func runCustomServiceExample() error {
 	fmt.Println("Creating custom OpenAI-compatible client...")
 	
 	// Create client for a custom OpenAI-compatible service
-	client, err := llm.NewOpenAICompatibleClient(
-		"https://api.your-service.com",     // Your service URL
+	client, err := llm.NewOpenAIClient(
 		"your-api-key",                     // API key
-		"your-model-name",                  // Model identifier
 		llm.Config{
+			BaseURL:     "https://api.your-service.com",     // Your service URL
+			Model:       "your-model-name",                  // Model identifier
 			Temperature: &[]float32{0.5}[0],
 			MaxTokens:   &[]int{200}[0],
 			Stop:        []string{"</s>", "\n\n"},
@@ -234,10 +237,11 @@ func runGraphitiIntegrationExample() error {
 	defer neo4jDriver.Close(context.Background())
 
 	// Create Ollama LLM client
-	llmClient, err := llm.NewOllamaClient(
-		"http://localhost:11434",
-		"llama2:7b",
+	llmClient, err := llm.NewOpenAIClient(
+		"", // No API key needed for Ollama
 		llm.Config{
+			BaseURL:     "http://localhost:11434",
+			Model:       "llama2:7b",
 			Temperature: &[]float32{0.7}[0],
 			MaxTokens:   &[]int{1000}[0],
 		},

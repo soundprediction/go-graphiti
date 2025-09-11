@@ -51,7 +51,10 @@ func main() {
 		Temperature: floatPtr(0.7),
 		MaxTokens:   intPtr(1000),
 	}
-	llmClient := llm.NewOpenAIClient(openaiAPIKey, llmConfig)
+	llmClient, err := llm.NewOpenAIClient(openaiAPIKey, llmConfig)
+	if err != nil {
+		log.Fatalf("Failed to create LLM client: %v", err)
+	}
 	defer llmClient.Close()
 
 	// Create embedder client
