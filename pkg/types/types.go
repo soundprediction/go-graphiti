@@ -125,6 +125,30 @@ type SearchConfig struct {
 	Rerank bool
 	// Filters for constraining search results.
 	Filters *SearchFilters
+	// NodeConfig holds configuration for node search.
+	NodeConfig *NodeSearchConfig
+	// EdgeConfig holds configuration for edge search.
+	EdgeConfig *EdgeSearchConfig
+}
+
+// NodeSearchConfig holds configuration for node search operations.
+type NodeSearchConfig struct {
+	// SearchMethods defines which search methods to use.
+	SearchMethods []string
+	// Reranker defines which reranking method to use.
+	Reranker string
+	// MinScore is the minimum score for results.
+	MinScore float64
+}
+
+// EdgeSearchConfig holds configuration for edge search operations.
+type EdgeSearchConfig struct {
+	// SearchMethods defines which search methods to use.
+	SearchMethods []string
+	// Reranker defines which reranking method to use.
+	Reranker string
+	// MinScore is the minimum score for results.
+	MinScore float64
 }
 
 // SearchFilters holds filters for search operations.

@@ -141,6 +141,26 @@ func (k *KuzuDriver) GetStats(ctx context.Context, groupID string) (*GraphStats,
 	return nil, fmt.Errorf("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency")
 }
 
+// SearchNodes performs text-based search on nodes
+func (k *KuzuDriver) SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error) {
+	return nil, fmt.Errorf("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency")
+}
+
+// SearchEdges performs text-based search on edges
+func (k *KuzuDriver) SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error) {
+	return nil, fmt.Errorf("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency")
+}
+
+// SearchNodesByVector performs vector similarity search on nodes
+func (k *KuzuDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error) {
+	return nil, fmt.Errorf("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency")
+}
+
+// SearchEdgesByVector performs vector similarity search on edges
+func (k *KuzuDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error) {
+	return nil, fmt.Errorf("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency")
+}
+
 // Close closes the Kuzu driver.
 func (k *KuzuDriver) Close(ctx context.Context) error {
 	// No-op for stub implementation

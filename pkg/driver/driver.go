@@ -30,6 +30,10 @@ type GraphDriver interface {
 	// Search operations
 	SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error)
 	SearchEdgesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Edge, error)
+	SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error)
+	SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error)
+	SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error)
+	SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error)
 
 	// Bulk operations
 	UpsertNodes(ctx context.Context, nodes []*types.Node) error
@@ -68,4 +72,22 @@ type QueryOptions struct {
 	SortBy     string
 	SortOrder  string
 	Filters    map[string]interface{}
+}
+
+// SearchOptions holds options for text-based search operations.
+type SearchOptions struct {
+	Limit       int                  `json:"limit"`
+	UseFullText bool                 `json:"use_fulltext"`
+	NodeTypes   []types.NodeType     `json:"node_types,omitempty"`
+	EdgeTypes   []types.EdgeType     `json:"edge_types,omitempty"`
+	TimeRange   *types.TimeRange     `json:"time_range,omitempty"`
+}
+
+// VectorSearchOptions holds options for vector similarity search operations.
+type VectorSearchOptions struct {
+	Limit     int                  `json:"limit"`
+	MinScore  float64              `json:"min_score"`
+	NodeTypes []types.NodeType     `json:"node_types,omitempty"`
+	EdgeTypes []types.EdgeType     `json:"edge_types,omitempty"`
+	TimeRange *types.TimeRange     `json:"time_range,omitempty"`
 }

@@ -358,6 +358,30 @@ func (n *Neo4jDriver) GetStats(ctx context.Context, groupID string) (*GraphStats
 	return nil, fmt.Errorf("not implemented")
 }
 
+// SearchNodes performs text-based search on nodes
+func (n *Neo4jDriver) SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error) {
+	// TODO: Implement node text search using Neo4j's fulltext indexes
+	return nil, fmt.Errorf("not implemented")
+}
+
+// SearchEdges performs text-based search on edges
+func (n *Neo4jDriver) SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error) {
+	// TODO: Implement edge text search using Neo4j's fulltext indexes
+	return nil, fmt.Errorf("not implemented")
+}
+
+// SearchNodesByVector performs vector similarity search on nodes
+func (n *Neo4jDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error) {
+	// TODO: Implement node vector search using Neo4j's vector indexes
+	return nil, fmt.Errorf("not implemented")
+}
+
+// SearchEdgesByVector performs vector similarity search on edges
+func (n *Neo4jDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error) {
+	// TODO: Implement edge vector search using Neo4j's vector indexes
+	return nil, fmt.Errorf("not implemented")
+}
+
 // Close closes the Neo4j driver.
 func (n *Neo4jDriver) Close(ctx context.Context) error {
 	return n.client.Close(ctx)

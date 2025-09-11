@@ -8,6 +8,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/search"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -38,6 +39,7 @@ type Client struct {
 	driver   driver.GraphDriver
 	llm      llm.Client
 	embedder embedder.Client
+	searcher *search.Searcher
 	config   *Config
 }
 
@@ -63,10 +65,13 @@ func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient e
 		config.SearchConfig = NewDefaultSearchConfig()
 	}
 
+	searcher := search.NewSearcher(driver, embedderClient, llmClient)
+
 	return &Client{
 		driver:   driver,
 		llm:      llmClient,
 		embedder: embedderClient,
+		searcher: searcher,
 		config:   config,
 	}
 }
@@ -92,13 +97,52 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 		config = c.config.SearchConfig
 	}
 
-	// TODO: Implement hybrid search
-	// 1. Generate embeddings for query
-	// 2. Perform semantic search
-	// 3. Perform keyword search
-	// 4. Combine and rank results
+	// Convert types.SearchConfig to search.SearchConfig
+	searchConfig := &search.SearchConfig{
+		Limit:    config.Limit,
+		MinScore: config.MinScore,
+	}
 
-	return nil, errors.New("not implemented")
+	// Convert node config if present
+	if config.NodeConfig != nil {
+		searchConfig.NodeConfig = &search.NodeSearchConfig{
+			SearchMethods: convertSearchMethods(config.NodeConfig.SearchMethods),
+			Reranker:      convertReranker(config.NodeConfig.Reranker),
+			MinScore:      config.NodeConfig.MinScore,
+			MMRLambda:     0.5, // Default MMR lambda
+			MaxDepth:      config.CenterNodeDistance,
+		}
+	}
+
+	// Convert edge config if present  
+	if config.EdgeConfig != nil {
+		searchConfig.EdgeConfig = &search.EdgeSearchConfig{
+			SearchMethods: convertSearchMethods(config.EdgeConfig.SearchMethods),
+			Reranker:      convertReranker(config.EdgeConfig.Reranker),
+			MinScore:      config.EdgeConfig.MinScore,
+			MMRLambda:     0.5, // Default MMR lambda
+			MaxDepth:      config.CenterNodeDistance,
+		}
+	}
+
+	// Create search filters
+	filters := &search.SearchFilters{}
+
+	// Perform the search
+	result, err := c.searcher.Search(ctx, query, searchConfig, filters, c.config.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert back to types.SearchResults
+	searchResults := &types.SearchResults{
+		Nodes: result.Nodes,
+		Edges: result.Edges,
+		Query: result.Query,
+		Total: result.Total,
+	}
+
+	return searchResults, nil
 }
 
 // GetNode retrieves a node by ID.
@@ -124,6 +168,42 @@ func NewDefaultSearchConfig() *types.SearchConfig {
 		MinScore:           0.0,
 		IncludeEdges:       true,
 		Rerank:             false,
+	}
+}
+
+// Helper functions for converting between type systems
+
+func convertSearchMethods(methods []string) []search.SearchMethod {
+	converted := make([]search.SearchMethod, len(methods))
+	for i, method := range methods {
+		switch method {
+		case "cosine_similarity":
+			converted[i] = search.CosineSimilarity
+		case "bm25":
+			converted[i] = search.BM25
+		case "bfs", "breadth_first_search":
+			converted[i] = search.BreadthFirstSearch
+		default:
+			converted[i] = search.BM25 // Default fallback
+		}
+	}
+	return converted
+}
+
+func convertReranker(reranker string) search.RerankerType {
+	switch reranker {
+	case "rrf":
+		return search.RRF
+	case "mmr":
+		return search.MMR
+	case "cross_encoder":
+		return search.CrossEncoder
+	case "node_distance":
+		return search.NodeDistance
+	case "episode_mentions":
+		return search.EpisodeMentions
+	default:
+		return search.RRF // Default fallback
 	}
 }
 

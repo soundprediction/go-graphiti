@@ -97,6 +97,22 @@ func (m *MockGraphDriver) GetStats(ctx context.Context, groupID string) (*driver
 	return &driver.GraphStats{}, nil
 }
 
+func (m *MockGraphDriver) SearchNodes(ctx context.Context, query, groupID string, options *driver.SearchOptions) ([]*types.Node, error) {
+	return []*types.Node{}, nil
+}
+
+func (m *MockGraphDriver) SearchEdges(ctx context.Context, query, groupID string, options *driver.SearchOptions) ([]*types.Edge, error) {
+	return []*types.Edge{}, nil
+}
+
+func (m *MockGraphDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *driver.VectorSearchOptions) ([]*types.Node, error) {
+	return []*types.Node{}, nil
+}
+
+func (m *MockGraphDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *driver.VectorSearchOptions) ([]*types.Edge, error) {
+	return []*types.Edge{}, nil
+}
+
 func (m *MockGraphDriver) Close(ctx context.Context) error {
 	return nil
 }
@@ -237,11 +253,14 @@ func TestClient_Search(t *testing.T) {
 	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
 	ctx := context.Background()
 
-	// Test search (currently returns not implemented)
+	// Test search (returns empty results with mock driver)
 	results, err := client.Search(ctx, "test query", nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not implemented")
-	assert.Nil(t, results)
+	assert.NoError(t, err)
+	assert.NotNil(t, results)
+	assert.Equal(t, "test query", results.Query)
+	assert.Equal(t, 0, results.Total)
+	assert.Empty(t, results.Nodes)
+	assert.Empty(t, results.Edges)
 }
 
 func TestSearchConfig(t *testing.T) {
