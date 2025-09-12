@@ -193,17 +193,17 @@ func convertSearchMethods(methods []string) []search.SearchMethod {
 func convertReranker(reranker string) search.RerankerType {
 	switch reranker {
 	case "rrf":
-		return search.RRF
+		return search.RRFRerankType
 	case "mmr":
-		return search.MMR
+		return search.MMRRerankType
 	case "cross_encoder":
-		return search.CrossEncoder
+		return search.CrossEncoderRerankType
 	case "node_distance":
-		return search.NodeDistance
+		return search.NodeDistanceRerankType
 	case "episode_mentions":
-		return search.EpisodeMentions
+		return search.EpisodeMentionsRerankType
 	default:
-		return search.RRF // Default fallback
+		return search.RRFRerankType // Default fallback
 	}
 }
 
