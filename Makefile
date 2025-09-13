@@ -1,10 +1,21 @@
 # Go Graphiti Makefile
 
-.PHONY: build test clean fmt vet lint run-example deps tidy
+.PHONY: build build-cli test clean fmt vet lint run-example run-server deps tidy
 
 # Build the project
 build:
 	go build ./...
+
+# Build CLI binary
+build-cli:
+	go build -o bin/graphiti ./cmd/main.go
+
+# Build CLI for multiple platforms
+build-cli-all:
+	GOOS=linux GOARCH=amd64 go build -o bin/graphiti-linux-amd64 ./cmd/main.go
+	GOOS=darwin GOARCH=amd64 go build -o bin/graphiti-darwin-amd64 ./cmd/main.go
+	GOOS=darwin GOARCH=arm64 go build -o bin/graphiti-darwin-arm64 ./cmd/main.go
+	GOOS=windows GOARCH=amd64 go build -o bin/graphiti-windows-amd64.exe ./cmd/main.go
 
 # Run tests
 test:
@@ -44,6 +55,14 @@ tidy:
 run-example:
 	cd examples/basic && go run main.go
 
+# Run server (requires environment variables)
+run-server:
+	go run ./cmd/main.go server
+
+# Run server with debug mode
+run-server-debug:
+	go run ./cmd/main.go server --mode debug --log-level debug
+
 # Development workflow
 dev: fmt vet test
 
@@ -66,6 +85,8 @@ check: fmt vet lint test-race
 help:
 	@echo "Available targets:"
 	@echo "  build        - Build the project"
+	@echo "  build-cli    - Build CLI binary"
+	@echo "  build-cli-all- Build CLI for multiple platforms"
 	@echo "  test         - Run tests"
 	@echo "  test-coverage- Run tests with coverage report"
 	@echo "  test-race    - Run tests with race detection"
@@ -76,6 +97,8 @@ help:
 	@echo "  deps         - Install dependencies"
 	@echo "  tidy         - Tidy dependencies"
 	@echo "  run-example  - Run basic example"
+	@echo "  run-server   - Run server"
+	@echo "  run-server-debug - Run server with debug mode"
 	@echo "  dev          - Development workflow (fmt, vet, test)"
 	@echo "  ci           - CI workflow (deps, tidy, fmt, vet, test-race)"
 	@echo "  install-tools- Install development tools"

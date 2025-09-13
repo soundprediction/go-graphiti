@@ -23,11 +23,11 @@ const (
 type RerankerType string
 
 const (
-	RRF            RerankerType = "rrf"
-	MMR            RerankerType = "mmr" 
-	CrossEncoder   RerankerType = "cross_encoder"
-	NodeDistance   RerankerType = "node_distance"
-	EpisodeMentions RerankerType = "episode_mentions"
+	RRFRerankType            RerankerType = "rrf"
+	MMRRerankType            RerankerType = "mmr" 
+	CrossEncoderRerankType   RerankerType = "cross_encoder"
+	NodeDistanceRerankType   RerankerType = "node_distance"
+	EpisodeMentionsRerankType RerankerType = "episode_mentions"
 )
 
 type SearchConfig struct {
@@ -161,7 +161,7 @@ func (s *Searcher) needsEmbedding(config *SearchConfig) bool {
 				return true
 			}
 		}
-		if config.NodeConfig.Reranker == MMR {
+		if config.NodeConfig.Reranker == MMRRerankType {
 			return true
 		}
 	}
@@ -172,7 +172,7 @@ func (s *Searcher) needsEmbedding(config *SearchConfig) bool {
 				return true
 			}
 		}
-		if config.EdgeConfig.Reranker == MMR {
+		if config.EdgeConfig.Reranker == MMRRerankType {
 			return true
 		}
 	}
@@ -183,7 +183,7 @@ func (s *Searcher) needsEmbedding(config *SearchConfig) bool {
 				return true
 			}
 		}
-		if config.CommunityConfig.Reranker == MMR {
+		if config.CommunityConfig.Reranker == MMRRerankType {
 			return true
 		}
 	}
@@ -311,11 +311,11 @@ func (s *Searcher) rerankNodes(ctx context.Context, query string, queryVector []
 	}
 
 	switch config.Reranker {
-	case RRF:
+	case RRFRerankType:
 		return s.rrfRerankNodes(searchResults, limit)
-	case MMR:
+	case MMRRerankType:
 		return s.mmrRerankNodes(ctx, queryVector, nodes, config.MMRLambda, config.MinScore, limit)
-	case CrossEncoder:
+	case CrossEncoderRerankType:
 		return s.crossEncoderRerankNodes(ctx, query, nodes, config.MinScore, limit)
 	default:
 		// Default to simple score-based ranking
@@ -346,11 +346,11 @@ func (s *Searcher) rerankEdges(ctx context.Context, query string, queryVector []
 	}
 
 	switch config.Reranker {
-	case RRF:
+	case RRFRerankType:
 		return s.rrfRerankEdges(searchResults, limit)
-	case MMR:
+	case MMRRerankType:
 		return s.mmrRerankEdges(ctx, queryVector, edges, config.MMRLambda, config.MinScore, limit)
-	case CrossEncoder:
+	case CrossEncoderRerankType:
 		return s.crossEncoderRerankEdges(ctx, query, edges, config.MinScore, limit)
 	default:
 		// Default to simple score-based ranking

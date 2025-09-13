@@ -8,6 +8,77 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCleanInput(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "basic text unchanged",
+			input:    "Hello World",
+			expected: "Hello World",
+		},
+		{
+			name:     "control characters removed",
+			input:    "Hello\x00World",
+			expected: "HelloWorld",
+		},
+		{
+			name:     "newlines tabs returns preserved",
+			input:    "Hello\nWorld\tTest\r",
+			expected: "Hello\nWorld\tTest\r",
+		},
+		{
+			name:     "zero-width characters removed",
+			input:    "Hello\u200bWorld",
+			expected: "HelloWorld",
+		},
+		{
+			name:     "BOM removed",
+			input:    "Test\ufeffWord",
+			expected: "TestWord",
+		},
+		{
+			name:     "multiple issues combined",
+			input:    "Hello\x00\u200b\nWorld",
+			expected: "Hello\nWorld",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "form feed and control chars",
+			input:    `{"edges":[{"relation_typ...\f\x04Hn\\?"}]}`,
+			expected: `{"edges":[{"relation_typ...Hn\\?"}]}`,
+		},
+		{
+			name:     "form feed character",
+			input:    "Hello\x0cWorld",
+			expected: "HelloWorld",
+		},
+		{
+			name:     "end of transmission",
+			input:    "Hello\x04World",
+			expected: "HelloWorld",
+		},
+		{
+			name:     "JSON with control chars",
+			input:    `{"test": "value\f\x00\x04"}`,
+			expected: `{"test": "value"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := cleanInput(tc.input)
+			assert.Equal(t, tc.expected, result, "Failed for input: %q", tc.input)
+		})
+	}
+}
+
 func TestNewOpenAIClient(t *testing.T) {
 	tests := []struct {
 		name        string

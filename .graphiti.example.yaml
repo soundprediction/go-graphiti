@@ -1,0 +1,37 @@
+# Go-Graphiti Configuration Example
+# Copy this file to .graphiti.yaml and customize for your setup
+
+# Logging configuration
+log:
+  level: info      # debug, info, warn, error
+  format: text     # text, json
+
+# Server configuration
+server:
+  host: localhost
+  port: 8080
+  mode: debug      # debug, release, test
+
+# Database configuration
+database:
+  driver: neo4j    # neo4j, falkordb
+  uri: bolt://localhost:7687
+  username: neo4j
+  password: password
+  database: neo4j
+
+# LLM configuration
+llm:
+  provider: openai    # openai, anthropic
+  model: gpt-4
+  api_key: ""         # Set via OPENAI_API_KEY environment variable
+  base_url: ""        # Optional: custom API endpoint
+  temperature: 0.1
+  max_tokens: 2048
+
+# Embedding configuration
+embedding:
+  provider: openai
+  model: text-embedding-3-small
+  api_key: ""         # Set via OPENAI_API_KEY environment variable
+  base_url: ""        # Optional: custom API endpoint

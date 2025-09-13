@@ -48,3 +48,6 @@ coverage.html
 # Temporary files
 tmp/
 temp/
+
+# Build artifacts
+bin/

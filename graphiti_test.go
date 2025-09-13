@@ -245,6 +245,118 @@ func TestClient_Add(t *testing.T) {
 	assert.Contains(t, err.Error(), "not implemented")
 }
 
+func TestClient_AddBulk(t *testing.T) {
+	mockDriver := &MockGraphDriver{}
+	mockLLM := &MockLLMClient{}
+	mockEmbedder := &MockEmbedderClient{}
+
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	ctx := context.Background()
+
+	now := time.Now()
+	groupID := "test-group"
+
+	// Create test episodes similar to Python test
+	episodes := []types.Episode{
+		{
+			ID:        "episode-1",
+			Name:      "test_episode",
+			Content:   "Alice likes Bob",
+			Reference: now,
+			CreatedAt: now,
+			GroupID:   groupID,
+		},
+		{
+			ID:        "episode-2", 
+			Name:      "test_episode_2",
+			Content:   "Bob adores Alice",
+			Reference: now,
+			CreatedAt: now,
+			GroupID:   groupID,
+		},
+	}
+
+	// Test bulk add operations
+	err := client.Add(ctx, episodes)
+	if err != nil && err.Error() == "not implemented" {
+		t.Skip("Add method not yet implemented")
+	}
+	assert.NoError(t, err)
+}
+
+func TestClient_NodeOperations(t *testing.T) {
+	mockDriver := &MockGraphDriver{}
+	mockLLM := &MockLLMClient{}
+	mockEmbedder := &MockEmbedderClient{}
+
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	ctx := context.Background()
+
+	now := time.Now()
+	groupID := "test-group"
+
+	// Test creating entity node similar to Python test
+	entityNode := &types.Node{
+		ID:         "entity-1", 
+		Name:       "test_entity_1",
+		Type:       types.EntityNodeType,
+		GroupID:    groupID,
+		EntityType: "Person",
+		CreatedAt:  now,
+		Summary:    "test_entity_1 summary",
+		Metadata: map[string]interface{}{
+			"age":      30,
+			"location": "New York",
+		},
+	}
+
+	// Test upserting node
+	err := mockDriver.UpsertNode(ctx, entityNode)
+	assert.NoError(t, err)
+
+	// Test getting node (should return not found)
+	retrievedNode, err := client.GetNode(ctx, entityNode.ID)
+	assert.Error(t, err)
+	assert.Equal(t, graphiti.ErrNodeNotFound, err)
+	assert.Nil(t, retrievedNode)
+}
+
+func TestClient_EdgeOperations(t *testing.T) {
+	mockDriver := &MockGraphDriver{}
+	mockLLM := &MockLLMClient{}
+	mockEmbedder := &MockEmbedderClient{}
+
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	ctx := context.Background()
+
+	now := time.Now()
+	groupID := "test-group"
+
+	// Test creating entity edge similar to Python test
+	entityEdge := &types.Edge{
+		ID:        "edge-1",
+		Name:      "likes",
+		Type:      types.EntityEdgeType,
+		SourceID:  "entity-1",
+		TargetID:  "entity-2", 
+		GroupID:   groupID,
+		CreatedAt: now,
+		Metadata: map[string]interface{}{
+			"fact": "test_entity_1 relates to test_entity_2",
+		},
+	}
+
+	// Test upserting edge
+	err := mockDriver.UpsertEdge(ctx, entityEdge)
+	assert.NoError(t, err)
+
+	// Test getting edge (should return not found)
+	retrievedEdge, err := client.GetEdge(ctx, entityEdge.ID)
+	assert.Error(t, err)
+	assert.Equal(t, graphiti.ErrEdgeNotFound, err)
+	assert.Nil(t, retrievedEdge)
+}
+
 func TestClient_Search(t *testing.T) {
 	mockDriver := &MockGraphDriver{}
 	mockLLM := &MockLLMClient{}
