@@ -14,19 +14,20 @@ import (
 
 // Example demonstrating the combination of:
 // - Kuzu embedded graph database (local, no server required)
-// - Ollama local LLM inference (local, no cloud API required)
+// - Ollama local LLM inference via OpenAI-compatible API (local, no cloud API required)
 // - OpenAI embeddings (or could be replaced with local embeddings)
 //
 // This setup provides maximum privacy and minimal dependencies while
-// maintaining full Graphiti functionality.
+// maintaining full Graphiti functionality. Ollama's OpenAI-compatible API
+// allows seamless integration with existing OpenAI client code.
 
 func main() {
 	ctx := context.Background()
 
-	log.Println("🚀 Starting go-graphiti example with Kuzu + Ollama")
+	log.Println("🚀 Starting go-graphiti example with Kuzu + Ollama (OpenAI-compatible)")
 	log.Println("   This example demonstrates a fully local setup:")
 	log.Println("   - Kuzu: embedded graph database")
-	log.Println("   - Ollama: local LLM inference")
+	log.Println("   - Ollama: local LLM inference via OpenAI-compatible API")
 	log.Println("   - OpenAI: embeddings (could be replaced with local)")
 
 	// ========================================
@@ -53,24 +54,23 @@ func main() {
 	// ========================================
 	log.Println("\n🧠 Setting up Ollama local LLM client...")
 	
-	// Configure Ollama client for local inference
+	// Create Ollama client using OpenAI-compatible API
 	// Assumes Ollama is running locally with a model like llama2:7b
-	llmConfig := llm.Config{
-		Model:       "llama2:7b",           // Popular 7B parameter model
-		Temperature: &[]float32{0.7}[0],   // Balanced creativity
-		MaxTokens:   &[]int{1000}[0],      // Reasonable response length
-	}
-
-	// Create Ollama client (defaults to http://localhost:11434)
-	ollama, err := llm.NewOllamaClient("", "llama2:7b", llmConfig)
+	ollama, err := llm.NewOpenAIClient("", llm.Config{
+		BaseURL:     "http://localhost:11434", // Ollama's OpenAI-compatible endpoint
+		Model:       "llama2:7b",              // Popular 7B parameter model
+		Temperature: &[]float32{0.7}[0],      // Balanced creativity
+		MaxTokens:   &[]int{1000}[0],         // Reasonable response length
+	})
 	if err != nil {
 		log.Fatalf("Failed to create Ollama client: %v", err)
 	}
 	defer ollama.Close()
 
-	log.Println("   ✅ Ollama client created (using llama2:7b model)")
+	log.Println("   ✅ Ollama client created (using OpenAI-compatible API with llama2:7b)")
 	log.Println("   💡 Make sure Ollama is running: `ollama serve`")
 	log.Println("   💡 Make sure model is available: `ollama pull llama2:7b`")
+	log.Println("   💡 Ollama exposes OpenAI-compatible API at /v1/chat/completions")
 
 	// ========================================
 	// 3. Create Embedder (OpenAI for now, could be local)
@@ -221,17 +221,21 @@ func main() {
 	// ========================================
 	log.Println("\n📋 Example Summary:")
 	log.Println("   ✅ Kuzu driver: Created (stub implementation)")
-	log.Println("   ✅ Ollama client: Created and tested")
-	log.Println("   ✅ Graphiti integration: Demonstrated")
+	log.Println("   ✅ Ollama client: Created using OpenAI-compatible API and tested")
+	log.Println("   ✅ Graphiti integration: Demonstrated with modern API approach")
 	log.Println("\n🔮 Future State (when Kuzu library is available):")
 	log.Println("   🚀 Full local operation with no cloud dependencies")
 	log.Println("   📊 Embedded graph database for fast local queries")
-	log.Println("   🧠 Local LLM inference for privacy and control")
+	log.Println("   🧠 Local LLM inference via standardized OpenAI-compatible API")
 	log.Println("   🔒 All data remains on your local machine")
 	log.Println("\n💡 To achieve fully local setup:")
 	log.Println("   1. Wait for stable Kuzu Go library release")
 	log.Println("   2. Replace OpenAI embeddings with local alternative")
 	log.Println("   3. Enjoy complete data privacy and control!")
+	log.Println("\n🔧 OpenAI-Compatible API Benefits:")
+	log.Println("   ✅ Standardized interface across different LLM providers")
+	log.Println("   ✅ Easy switching between local and cloud LLM services")
+	log.Println("   ✅ Leverages existing OpenAI tooling and libraries")
 
 	log.Println("\n🎉 Example completed successfully!")
 }

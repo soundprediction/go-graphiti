@@ -1,4 +1,4 @@
-module kuzu_ollama_example
+module basic_example
 
 go 1.24.1
 
