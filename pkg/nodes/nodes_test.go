@@ -22,12 +22,12 @@ func TestEntityNode(t *testing.T) {
 			node: &types.Node{
 				ID:        "entity-1",
 				Name:      "test_entity_1",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   groupID,
-				Labels:    []string{"Entity", "Person"},
+				EntityType: "Person",
 				CreatedAt: now,
-				Properties: map[string]interface{}{
-					"summary":  "test_entity_1 summary",
+				Summary:   "test_entity_1 summary",
+				Metadata: map[string]interface{}{
 					"age":      30,
 					"location": "New York",
 				},
@@ -38,12 +38,12 @@ func TestEntityNode(t *testing.T) {
 			node: &types.Node{
 				ID:        "entity-2",
 				Name:      "test_entity_2",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   groupID,
-				Labels:    []string{"Entity", "Person2"},
+				EntityType: "Person2",
 				CreatedAt: now,
-				Properties: map[string]interface{}{
-					"summary":     "test_entity_2 summary",
+				Summary:   "test_entity_2 summary",
+				Metadata: map[string]interface{}{
 					"age":         25,
 					"location":    "Los Angeles",
 					"occupation":  "Engineer",
@@ -56,12 +56,12 @@ func TestEntityNode(t *testing.T) {
 			node: &types.Node{
 				ID:        "entity-3",
 				Name:      "test_entity_3",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   groupID,
-				Labels:    []string{"Entity", "City", "Location"},
+				EntityType: "Location",
 				CreatedAt: now,
-				Properties: map[string]interface{}{
-					"summary":     "test_entity_3 summary",
+				Summary:   "test_entity_3 summary",
+				Metadata: map[string]interface{}{
 					"population":  1000000,
 					"country":     "USA",
 					"timezone":    "PST",
@@ -75,9 +75,9 @@ func TestEntityNode(t *testing.T) {
 			assert.NotEmpty(t, tt.node.ID)
 			assert.NotEmpty(t, tt.node.Name)
 			assert.Equal(t, groupID, tt.node.GroupID)
-			assert.Equal(t, types.NodeTypeEntity, tt.node.Type)
+			assert.Equal(t, types.EntityNodeType, tt.node.Type)
 			assert.NotZero(t, tt.node.CreatedAt)
-			assert.Contains(t, tt.node.Labels, "Entity")
+			assert.NotEmpty(t, tt.node.EntityType)
 		})
 	}
 }
@@ -95,16 +95,15 @@ func TestEpisodicNode(t *testing.T) {
 			node: &types.Node{
 				ID:        "episode-1",
 				Name:      "test_episode",
-				Type:      types.NodeTypeEpisodic,
+				Type:      types.EpisodicNodeType,
 				GroupID:   groupID,
-				Labels:    []string{"Episode", "Message"},
+				EpisodeType: types.ConversationEpisodeType,
 				CreatedAt: now,
-				Properties: map[string]interface{}{
-					"content":            "Alice likes Bob",
+				Content:   "Alice likes Bob",
+				Reference: now,
+				Metadata: map[string]interface{}{
 					"source":             "message",
 					"source_description": "conversation message",
-					"valid_at":          now,
-					"episode_type":      "message",
 				},
 			},
 		},
@@ -113,16 +112,15 @@ func TestEpisodicNode(t *testing.T) {
 			node: &types.Node{
 				ID:        "episode-2",
 				Name:      "test_episode_2",
-				Type:      types.NodeTypeEpisodic,
+				Type:      types.EpisodicNodeType,
 				GroupID:   groupID,
-				Labels:    []string{"Episode", "Document"},
+				EpisodeType: types.DocumentEpisodeType,
 				CreatedAt: now,
-				Properties: map[string]interface{}{
-					"content":            "Bob adores Alice",
+				Content:   "Bob adores Alice",
+				Reference: now,
+				Metadata: map[string]interface{}{
 					"source":             "document",
 					"source_description": "meeting notes",
-					"valid_at":          now,
-					"episode_type":      "document",
 				},
 			},
 		},
@@ -133,16 +131,15 @@ func TestEpisodicNode(t *testing.T) {
 			assert.NotEmpty(t, tt.node.ID)
 			assert.NotEmpty(t, tt.node.Name)
 			assert.Equal(t, groupID, tt.node.GroupID)
-			assert.Equal(t, types.NodeTypeEpisodic, tt.node.Type)
+			assert.Equal(t, types.EpisodicNodeType, tt.node.Type)
 			assert.NotZero(t, tt.node.CreatedAt)
-			assert.Contains(t, tt.node.Labels, "Episode")
+			assert.NotEmpty(t, tt.node.EpisodeType)
 
 			// Test episode-specific properties
-			content, ok := tt.node.Properties["content"]
-			require.True(t, ok)
-			assert.NotEmpty(t, content)
+			assert.NotEmpty(t, tt.node.Content)
+			assert.NotZero(t, tt.node.Reference)
 
-			source, ok := tt.node.Properties["source"]
+			source, ok := tt.node.Metadata["source"]
 			require.True(t, ok)
 			assert.NotEmpty(t, source)
 		})
@@ -156,35 +153,32 @@ func TestCommunityNode(t *testing.T) {
 	communityNode := &types.Node{
 		ID:        "community-1",
 		Name:      "test_community",
-		Type:      types.NodeTypeCommunity,
+		Type:      types.CommunityNodeType,
 		GroupID:   groupID,
-		Labels:    []string{"Community"},
+		Level:     0,
 		CreatedAt: now,
-		Properties: map[string]interface{}{
-			"summary":     "A community of related entities",
-			"level":       0,
+		Summary:   "A community of related entities",
+		Metadata: map[string]interface{}{
 			"size":        5,
 			"entities":    []string{"entity-1", "entity-2", "entity-3"},
 			"description": "Community formed around shared interests",
 		},
 	}
 
-	assert.Equal(t, types.NodeTypeCommunity, communityNode.Type)
+	assert.Equal(t, types.CommunityNodeType, communityNode.Type)
 	assert.Equal(t, "test_community", communityNode.Name)
 	assert.Equal(t, groupID, communityNode.GroupID)
 	assert.NotZero(t, communityNode.CreatedAt)
-	assert.Contains(t, communityNode.Labels, "Community")
+	assert.Equal(t, 0, communityNode.Level)
 
 	// Test community-specific properties
-	level, ok := communityNode.Properties["level"]
-	require.True(t, ok)
-	assert.Equal(t, 0, level)
+	assert.NotEmpty(t, communityNode.Summary)
 
-	size, ok := communityNode.Properties["size"]
+	size, ok := communityNode.Metadata["size"]
 	require.True(t, ok)
 	assert.Equal(t, 5, size)
 
-	entities, ok := communityNode.Properties["entities"]
+	entities, ok := communityNode.Metadata["entities"]
 	require.True(t, ok)
 	entitiesSlice, ok := entities.([]string)
 	require.True(t, ok)
@@ -202,7 +196,7 @@ func TestNodeValidation(t *testing.T) {
 			node: &types.Node{
 				ID:        "valid-node",
 				Name:      "Valid Node",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   "group",
 				CreatedAt: time.Now(),
 			},
@@ -212,7 +206,7 @@ func TestNodeValidation(t *testing.T) {
 			name: "missing ID",
 			node: &types.Node{
 				Name:      "Node without ID",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   "group",
 				CreatedAt: time.Now(),
 			},
@@ -222,7 +216,7 @@ func TestNodeValidation(t *testing.T) {
 			name: "missing name",
 			node: &types.Node{
 				ID:        "node-id",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   "group",
 				CreatedAt: time.Now(),
 			},
@@ -233,7 +227,7 @@ func TestNodeValidation(t *testing.T) {
 			node: &types.Node{
 				ID:        "node-id",
 				Name:      "Node Name",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				CreatedAt: time.Now(),
 			},
 			isValid: false,
@@ -253,9 +247,9 @@ func TestNodeValidation(t *testing.T) {
 
 func TestNodeTypes(t *testing.T) {
 	nodeTypes := []types.NodeType{
-		types.NodeTypeEntity,
-		types.NodeTypeEpisodic,
-		types.NodeTypeCommunity,
+		types.EntityNodeType,
+		types.EpisodicNodeType,
+		types.CommunityNodeType,
 	}
 
 	for _, nodeType := range nodeTypes {
@@ -285,24 +279,17 @@ func TestNodeWithEmbedding(t *testing.T) {
 	node := &types.Node{
 		ID:        "embedded-node",
 		Name:      "Node with Embedding",
-		Type:      types.NodeTypeEntity,
+		Type:      types.EntityNodeType,
 		GroupID:   "group",
 		CreatedAt: now,
-		Properties: map[string]interface{}{
-			"summary":        "A node with an embedding",
-			"name_embedding": embedding,
-		},
+		Summary:   "A node with an embedding",
+		Embedding: embedding,
 	}
 
 	// Test embedding property
-	embeddingProp, ok := node.Properties["name_embedding"]
-	require.True(t, ok)
-	
-	embeddingSlice, ok := embeddingProp.([]float32)
-	require.True(t, ok)
-	assert.Len(t, embeddingSlice, 1536)
-	assert.Equal(t, float32(0.0), embeddingSlice[0])
-	assert.Equal(t, float32(0.1), embeddingSlice[1])
+	assert.Len(t, node.Embedding, 1536)
+	assert.Equal(t, float32(0.0), node.Embedding[0])
+	assert.Equal(t, float32(0.1), node.Embedding[1])
 }
 
 func TestNodeTimeOperations(t *testing.T) {
@@ -313,12 +300,12 @@ func TestNodeTimeOperations(t *testing.T) {
 	node := &types.Node{
 		ID:        "time-node",
 		Name:      "Time-aware Node",
-		Type:      types.NodeTypeEntity,
+		Type:      types.EntityNodeType,
 		GroupID:   "group",
 		CreatedAt: now,
-		Properties: map[string]interface{}{
-			"valid_at":    now,
-			"updated_at":  past,
+		ValidFrom:  now,
+		UpdatedAt:  past,
+		Metadata: map[string]interface{}{
 			"expires_at":  future,
 		},
 	}
@@ -327,15 +314,10 @@ func TestNodeTimeOperations(t *testing.T) {
 	assert.Equal(t, now, node.CreatedAt)
 
 	// Test temporal properties
-	validAt, ok := node.Properties["valid_at"]
-	require.True(t, ok)
-	assert.Equal(t, now, validAt)
+	assert.Equal(t, now, node.ValidFrom)
+	assert.Equal(t, past, node.UpdatedAt)
 
-	updatedAt, ok := node.Properties["updated_at"]
-	require.True(t, ok)
-	assert.Equal(t, past, updatedAt)
-
-	expiresAt, ok := node.Properties["expires_at"]
+	expiresAt, ok := node.Metadata["expires_at"]
 	require.True(t, ok)
 	assert.Equal(t, future, expiresAt)
 }
@@ -364,16 +346,14 @@ func TestNodeLabels(t *testing.T) {
 			node := &types.Node{
 				ID:        "labeled-node",
 				Name:      "Labeled Node",
-				Type:      types.NodeTypeEntity,
+				Type:      types.EntityNodeType,
 				GroupID:   "group",
-				Labels:    tt.labels,
+				EntityType: "Labeled",
 				CreatedAt: time.Now(),
 			}
 
-			assert.Equal(t, tt.labels, node.Labels)
-			for _, label := range tt.labels {
-				assert.Contains(t, node.Labels, label)
-			}
+			// Test that node was created successfully
+			assert.NotEmpty(t, node.EntityType)
 		})
 	}
 }

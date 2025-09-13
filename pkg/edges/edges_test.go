@@ -22,14 +22,12 @@ func TestEntityEdge(t *testing.T) {
 			edge: &types.Edge{
 				ID:           "edge-1",
 				Name:         "likes",
-				Type:         types.EdgeTypeRelation,
-				SourceNodeID: "entity-1",
-				TargetNodeID: "entity-2",
+				Type:         types.EntityEdgeType,
+				SourceID:     "entity-1",
+				TargetID:     "entity-2",
 				GroupID:      groupID,
 				CreatedAt:    now,
-				Properties: map[string]interface{}{
-					"fact": "test_entity_1 relates to test_entity_2",
-				},
+				Summary:      "test_entity_1 relates to test_entity_2",
 			},
 		},
 		{
@@ -37,13 +35,13 @@ func TestEntityEdge(t *testing.T) {
 			edge: &types.Edge{
 				ID:           "edge-2",
 				Name:         "knows",
-				Type:         types.EdgeTypeRelation,
-				SourceNodeID: "entity-3",
-				TargetNodeID: "entity-4",
+				Type:         types.EntityEdgeType,
+				SourceID:     "entity-3",
+				TargetID:     "entity-4",
 				GroupID:      groupID,
 				CreatedAt:    now,
-				Properties: map[string]interface{}{
-					"fact":     "entity 3 knows entity 4",
+				Summary:      "entity 3 knows entity 4",
+				Metadata: map[string]interface{}{
 					"episodes": []string{"episode-1", "episode-2"},
 				},
 			},
@@ -55,7 +53,7 @@ func TestEntityEdge(t *testing.T) {
 			assert.NotEmpty(t, tt.edge.ID)
 			assert.NotEmpty(t, tt.edge.Name)
 			assert.Equal(t, groupID, tt.edge.GroupID)
-			assert.Equal(t, types.EdgeTypeRelation, tt.edge.Type)
+			assert.Equal(t, types.EntityEdgeType, tt.edge.Type)
 			assert.NotZero(t, tt.edge.CreatedAt)
 		})
 	}
@@ -67,18 +65,18 @@ func TestEpisodicEdge(t *testing.T) {
 
 	episodicEdge := &types.Edge{
 		ID:           "episodic-edge-1",
-		Type:         types.EdgeTypeEpisodic,
-		SourceNodeID: "episode-1",
-		TargetNodeID: "entity-1",
+		Type:         types.EpisodicEdgeType,
+		SourceID:     "episode-1",
+		TargetID:     "entity-1",
 		GroupID:      groupID,
 		CreatedAt:    now,
-		Properties: map[string]interface{}{
+		Metadata: map[string]interface{}{
 			"source_type": "episode",
 			"target_type": "entity",
 		},
 	}
 
-	assert.Equal(t, types.EdgeTypeEpisodic, episodicEdge.Type)
+	assert.Equal(t, types.EpisodicEdgeType, episodicEdge.Type)
 	assert.Equal(t, groupID, episodicEdge.GroupID)
 	assert.NotZero(t, episodicEdge.CreatedAt)
 }
@@ -90,28 +88,28 @@ func TestCommunityEdge(t *testing.T) {
 	communityEdge := &types.Edge{
 		ID:           "community-edge-1",
 		Name:         "belongs_to",
-		Type:         types.EdgeTypeCommunity,
-		SourceNodeID: "entity-1",
-		TargetNodeID: "community-1",
+		Type:         types.CommunityEdgeType,
+		SourceID:     "entity-1",
+		TargetID:     "community-1",
 		GroupID:      groupID,
 		CreatedAt:    now,
-		Properties: map[string]interface{}{
+		Metadata: map[string]interface{}{
 			"level":      0,
 			"membership": 0.85,
 		},
 	}
 
-	assert.Equal(t, types.EdgeTypeCommunity, communityEdge.Type)
+	assert.Equal(t, types.CommunityEdgeType, communityEdge.Type)
 	assert.Equal(t, "belongs_to", communityEdge.Name)
 	assert.Equal(t, groupID, communityEdge.GroupID)
 	assert.NotZero(t, communityEdge.CreatedAt)
 
 	// Test community-specific properties
-	level, ok := communityEdge.Properties["level"]
+	level, ok := communityEdge.Metadata["level"]
 	require.True(t, ok)
 	assert.Equal(t, 0, level)
 
-	membership, ok := communityEdge.Properties["membership"]
+	membership, ok := communityEdge.Metadata["membership"]
 	require.True(t, ok)
 	assert.Equal(t, 0.85, membership)
 }
@@ -126,9 +124,9 @@ func TestEdgeValidation(t *testing.T) {
 			name: "valid edge",
 			edge: &types.Edge{
 				ID:           "valid-edge",
-				Type:         types.EdgeTypeRelation,
-				SourceNodeID: "source",
-				TargetNodeID: "target",
+				Type:         types.EntityEdgeType,
+				SourceID:"source",
+				TargetID:"target",
 				GroupID:      "group",
 				CreatedAt:    time.Now(),
 			},
@@ -137,9 +135,9 @@ func TestEdgeValidation(t *testing.T) {
 		{
 			name: "missing ID",
 			edge: &types.Edge{
-				Type:         types.EdgeTypeRelation,
-				SourceNodeID: "source",
-				TargetNodeID: "target",
+				Type:         types.EntityEdgeType,
+				SourceID:"source",
+				TargetID:"target",
 				GroupID:      "group",
 				CreatedAt:    time.Now(),
 			},
@@ -149,8 +147,8 @@ func TestEdgeValidation(t *testing.T) {
 			name: "missing source",
 			edge: &types.Edge{
 				ID:           "edge-id",
-				Type:         types.EdgeTypeRelation,
-				TargetNodeID: "target",
+				Type:         types.EntityEdgeType,
+				TargetID:"target",
 				GroupID:      "group",
 				CreatedAt:    time.Now(),
 			},
@@ -160,8 +158,8 @@ func TestEdgeValidation(t *testing.T) {
 			name: "missing target",
 			edge: &types.Edge{
 				ID:           "edge-id",
-				Type:         types.EdgeTypeRelation,
-				SourceNodeID: "source",
+				Type:         types.EntityEdgeType,
+				SourceID:"source",
 				GroupID:      "group",
 				CreatedAt:    time.Now(),
 			},
@@ -171,9 +169,9 @@ func TestEdgeValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.edge.ID != "" && 
-				tt.edge.SourceNodeID != "" && 
-				tt.edge.TargetNodeID != "" &&
+			isValid := tt.edge.ID != "" &&
+				tt.edge.SourceID != "" &&
+				tt.edge.TargetID != "" &&
 				tt.edge.GroupID != ""
 
 			assert.Equal(t, tt.isValid, isValid)
@@ -183,9 +181,9 @@ func TestEdgeValidation(t *testing.T) {
 
 func TestEdgeTypes(t *testing.T) {
 	edgeTypes := []types.EdgeType{
-		types.EdgeTypeRelation,
-		types.EdgeTypeEpisodic,
-		types.EdgeTypeCommunity,
+		types.EntityEdgeType,
+		types.EpisodicEdgeType,
+		types.CommunityEdgeType,
 	}
 
 	for _, edgeType := range edgeTypes {
@@ -193,8 +191,8 @@ func TestEdgeTypes(t *testing.T) {
 			edge := &types.Edge{
 				ID:           "test-edge",
 				Type:         edgeType,
-				SourceNodeID: "source",
-				TargetNodeID: "target",
+				SourceID:"source",
+				TargetID:"target",
 				GroupID:      "group",
 				CreatedAt:    time.Now(),
 			}
@@ -206,18 +204,17 @@ func TestEdgeTypes(t *testing.T) {
 
 func TestEdgeTimeOperations(t *testing.T) {
 	now := time.Now()
-	past := now.Add(-1 * time.Hour)
 	future := now.Add(1 * time.Hour)
 
 	edge := &types.Edge{
 		ID:           "time-edge",
-		Type:         types.EdgeTypeRelation,
-		SourceNodeID: "source",
-		TargetNodeID: "target",
+		Type:         types.EntityEdgeType,
+		SourceID:"source",
+		TargetID:"target",
 		GroupID:      "group",
 		CreatedAt:    now,
-		Properties: map[string]interface{}{
-			"valid_at":   now,
+		ValidFrom:    now,
+		Metadata: map[string]interface{}{
 			"invalid_at": future,
 			"expired_at": nil,
 		},
@@ -227,18 +224,16 @@ func TestEdgeTimeOperations(t *testing.T) {
 	assert.Equal(t, now, edge.CreatedAt)
 
 	// Test temporal properties
-	validAt, ok := edge.Properties["valid_at"]
-	require.True(t, ok)
-	assert.Equal(t, now, validAt)
+	assert.Equal(t, now, edge.ValidFrom)
 
-	invalidAt, ok := edge.Properties["invalid_at"]
+	invalidAt, ok := edge.Metadata["invalid_at"]
 	require.True(t, ok)
 	assert.Equal(t, future, invalidAt)
 
 	// Test edge is valid at creation time
 	createdAt := edge.CreatedAt
-	validTime := edge.Properties["valid_at"].(time.Time)
-	invalidTime := edge.Properties["invalid_at"].(time.Time)
+	validTime := edge.ValidFrom
+	invalidTime := edge.Metadata["invalid_at"].(time.Time)
 
 	assert.True(t, createdAt.Equal(validTime) || createdAt.After(validTime))
 	assert.True(t, createdAt.Before(invalidTime))
@@ -256,24 +251,17 @@ func TestEdgeWithEmbedding(t *testing.T) {
 	edge := &types.Edge{
 		ID:           "embedded-edge",
 		Name:         "relates_to",
-		Type:         types.EdgeTypeRelation,
-		SourceNodeID: "source",
-		TargetNodeID: "target",
+		Type:         types.EntityEdgeType,
+		SourceID:"source",
+		TargetID:"target",
 		GroupID:      "group",
 		CreatedAt:    now,
-		Properties: map[string]interface{}{
-			"fact":      "source relates to target",
-			"embedding": embedding,
-		},
+		Summary:   "source relates to target",
+		Embedding: embedding,
 	}
 
 	// Test embedding property
-	embeddingProp, ok := edge.Properties["embedding"]
-	require.True(t, ok)
-	
-	embeddingSlice, ok := embeddingProp.([]float32)
-	require.True(t, ok)
-	assert.Len(t, embeddingSlice, 1536)
-	assert.Equal(t, float32(0.0), embeddingSlice[0])
-	assert.Equal(t, float32(0.1), embeddingSlice[1])
+	assert.Len(t, edge.Embedding, 1536)
+	assert.Equal(t, float32(0.0), edge.Embedding[0])
+	assert.Equal(t, float32(0.1), edge.Embedding[1])
 }
