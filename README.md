@@ -10,8 +10,10 @@ Graphiti is designed for building temporally-aware knowledge graphs for AI agent
 
 - **Temporal Knowledge Graphs**: Bi-temporal data model with explicit tracking of event occurrence times
 - **Hybrid Search**: Combines semantic embeddings, keyword search (BM25), and graph traversal
-- **Multiple Backends**: Support for Neo4j and Kuzu graph databases
+- **Multiple Backends**: Support for Neo4j and FalkorDB graph databases
 - **LLM Integration**: Built-in support for OpenAI and OpenAI-compatible services (Ollama, LocalAI, vLLM, etc.)
+- **CLI Tool**: Command-line interface for running servers and managing the knowledge graph
+- **HTTP Server**: REST API server for web applications and services
 - **Go Idioms**: Follows Go conventions and coding patterns similar to [go-light-rag](https://github.com/MegaGrindStone/go-light-rag)
 
 ## Installation
@@ -117,6 +119,76 @@ func main() {
 }
 ```
 
+## CLI Tool
+
+Go-Graphiti includes a command-line interface for managing the knowledge graph and running servers.
+
+### Installation
+
+```bash
+# Build from source
+make build-cli
+
+# Or build directly
+go build -o bin/graphiti ./cmd/main.go
+```
+
+### Server Command
+
+Start the HTTP server:
+
+```bash
+./bin/graphiti server
+```
+
+With custom configuration:
+
+```bash
+./bin/graphiti server --port 9090 --llm-api-key your-key-here
+```
+
+### Configuration
+
+Create a configuration file:
+
+```bash
+cp .graphiti.example.yaml .graphiti.yaml
+# Edit the configuration as needed
+```
+
+The server provides REST API endpoints:
+
+- `GET /health` - Health check
+- `POST /api/v1/ingest/messages` - Add messages to knowledge graph
+- `POST /api/v1/search` - Search the knowledge graph
+- `GET /api/v1/episodes/:group_id` - Get episodes for a group
+- `POST /api/v1/get-memory` - Get memory based on messages
+
+### API Examples
+
+Add messages:
+```bash
+curl -X POST http://localhost:8080/api/v1/ingest/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_id": "user123",
+    "messages": [{"role": "user", "content": "Hello, I work at Acme Corp"}]
+  }'
+```
+
+Search:
+```bash
+curl -X POST http://localhost:8080/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Acme Corp",
+    "group_ids": ["user123"],
+    "max_facts": 10
+  }'
+```
+
+See [cmd/README.md](cmd/README.md) for detailed CLI documentation.
+
 ## Architecture
 
 The library is structured into several key packages:
@@ -129,6 +201,7 @@ The library is structured into several key packages:
 - **`pkg/nodes/`**: Node types and operations
 - **`pkg/edges/`**: Edge types and operations
 - **`pkg/prompts/`**: LLM prompts for extraction and processing
+- **`pkg/crossencoder/`**: Cross-encoder reranking for improved relevance
 
 ## Node Types
 

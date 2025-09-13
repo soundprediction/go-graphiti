@@ -114,7 +114,7 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 		}
 	}
 
-	// Convert edge config if present  
+	// Convert edge config if present
 	if config.EdgeConfig != nil {
 		searchConfig.EdgeConfig = &search.EdgeSearchConfig{
 			SearchMethods: convertSearchMethods(config.EdgeConfig.SearchMethods),
