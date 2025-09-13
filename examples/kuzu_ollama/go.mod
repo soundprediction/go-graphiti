@@ -1,6 +1,6 @@
 module kuzu_ollama_example
 
-go 1.24.0
+go 1.24.1
 
 replace github.com/soundprediction/go-graphiti => ../..
 
