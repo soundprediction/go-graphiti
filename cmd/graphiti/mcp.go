@@ -153,10 +153,11 @@ type MCPConfig struct {
 	EmbeddingBaseURL string
 
 	// Database Configuration
-	Neo4jURI         string
-	Neo4jUser        string
-	Neo4jPassword    string
-	Neo4jDatabase    string
+	DatabaseDriver   string
+	DatabaseURI      string
+	DatabaseUser     string
+	DatabasePassword string
+	DatabaseName     string
 
 	// MCP Server Configuration
 	GroupID          string
@@ -208,10 +209,11 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 		SemaphoreLimit:   getViperIntWithFallback("mcp.semaphore_limit", mcpSemaphoreLimit),
 
 		// Database configuration - viper handles env vars automatically
-		Neo4jURI:      getViperStringWithFallback("database.uri", "bolt://localhost:7687"),
-		Neo4jUser:     getViperStringWithFallback("database.username", "neo4j"),
-		Neo4jPassword: getViperStringWithFallback("database.password", "password"),
-		Neo4jDatabase: getViperStringWithFallback("database.database", "neo4j"),
+		DatabaseDriver:   getViperStringWithFallback("database.driver", "kuzu"),
+		DatabaseURI:      getViperStringWithFallback("database.uri", "./kuzu_db"),
+		DatabaseUser:     getViperStringWithFallback("database.username", ""),
+		DatabasePassword: getViperStringWithFallback("database.password", ""),
+		DatabaseName:     getViperStringWithFallback("database.database", ""),
 
 		// LLM configuration - now optional
 		OpenAIAPIKey:  viper.GetString("llm.api_key"), // No fallback - truly optional
@@ -285,15 +287,28 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		Level: slog.LevelInfo,
 	}))
 
-	// Create Neo4j driver
-	neo4jDriver, err := driver.NewNeo4jDriver(
-		config.Neo4jURI,
-		config.Neo4jUser,
-		config.Neo4jPassword,
-		config.Neo4jDatabase,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
+	// Create database driver
+	var graphDriver driver.GraphDriver
+	var err error
+
+	switch config.DatabaseDriver {
+	case "kuzu":
+		graphDriver, err = driver.NewKuzuDriver(config.DatabaseURI)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
+		}
+	case "neo4j":
+		graphDriver, err = driver.NewNeo4jDriver(
+			config.DatabaseURI,
+			config.DatabaseUser,
+			config.DatabasePassword,
+			config.DatabaseName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", config.DatabaseDriver)
 	}
 
 	// Create LLM client - only if we have an API key or base URL
@@ -340,7 +355,7 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, graphitiConfig)
+	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig)
 
 	return &MCPServer{
 		config: config,
@@ -360,9 +375,15 @@ func (s *MCPServer) Initialize(ctx context.Context) error {
 
 	// Clear graph if requested
 	if s.config.DestroyGraph {
-		s.logger.Info("Graph destruction requested - this would clear all data")
-		// TODO: Implement graph clearing functionality when available
-		// For now, just log the intent
+		s.logger.Warn("Graph destruction requested - clearing all data for group", "group_id", s.config.GroupID)
+
+		err := s.client.ClearGraph(ctx, s.config.GroupID)
+		if err != nil {
+			s.logger.Error("Failed to clear graph during initialization", "error", err)
+			return fmt.Errorf("failed to clear graph: %w", err)
+		}
+
+		s.logger.Info("Graph cleared successfully during initialization")
 	}
 
 	s.logger.Info("Graphiti client initialized successfully")
@@ -429,8 +450,8 @@ func validateMCPConfig(config *MCPConfig) error {
 		return fmt.Errorf("group ID is required")
 	}
 
-	if config.Neo4jURI == "" {
-		return fmt.Errorf("Neo4j URI is required")
+	if config.DatabaseURI == "" {
+		return fmt.Errorf("Database URI is required")
 	}
 
 	// Only require API key if custom entities are enabled AND no base URL is provided

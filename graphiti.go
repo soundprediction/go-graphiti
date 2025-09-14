@@ -31,6 +31,15 @@ type Graphiti interface {
 	// GetEdge retrieves a specific edge from the knowledge graph.
 	GetEdge(ctx context.Context, edgeID string) (*types.Edge, error)
 
+	// GetEpisodes retrieves recent episodes from the knowledge graph.
+	GetEpisodes(ctx context.Context, groupID string, limit int) ([]*types.Node, error)
+
+	// ClearGraph removes all nodes and edges from the knowledge graph for a specific group.
+	ClearGraph(ctx context.Context, groupID string) error
+
+	// CreateIndices creates database indices and constraints for optimal performance.
+	CreateIndices(ctx context.Context) error
+
 	// Close closes all connections and cleans up resources.
 	Close(ctx context.Context) error
 }
@@ -330,6 +339,62 @@ func (c *Client) GetNode(ctx context.Context, nodeID string) (*types.Node, error
 // GetEdge retrieves an edge by ID.
 func (c *Client) GetEdge(ctx context.Context, edgeID string) (*types.Edge, error) {
 	return c.driver.GetEdge(ctx, edgeID, c.config.GroupID)
+}
+
+// GetEpisodes retrieves recent episodes from the knowledge graph.
+func (c *Client) GetEpisodes(ctx context.Context, groupID string, limit int) ([]*types.Node, error) {
+	if groupID == "" {
+		groupID = c.config.GroupID
+	}
+
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Use driver's SearchNodes with episodic node type filter
+	searchOptions := &driver.SearchOptions{
+		Limit:     limit,
+		NodeTypes: []types.NodeType{types.EpisodicNodeType},
+	}
+
+	return c.driver.SearchNodes(ctx, "", groupID, searchOptions)
+}
+
+// ClearGraph removes all nodes and edges from the knowledge graph for a specific group.
+func (c *Client) ClearGraph(ctx context.Context, groupID string) error {
+	if groupID == "" {
+		groupID = c.config.GroupID
+	}
+
+	// First, get all nodes for this group
+	allNodes, err := c.getAllNodesForGroup(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to get nodes for clearing: %w", err)
+	}
+
+	// Delete all nodes (this will also delete associated edges in most graph databases)
+	for _, node := range allNodes {
+		if err := c.driver.DeleteNode(ctx, node.ID, groupID); err != nil {
+			return fmt.Errorf("failed to delete node %s: %w", node.ID, err)
+		}
+	}
+
+	return nil
+}
+
+// getAllNodesForGroup retrieves all nodes for a specific group
+func (c *Client) getAllNodesForGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
+	// Search for all nodes with a high limit and no type filter
+	searchOptions := &driver.SearchOptions{
+		Limit: 100000, // Large limit to get all nodes
+	}
+
+	return c.driver.SearchNodes(ctx, "", groupID, searchOptions)
+}
+
+// CreateIndices creates database indices and constraints for optimal performance.
+func (c *Client) CreateIndices(ctx context.Context) error {
+	return c.driver.CreateIndices(ctx)
 }
 
 // Close closes the client and all its connections.

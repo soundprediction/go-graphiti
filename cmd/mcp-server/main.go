@@ -206,16 +206,31 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 func (s *MCPServer) Initialize(ctx context.Context) error {
 	s.logger.Info("Initializing Graphiti MCP server...")
 	
-	// TODO: Initialize graph indices and constraints
-	// For now, just verify the client is ready
+	// Verify the client is ready
 	if s.client == nil {
 		return fmt.Errorf("graphiti client not initialized")
 	}
-	
-	// TODO: Clear graph if requested
+
+	// Initialize graph indices and constraints
+	s.logger.Info("Initializing graph indices and constraints...")
+	err := s.client.CreateIndices(ctx)
+	if err != nil {
+		s.logger.Error("Failed to initialize graph indices", "error", err)
+		return fmt.Errorf("failed to initialize graph indices: %w", err)
+	}
+	s.logger.Info("Graph indices and constraints initialized successfully")
+
+	// Clear graph if requested
 	if s.config.DestroyGraph {
-		s.logger.Info("Graph destruction requested - this would clear all data")
-		// Implementation needed: call clear graph functionality
+		s.logger.Warn("Graph destruction requested - clearing all data for group", "group_id", s.config.GroupID)
+
+		err := s.client.ClearGraph(ctx, s.config.GroupID)
+		if err != nil {
+			s.logger.Error("Failed to clear graph during initialization", "error", err)
+			return fmt.Errorf("failed to clear graph: %w", err)
+		}
+
+		s.logger.Info("Graph cleared successfully during initialization")
 	}
 
 	s.logger.Info("Graphiti client initialized successfully")
