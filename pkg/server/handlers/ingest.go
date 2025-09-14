@@ -12,11 +12,11 @@ import (
 
 // IngestHandler handles data ingestion requests
 type IngestHandler struct {
-	graphiti *graphiti.Graphiti
+	graphiti graphiti.Graphiti
 }
 
 // NewIngestHandler creates a new ingest handler
-func NewIngestHandler(g *graphiti.Graphiti) *IngestHandler {
+func NewIngestHandler(g graphiti.Graphiti) *IngestHandler {
 	return &IngestHandler{
 		graphiti: g,
 	}

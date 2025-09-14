@@ -10,6 +10,9 @@ import (
 
 	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/config"
+	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-graphiti/pkg/embedder"
+	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/soundprediction/go-graphiti/pkg/server"
 	"github.com/spf13/cobra"
 )
@@ -44,11 +47,11 @@ func init() {
 	serverCmd.Flags().StringVar(&serverMode, "mode", "debug", "Server mode (debug, release, test)")
 
 	// Database flags
-	serverCmd.Flags().String("db-driver", "neo4j", "Database driver (neo4j, falkordb)")
-	serverCmd.Flags().String("db-uri", "bolt://localhost:7687", "Database URI")
-	serverCmd.Flags().String("db-username", "neo4j", "Database username")
-	serverCmd.Flags().String("db-password", "password", "Database password")
-	serverCmd.Flags().String("db-database", "neo4j", "Database name")
+	serverCmd.Flags().String("db-driver", "kuzu", "Database driver (kuzu, neo4j, falkordb)")
+	serverCmd.Flags().String("db-uri", "./kuzu_db", "Database URI/path")
+	serverCmd.Flags().String("db-username", "", "Database username (not used for Kuzu)")
+	serverCmd.Flags().String("db-password", "", "Database password (not used for Kuzu)")
+	serverCmd.Flags().String("db-database", "", "Database name (not used for Kuzu)")
 
 	// LLM flags
 	serverCmd.Flags().String("llm-provider", "openai", "LLM provider")
@@ -208,12 +211,84 @@ func validateServerConfig(cfg *config.Config) error {
 	return nil
 }
 
-func initializeGraphiti(cfg *config.Config) (*graphiti.Graphiti, error) {
-	// TODO: Initialize Graphiti with the provided configuration
-	// This is a placeholder implementation
-	// The actual implementation would depend on the Graphiti package API
+func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
+	// Initialize database driver
+	var graphDriver driver.GraphDriver
+	var err error
 
-	// For now, return a nil instance with a note
-	fmt.Println("Note: Graphiti initialization is a placeholder - needs actual implementation")
-	return nil, nil
+	switch cfg.Database.Driver {
+	case "kuzu":
+		graphDriver, err = driver.NewKuzuDriver(cfg.Database.URI)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
+		}
+	case "neo4j":
+		graphDriver, err = driver.NewNeo4jDriver(
+			cfg.Database.URI,
+			cfg.Database.Username,
+			cfg.Database.Password,
+			cfg.Database.Database,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
+		}
+	case "falkordb":
+		// FalkorDB support would be implemented here
+		return nil, fmt.Errorf("FalkorDB driver not yet implemented")
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Database.Driver)
+	}
+
+	// Initialize LLM client
+	var llmClient llm.Client
+	if cfg.LLM.APIKey != "" {
+		switch cfg.LLM.Provider {
+		case "openai":
+			llmConfig := llm.Config{
+				Model:       cfg.LLM.Model,
+				Temperature: &cfg.LLM.Temperature,
+				BaseURL:     cfg.LLM.BaseURL,
+			}
+			llmClient, err = llm.NewOpenAIClient(cfg.LLM.APIKey, llmConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create LLM client: %w", err)
+			}
+		default:
+			return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.LLM.Provider)
+		}
+	}
+
+	// Initialize embedder client
+	var embedderClient embedder.Client
+	if cfg.Embedding.APIKey != "" {
+		switch cfg.Embedding.Provider {
+		case "openai":
+			embedderConfig := embedder.Config{
+				Model:   cfg.Embedding.Model,
+				BaseURL: cfg.Embedding.BaseURL,
+			}
+			embedderClient = embedder.NewOpenAIEmbedder(cfg.Embedding.APIKey, embedderConfig)
+		default:
+			return nil, fmt.Errorf("unsupported embedding provider: %s", cfg.Embedding.Provider)
+		}
+	}
+
+	// Create Graphiti client configuration
+	graphitiConfig := &graphiti.Config{
+		GroupID:  "default", // Default group ID - could be made configurable
+		TimeZone: time.UTC,
+	}
+
+	// Create and return Graphiti client
+	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig)
+
+	fmt.Printf("Graphiti initialized successfully with driver: %s\n", cfg.Database.Driver)
+	if llmClient != nil {
+		fmt.Printf("LLM provider: %s, model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
+	}
+	if embedderClient != nil {
+		fmt.Printf("Embedding provider: %s, model: %s\n", cfg.Embedding.Provider, cfg.Embedding.Model)
+	}
+
+	return client, nil
 }

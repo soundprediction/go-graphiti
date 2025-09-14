@@ -52,9 +52,10 @@ type Config struct {
 	EmbedderModel    string
 	
 	// Database Configuration
-	Neo4jURI         string
-	Neo4jUser        string
-	Neo4jPassword    string
+	DatabaseDriver   string
+	DatabaseURI      string
+	DatabaseUser     string
+	DatabasePassword string
 	
 	// MCP Server Configuration
 	GroupID          string
@@ -83,9 +84,10 @@ func NewConfig() *Config {
 		LLMTemperature:   getEnvFloat("LLM_TEMPERATURE", 0.0),
 		OpenAIAPIKey:     getEnv("OPENAI_API_KEY", ""),
 		EmbedderModel:    getEnv("EMBEDDER_MODEL_NAME", DefaultEmbedderModel),
-		Neo4jURI:         getEnv("NEO4J_URI", "bolt://localhost:7687"),
-		Neo4jUser:        getEnv("NEO4J_USER", "neo4j"),
-		Neo4jPassword:    getEnv("NEO4J_PASSWORD", "password"),
+		DatabaseDriver:   getEnv("DB_DRIVER", "kuzu"),
+		DatabaseURI:      getEnv("DB_URI", getEnv("KUZU_DB_PATH", "./kuzu_db")),
+		DatabaseUser:     getEnv("NEO4J_USER", ""),
+		DatabasePassword: getEnv("NEO4J_PASSWORD", ""),
 		GroupID:          getEnv("GROUP_ID", "default"),
 		UseCustomEntities: getEnvBool("USE_CUSTOM_ENTITIES", false),
 		DestroyGraph:     getEnvBool("DESTROY_GRAPH", false),
@@ -139,15 +141,28 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 		Level: slog.LevelInfo,
 	}))
 
-	// Create Neo4j driver
-	neo4jDriver, err := driver.NewNeo4jDriver(
-		config.Neo4jURI,
-		config.Neo4jUser,
-		config.Neo4jPassword,
-		"neo4j",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
+	// Create database driver
+	var graphDriver driver.GraphDriver
+	var err error
+
+	switch config.DatabaseDriver {
+	case "kuzu":
+		graphDriver, err = driver.NewKuzuDriver(config.DatabaseURI)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
+		}
+	case "neo4j":
+		graphDriver, err = driver.NewNeo4jDriver(
+			config.DatabaseURI,
+			config.DatabaseUser,
+			config.DatabasePassword,
+			"neo4j",
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", config.DatabaseDriver)
 	}
 
 	// Create LLM client
@@ -178,7 +193,7 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 		TimeZone: time.UTC,
 	}
 	
-	client := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, graphitiConfig)
+	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig)
 
 	return &MCPServer{
 		config: config,
@@ -330,8 +345,14 @@ func main() {
 		log.Fatal("OPENAI_API_KEY must be set when custom entities are enabled")
 	}
 
-	if config.Neo4jURI == "" || config.Neo4jUser == "" || config.Neo4jPassword == "" {
-		log.Fatal("NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD must be set")
+	// Validate database configuration based on driver type
+	if config.DatabaseURI == "" {
+		log.Fatal("Database URI/path must be set")
+	}
+
+	// Only Neo4j requires username and password
+	if config.DatabaseDriver == "neo4j" && (config.DatabaseUser == "" || config.DatabasePassword == "") {
+		log.Fatal("NEO4J_USER and NEO4J_PASSWORD must be set when using Neo4j driver")
 	}
 
 	// Create and initialize server

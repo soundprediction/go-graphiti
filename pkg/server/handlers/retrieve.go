@@ -13,11 +13,11 @@ import (
 
 // RetrieveHandler handles data retrieval requests
 type RetrieveHandler struct {
-	graphiti *graphiti.Graphiti
+	graphiti graphiti.Graphiti
 }
 
 // NewRetrieveHandler creates a new retrieve handler
-func NewRetrieveHandler(g *graphiti.Graphiti) *RetrieveHandler {
+func NewRetrieveHandler(g graphiti.Graphiti) *RetrieveHandler {
 	return &RetrieveHandler{
 		graphiti: g,
 	}

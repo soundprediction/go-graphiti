@@ -95,10 +95,11 @@ func init() {
 	mcpCmd.Flags().IntVar(&mcpSemaphoreLimit, "semaphore-limit", DefaultMCPSemaphoreLimit, "Concurrency limit for operations")
 
 	// Database flags
-	mcpCmd.Flags().String("db-uri", "bolt://localhost:7687", "Database URI")
-	mcpCmd.Flags().String("db-username", "neo4j", "Database username")
-	mcpCmd.Flags().String("db-password", "password", "Database password")
-	mcpCmd.Flags().String("db-database", "neo4j", "Database name")
+	mcpCmd.Flags().String("db-driver", "kuzu", "Database driver (kuzu, neo4j, falkordb)")
+	mcpCmd.Flags().String("db-uri", "./kuzu_db", "Database URI/path")
+	mcpCmd.Flags().String("db-username", "", "Database username (not used for Kuzu)")
+	mcpCmd.Flags().String("db-password", "", "Database password (not used for Kuzu)")
+	mcpCmd.Flags().String("db-database", "", "Database name (not used for Kuzu)")
 
 	// LLM flags
 	mcpCmd.Flags().String("llm-api-key", "", "OpenAI API key")

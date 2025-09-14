@@ -15,15 +15,15 @@ import (
 type Server struct {
 	config   *config.Config
 	router   *gin.Engine
-	graphiti *graphiti.Graphiti
+	graphiti graphiti.Graphiti
 	server   *http.Server
 }
 
 // New creates a new server instance
-func New(cfg *config.Config, graphiti *graphiti.Graphiti) *Server {
+func New(cfg *config.Config, graphitiClient graphiti.Graphiti) *Server {
 	return &Server{
 		config:   cfg,
-		graphiti: graphiti,
+		graphiti: graphitiClient,
 	}
 }
 
