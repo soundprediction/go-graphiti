@@ -459,14 +459,45 @@ func (s *Searcher) mmrRerankNodes(ctx context.Context, queryVector []float32, no
 		return nodes[:min(limit, len(nodes))], make([]float64, min(limit, len(nodes))), nil
 	}
 
-	// TODO: Implement MMR algorithm
-	// For now, return nodes with default scores
-	scores := make([]float64, min(limit, len(nodes)))
-	for i := range scores {
-		scores[i] = 1.0
+	// Get embeddings for all nodes
+	embeddings, err := GetEmbeddingsForNodes(ctx, s.driver, nodes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get embeddings for nodes: %w", err)
 	}
-	
-	return nodes[:min(limit, len(nodes))], scores, nil
+
+	// If no embeddings available, fall back to default ranking
+	if len(embeddings) == 0 {
+		scores := make([]float64, min(limit, len(nodes)))
+		for i := range scores {
+			scores[i] = 1.0
+		}
+		return nodes[:min(limit, len(nodes))], scores, nil
+	}
+
+	// Apply MMR reranking
+	mmrUUIDs, mmrScores := MaximalMarginalRelevance(queryVector, embeddings, lambda, minScore)
+
+	// Create node map for lookup
+	nodeMap := make(map[string]*types.Node)
+	for _, node := range nodes {
+		nodeMap[node.ID] = node
+	}
+
+	// Build result arrays based on MMR ranking
+	var resultNodes []*types.Node
+	var resultScores []float64
+
+	for i, uuid := range mmrUUIDs {
+		if node, exists := nodeMap[uuid]; exists {
+			resultNodes = append(resultNodes, node)
+			resultScores = append(resultScores, mmrScores[i])
+			if len(resultNodes) >= limit {
+				break
+			}
+		}
+	}
+
+	return resultNodes, resultScores, nil
 }
 
 func (s *Searcher) mmrRerankEdges(ctx context.Context, queryVector []float32, edges []*types.Edge, lambda float64, minScore float64, limit int) ([]*types.Edge, []float64, error) {
@@ -474,14 +505,45 @@ func (s *Searcher) mmrRerankEdges(ctx context.Context, queryVector []float32, ed
 		return edges[:min(limit, len(edges))], make([]float64, min(limit, len(edges))), nil
 	}
 
-	// TODO: Implement MMR algorithm
-	// For now, return edges with default scores
-	scores := make([]float64, min(limit, len(edges)))
-	for i := range scores {
-		scores[i] = 1.0
+	// Get embeddings for all edges
+	embeddings, err := GetEmbeddingsForEdges(ctx, s.driver, edges)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get embeddings for edges: %w", err)
 	}
-	
-	return edges[:min(limit, len(edges))], scores, nil
+
+	// If no embeddings available, fall back to default ranking
+	if len(embeddings) == 0 {
+		scores := make([]float64, min(limit, len(edges)))
+		for i := range scores {
+			scores[i] = 1.0
+		}
+		return edges[:min(limit, len(edges))], scores, nil
+	}
+
+	// Apply MMR reranking
+	mmrUUIDs, mmrScores := MaximalMarginalRelevance(queryVector, embeddings, lambda, minScore)
+
+	// Create edge map for lookup
+	edgeMap := make(map[string]*types.Edge)
+	for _, edge := range edges {
+		edgeMap[edge.ID] = edge
+	}
+
+	// Build result arrays based on MMR ranking
+	var resultEdges []*types.Edge
+	var resultScores []float64
+
+	for i, uuid := range mmrUUIDs {
+		if edge, exists := edgeMap[uuid]; exists {
+			resultEdges = append(resultEdges, edge)
+			resultScores = append(resultScores, mmrScores[i])
+			if len(resultEdges) >= limit {
+				break
+			}
+		}
+	}
+
+	return resultEdges, resultScores, nil
 }
 
 // Cross-encoder reranking

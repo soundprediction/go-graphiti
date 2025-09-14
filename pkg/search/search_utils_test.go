@@ -356,6 +356,102 @@ func TestMaximalMarginalRelevance(t *testing.T) {
 	}
 }
 
+func TestMMRIntegrationWithSearch(t *testing.T) {
+	mockDriver := NewMockGraphDriver()
+	searcher := NewSearcher(mockDriver, nil, nil)
+	ctx := context.Background()
+
+	t.Run("MMR Node Reranking", func(t *testing.T) {
+		nodes := mockDriver.nodes
+		queryVector := []float32{0.1, 0.2, 0.3, 0.4, 0.5}
+
+		rerankedNodes, scores, err := searcher.mmrRerankNodes(ctx, queryVector, nodes, 0.5, -2.0, 10)
+		if err != nil {
+			t.Errorf("mmrRerankNodes() error = %v", err)
+			return
+		}
+
+		// Should return nodes (may be fewer if some don't have embeddings)
+		if len(rerankedNodes) == 0 {
+			t.Error("mmrRerankNodes() returned no nodes")
+		}
+
+		if len(rerankedNodes) != len(scores) {
+			t.Errorf("mmrRerankNodes() returned %d nodes but %d scores", len(rerankedNodes), len(scores))
+		}
+
+		// Verify all returned nodes are from the original set
+		originalNodeMap := make(map[string]bool)
+		for _, node := range nodes {
+			originalNodeMap[node.ID] = true
+		}
+
+		for _, node := range rerankedNodes {
+			if !originalNodeMap[node.ID] {
+				t.Errorf("mmrRerankNodes() returned unexpected node ID: %s", node.ID)
+			}
+		}
+	})
+
+	t.Run("MMR Edge Reranking", func(t *testing.T) {
+		edges := mockDriver.edges
+		queryVector := []float32{0.4, 0.5, 0.6, 0.7, 0.8}
+
+		rerankedEdges, scores, err := searcher.mmrRerankEdges(ctx, queryVector, edges, 0.5, -2.0, 10)
+		if err != nil {
+			t.Errorf("mmrRerankEdges() error = %v", err)
+			return
+		}
+
+		if len(rerankedEdges) != len(scores) {
+			t.Errorf("mmrRerankEdges() returned %d edges but %d scores", len(rerankedEdges), len(scores))
+		}
+
+		// Should handle empty query vector gracefully
+		rerankedEdges2, scores2, err := searcher.mmrRerankEdges(ctx, []float32{}, edges, 0.5, -2.0, 10)
+		if err != nil {
+			t.Errorf("mmrRerankEdges() with empty query vector error = %v", err)
+			return
+		}
+
+		if len(rerankedEdges2) == 0 {
+			t.Error("mmrRerankEdges() with empty query vector returned no edges")
+		}
+
+		if len(rerankedEdges2) != len(scores2) {
+			t.Errorf("mmrRerankEdges() with empty query returned %d edges but %d scores", len(rerankedEdges2), len(scores2))
+		}
+	})
+
+	t.Run("MMR with different lambda values", func(t *testing.T) {
+		nodes := mockDriver.nodes
+		queryVector := []float32{0.1, 0.2, 0.3, 0.4, 0.5}
+
+		// Test with lambda = 0.0 (pure diversity)
+		reranked1, scores1, err := searcher.mmrRerankNodes(ctx, queryVector, nodes, 0.0, -2.0, 10)
+		if err != nil {
+			t.Errorf("mmrRerankNodes() lambda=0.0 error = %v", err)
+			return
+		}
+
+		// Test with lambda = 1.0 (pure relevance)
+		reranked2, scores2, err := searcher.mmrRerankNodes(ctx, queryVector, nodes, 1.0, -2.0, 10)
+		if err != nil {
+			t.Errorf("mmrRerankNodes() lambda=1.0 error = %v", err)
+			return
+		}
+
+		// Both should return same number of results but potentially different rankings
+		if len(reranked1) != len(reranked2) {
+			t.Errorf("Different lambda values returned different result counts: %d vs %d", len(reranked1), len(reranked2))
+		}
+
+		if len(scores1) != len(scores2) {
+			t.Errorf("Different lambda values returned different score counts: %d vs %d", len(scores1), len(scores2))
+		}
+	})
+}
+
 func TestSearchUtilities(t *testing.T) {
 	mockDriver := NewMockGraphDriver()
 	su := NewSearchUtilities(mockDriver)
