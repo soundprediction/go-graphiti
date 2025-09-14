@@ -3,6 +3,7 @@ package graphiti
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/soundprediction/go-graphiti/pkg/driver"
@@ -29,6 +30,15 @@ type Graphiti interface {
 
 	// GetEdge retrieves a specific edge from the knowledge graph.
 	GetEdge(ctx context.Context, edgeID string) (*types.Edge, error)
+
+	// GetEpisodes retrieves recent episodes from the knowledge graph.
+	GetEpisodes(ctx context.Context, groupID string, limit int) ([]*types.Node, error)
+
+	// ClearGraph removes all nodes and edges from the knowledge graph for a specific group.
+	ClearGraph(ctx context.Context, groupID string) error
+
+	// CreateIndices creates database indices and constraints for optimal performance.
+	CreateIndices(ctx context.Context) error
 
 	// Close closes all connections and cleans up resources.
 	Close(ctx context.Context) error
@@ -82,13 +92,189 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode) error {
 		return nil
 	}
 
-	// TODO: Implement episode processing pipeline
-	// 1. Extract entities and relationships from episodes
-	// 2. Deduplicate nodes and edges
-	// 3. Create embeddings
-	// 4. Store in graph database
+	for _, episode := range episodes {
+		if err := c.processEpisode(ctx, episode); err != nil {
+			return fmt.Errorf("failed to process episode %s: %w", episode.ID, err)
+		}
+	}
 
-	return errors.New("not implemented")
+	return nil
+}
+
+// processEpisode processes a single episode through the knowledge extraction pipeline.
+func (c *Client) processEpisode(ctx context.Context, episode types.Episode) error {
+	// 1. Create episode node in graph
+	episodeNode, err := c.createEpisodeNode(ctx, episode)
+	if err != nil {
+		return fmt.Errorf("failed to create episode node: %w", err)
+	}
+
+	// 2. Extract entities from episode content if LLM is available
+	var extractedNodes []*types.Node
+	if c.llm != nil {
+		extractedNodes, err = c.extractEntities(ctx, episode)
+		if err != nil {
+			return fmt.Errorf("failed to extract entities: %w", err)
+		}
+	}
+
+	// 3. Deduplicate and store nodes
+	finalNodes, err := c.deduplicateAndStoreNodes(ctx, extractedNodes, episode.GroupID)
+	if err != nil {
+		return fmt.Errorf("failed to deduplicate and store nodes: %w", err)
+	}
+
+	// 4. Extract relationships between entities if LLM is available
+	var extractedEdges []*types.Edge
+	if c.llm != nil && len(finalNodes) > 1 {
+		extractedEdges, err = c.extractRelationships(ctx, episode, finalNodes)
+		if err != nil {
+			return fmt.Errorf("failed to extract relationships: %w", err)
+		}
+	}
+
+	// 5. Store edges in graph
+	for _, edge := range extractedEdges {
+		if err := c.driver.UpsertEdge(ctx, edge); err != nil {
+			return fmt.Errorf("failed to store edge %s: %w", edge.ID, err)
+		}
+	}
+
+	// 6. Create episodic edges connecting episode to extracted entities
+	for _, node := range finalNodes {
+		episodeEdge := &types.Edge{
+			ID:        generateID(),
+			Type:      types.EpisodicEdgeType,
+			SourceID:  episodeNode.ID,
+			TargetID:  node.ID,
+			GroupID:   episode.GroupID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			ValidFrom: episode.Reference,
+			Name:      "MENTIONED_IN",
+			Summary:   "Entity mentioned in episode",
+		}
+
+		if err := c.driver.UpsertEdge(ctx, episodeEdge); err != nil {
+			return fmt.Errorf("failed to create episodic edge: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// createEpisodeNode creates an episode node in the graph.
+func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode) (*types.Node, error) {
+	now := time.Now()
+
+	// Create embedding for episode content if embedder is available
+	var embedding []float32
+	if c.embedder != nil {
+		var err error
+		embedding, err = c.embedder.EmbedSingle(ctx, episode.Content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create episode embedding: %w", err)
+		}
+	}
+
+	episodeNode := &types.Node{
+		ID:          episode.ID,
+		Name:        episode.Name,
+		Type:        types.EpisodicNodeType,
+		GroupID:     episode.GroupID,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		EpisodeType: types.ConversationEpisodeType, // Default to conversation type
+		Content:     episode.Content,
+		Reference:   episode.Reference,
+		ValidFrom:   episode.Reference,
+		Embedding:   embedding,
+		Metadata:    episode.Metadata,
+	}
+
+	if err := c.driver.UpsertNode(ctx, episodeNode); err != nil {
+		return nil, fmt.Errorf("failed to create episode node: %w", err)
+	}
+
+	return episodeNode, nil
+}
+
+// extractEntities uses LLM to extract entities from episode content.
+func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]*types.Node, error) {
+	// This is a simplified implementation. In a full implementation, you would:
+	// 1. Use the prompt library to generate entity extraction prompts
+	// 2. Call the LLM to extract entities
+	// 3. Parse the LLM response into Node structures
+
+	// For now, return empty slice - this would be implemented with proper prompt engineering
+	return []*types.Node{}, nil
+}
+
+// deduplicateAndStoreNodes deduplicates nodes against existing nodes and stores them.
+func (c *Client) deduplicateAndStoreNodes(ctx context.Context, nodes []*types.Node, groupID string) ([]*types.Node, error) {
+	var finalNodes []*types.Node
+
+	for _, node := range nodes {
+		// Check if node already exists (simple name-based deduplication for now)
+		existingNode, err := c.findNodeByName(ctx, node.Name, node.EntityType, groupID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search for existing node: %w", err)
+		}
+
+		if existingNode != nil {
+			// Node already exists, use existing one
+			finalNodes = append(finalNodes, existingNode)
+		} else {
+			// Create new node
+			node.ID = generateID()
+			node.GroupID = groupID
+			now := time.Now()
+			node.CreatedAt = now
+			node.UpdatedAt = now
+			node.ValidFrom = now
+
+			// Create embedding if embedder available
+			if c.embedder != nil && node.Summary != "" {
+				embedding, err := c.embedder.EmbedSingle(ctx, node.Summary)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create node embedding: %w", err)
+				}
+				node.Embedding = embedding
+			}
+
+			if err := c.driver.UpsertNode(ctx, node); err != nil {
+				return nil, fmt.Errorf("failed to create node: %w", err)
+			}
+
+			finalNodes = append(finalNodes, node)
+		}
+	}
+
+	return finalNodes, nil
+}
+
+// extractRelationships uses LLM to extract relationships between entities.
+func (c *Client) extractRelationships(ctx context.Context, episode types.Episode, nodes []*types.Node) ([]*types.Edge, error) {
+	// This is a simplified implementation. In a full implementation, you would:
+	// 1. Use the prompt library to generate relationship extraction prompts
+	// 2. Call the LLM to extract relationships
+	// 3. Parse the LLM response into Edge structures
+
+	// For now, return empty slice - this would be implemented with proper prompt engineering
+	return []*types.Edge{}, nil
+}
+
+// findNodeByName searches for an existing node by name and entity type.
+func (c *Client) findNodeByName(ctx context.Context, name, entityType, groupID string) (*types.Node, error) {
+	// This is a placeholder implementation. In a real implementation, you would
+	// search the graph database for nodes with matching name and entity type.
+	// For now, we'll return nil (no existing node found).
+	return nil, nil
+}
+
+// generateID generates a unique ID for nodes and edges.
+func generateID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 // Search performs hybrid search across the knowledge graph.
@@ -153,6 +339,62 @@ func (c *Client) GetNode(ctx context.Context, nodeID string) (*types.Node, error
 // GetEdge retrieves an edge by ID.
 func (c *Client) GetEdge(ctx context.Context, edgeID string) (*types.Edge, error) {
 	return c.driver.GetEdge(ctx, edgeID, c.config.GroupID)
+}
+
+// GetEpisodes retrieves recent episodes from the knowledge graph.
+func (c *Client) GetEpisodes(ctx context.Context, groupID string, limit int) ([]*types.Node, error) {
+	if groupID == "" {
+		groupID = c.config.GroupID
+	}
+
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Use driver's SearchNodes with episodic node type filter
+	searchOptions := &driver.SearchOptions{
+		Limit:     limit,
+		NodeTypes: []types.NodeType{types.EpisodicNodeType},
+	}
+
+	return c.driver.SearchNodes(ctx, "", groupID, searchOptions)
+}
+
+// ClearGraph removes all nodes and edges from the knowledge graph for a specific group.
+func (c *Client) ClearGraph(ctx context.Context, groupID string) error {
+	if groupID == "" {
+		groupID = c.config.GroupID
+	}
+
+	// First, get all nodes for this group
+	allNodes, err := c.getAllNodesForGroup(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to get nodes for clearing: %w", err)
+	}
+
+	// Delete all nodes (this will also delete associated edges in most graph databases)
+	for _, node := range allNodes {
+		if err := c.driver.DeleteNode(ctx, node.ID, groupID); err != nil {
+			return fmt.Errorf("failed to delete node %s: %w", node.ID, err)
+		}
+	}
+
+	return nil
+}
+
+// getAllNodesForGroup retrieves all nodes for a specific group
+func (c *Client) getAllNodesForGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
+	// Search for all nodes with a high limit and no type filter
+	searchOptions := &driver.SearchOptions{
+		Limit: 100000, // Large limit to get all nodes
+	}
+
+	return c.driver.SearchNodes(ctx, "", groupID, searchOptions)
+}
+
+// CreateIndices creates database indices and constraints for optimal performance.
+func (c *Client) CreateIndices(ctx context.Context) error {
+	return c.driver.CreateIndices(ctx)
 }
 
 // Close closes the client and all its connections.

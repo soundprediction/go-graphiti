@@ -27,6 +27,18 @@ type SearchRequest struct {
 	Limit int    `json:"limit,omitempty"`
 }
 
+// GetEpisodesRequest represents parameters for retrieving episodes
+type GetEpisodesRequest struct {
+	GroupID string `json:"group_id,omitempty"`
+	LastN   int    `json:"last_n,omitempty"`
+}
+
+// ClearGraphRequest represents parameters for clearing the graph
+type ClearGraphRequest struct {
+	GroupID string `json:"group_id,omitempty"`
+	Confirm bool   `json:"confirm,omitempty"` // Safety confirmation
+}
+
 // UUIDRequest represents a simple UUID parameter
 type UUIDRequest struct {
 	UUID string `json:"uuid"`
@@ -339,27 +351,111 @@ func (s *MCPServer) GetEntityEdgeTool(ctx *ai.ToolContext, input *UUIDRequest) (
 }
 
 // GetEpisodesTool handles getting recent episodes
-func (s *MCPServer) GetEpisodesTool(ctx *ai.ToolContext, input *SearchRequest) (*ToolResponse, error) {
-	// TODO: Implement episode retrieval
-	// For now, return a placeholder response
-	s.logger.Info("Get episodes requested")
-	
+func (s *MCPServer) GetEpisodesTool(ctx *ai.ToolContext, input *GetEpisodesRequest) (*ToolResponse, error) {
+	s.logger.Info("Get episodes requested", "group_id", input.GroupID, "last_n", input.LastN)
+
+	// Set default values
+	groupID := input.GroupID
+	if groupID == "" {
+		groupID = s.config.GroupID // Use server's default group ID
+	}
+
+	limit := input.LastN
+	if limit <= 0 {
+		limit = 10 // Default to 10 episodes
+	}
+
+	// Use the Graphiti client to retrieve episodes
+	episodeNodes, err := s.client.GetEpisodes(context.Background(), groupID, limit)
+	if err != nil {
+		s.logger.Error("Failed to retrieve episodes", "error", err)
+		return &ToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to retrieve episodes: %v", err),
+		}, nil
+	}
+
+	// Convert nodes to episode format
+	var episodes []map[string]interface{}
+	for _, node := range episodeNodes {
+		episode := map[string]interface{}{
+			"uuid":       node.ID,
+			"name":       node.Name,
+			"content":    node.Content,
+			"group_id":   node.GroupID,
+			"created_at": node.CreatedAt.Format(time.RFC3339),
+		}
+
+		// Add episode type if available
+		if node.EpisodeType != "" {
+			episode["episode_type"] = string(node.EpisodeType)
+		}
+
+		// Add reference time if available
+		if !node.Reference.IsZero() {
+			episode["reference"] = node.Reference.Format(time.RFC3339)
+		}
+
+		// Add metadata if available
+		if node.Metadata != nil {
+			episode["metadata"] = node.Metadata
+		}
+
+		episodes = append(episodes, episode)
+	}
+
+	s.logger.Info("Retrieved episodes", "count", len(episodes))
+
 	return &ToolResponse{
 		Success: true,
-		Message: "No episodes found (not yet implemented)",
-		Data:    []interface{}{},
+		Message: fmt.Sprintf("Retrieved %d episodes", len(episodes)),
+		Data: map[string]interface{}{
+			"episodes": episodes,
+			"total":    len(episodes),
+			"group_id": groupID,
+		},
 	}, nil
 }
 
 // ClearGraphTool handles clearing the entire graph
-func (s *MCPServer) ClearGraphTool(ctx *ai.ToolContext, input map[string]interface{}) (*ToolResponse, error) {
-	// TODO: Implement graph clearing functionality
-	s.logger.Info("Clear graph requested")
-	
-	// This would call the appropriate method on the Graphiti client
-	// For now, return a placeholder response
+func (s *MCPServer) ClearGraphTool(ctx *ai.ToolContext, input *ClearGraphRequest) (*ToolResponse, error) {
+	s.logger.Info("Clear graph requested", "group_id", input.GroupID, "confirm", input.Confirm)
+
+	// Safety check - require explicit confirmation
+	if !input.Confirm {
+		return &ToolResponse{
+			Success: false,
+			Error:   "Graph clearing requires explicit confirmation. Set 'confirm' to true to proceed.",
+		}, nil
+	}
+
+	// Set default group ID
+	groupID := input.GroupID
+	if groupID == "" {
+		groupID = s.config.GroupID // Use server's default group ID
+	}
+
+	// Warn about the destructive operation
+	s.logger.Warn("Clearing all data from graph", "group_id", groupID)
+
+	// Use the Graphiti client to clear the graph
+	err := s.client.ClearGraph(context.Background(), groupID)
+	if err != nil {
+		s.logger.Error("Failed to clear graph", "error", err, "group_id", groupID)
+		return &ToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to clear graph: %v", err),
+		}, nil
+	}
+
+	s.logger.Info("Graph cleared successfully", "group_id", groupID)
+
 	return &ToolResponse{
 		Success: true,
-		Message: "Graph clearing is not yet implemented",
+		Message: fmt.Sprintf("Graph cleared successfully for group '%s'", groupID),
+		Data: map[string]interface{}{
+			"group_id": groupID,
+			"cleared":  true,
+		},
 	}, nil
 }

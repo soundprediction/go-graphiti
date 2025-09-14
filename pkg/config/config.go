@@ -93,11 +93,11 @@ func setDefaults() {
 	viper.SetDefault("server.mode", "debug")
 	
 	// Database defaults
-	viper.SetDefault("database.driver", "neo4j")
-	viper.SetDefault("database.uri", "bolt://localhost:7687")
-	viper.SetDefault("database.username", "neo4j")
-	viper.SetDefault("database.password", "password")
-	viper.SetDefault("database.database", "neo4j")
+	viper.SetDefault("database.driver", "kuzu")
+	viper.SetDefault("database.uri", "./kuzu_db")
+	viper.SetDefault("database.username", "")
+	viper.SetDefault("database.password", "")
+	viper.SetDefault("database.database", "")
 	
 	// LLM defaults
 	viper.SetDefault("llm.provider", "openai")
@@ -130,6 +130,19 @@ func overrideWithEnv(config *Config) {
 	}
 	if pass := os.Getenv("NEO4J_PASSWORD"); pass != "" {
 		config.Database.Password = pass
+	}
+
+	// Kuzu database path
+	if dbPath := os.Getenv("KUZU_DB_PATH"); dbPath != "" {
+		config.Database.URI = dbPath
+	}
+
+	// Generic database settings
+	if dbDriver := os.Getenv("DB_DRIVER"); dbDriver != "" {
+		config.Database.Driver = dbDriver
+	}
+	if dbURI := os.Getenv("DB_URI"); dbURI != "" {
+		config.Database.URI = dbURI
 	}
 	
 	// Server settings
