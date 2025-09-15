@@ -5,8 +5,10 @@ This guide will help you get started with go-graphiti, a temporal knowledge grap
 ## Prerequisites
 
 - Go 1.24 or later
-- Neo4j database (local or cloud)
-- OpenAI API key (for LLM and embeddings)
+- **Optional**: External graph database (Neo4j or FalkorDB)
+- **Optional**: LLM API access (OpenAI, Ollama, vLLM, or any OpenAI-compatible service)
+
+> **Note**: go-graphiti works out-of-the-box with embedded Kuzu database and no external dependencies!
 
 ## Installation
 
@@ -14,25 +16,98 @@ This guide will help you get started with go-graphiti, a temporal knowledge grap
 go get github.com/soundprediction/go-graphiti
 ```
 
-## Basic Setup
+## Quick Start Options
 
-### 1. Environment Configuration
+### Option 1: Minimal Setup (No External Dependencies)
 
-Create a `.env` file based on the provided example:
+The simplest way to get started is with embedded Kuzu database and no LLM:
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create Kuzu driver (embedded database)
+    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer kuzuDriver.Close(ctx)
+
+    // Create Graphiti client
+    config := &graphiti.Config{
+        GroupID:  "my-group",
+        TimeZone: time.UTC,
+    }
+    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    defer client.Close(ctx)
+
+    // Your code here...
+}
+```
+
+### Option 2: With Local LLM (Ollama)
+
+For enhanced features with a local LLM:
+
+**1. Install Ollama:**
+```bash
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull llama3.2
+```
+
+**2. Set environment variables:**
+```bash
+export LLM_BASE_URL="http://localhost:11434"
+export EMBEDDER_MODEL_NAME="llama3.2"  # Or any embedding model
+```
+
+**3. Use in code:**
+```go
+// Create LLM client for Ollama
+llmConfig := llm.Config{
+    Model:   "llama3.2",
+    BaseURL: "http://localhost:11434",
+}
+llmClient, err := llm.NewOpenAIClient("dummy", llmConfig)  // API key not needed for Ollama
+
+// Create Graphiti client with LLM
+client := graphiti.NewClient(kuzuDriver, llmClient, nil, config)
+```
+
+### Option 3: Full Setup with External Services
+
+For production use with OpenAI and external databases:
+
+**1. Environment Configuration:**
+
+Create a `.env` file:
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
-
-# Edit with your values
+# OpenAI (or compatible service)
 OPENAI_API_KEY=sk-your-openai-api-key
+LLM_BASE_URL=https://api.openai.com/v1  # Optional: for custom endpoints
+
+# External Graph Database (optional)
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j
 ```
 
-### 2. Neo4j Setup
+**2. Database Setup (Optional - only for Neo4j):**
+
+> **Note**: This is only needed if you want to use Neo4j instead of the default Kuzu embedded database.
 
 #### Option A: Local Neo4j with Docker
 
@@ -57,9 +132,70 @@ docker run \
 2. Create a new database instance
 3. Note the connection URI and credentials
 
-### 3. Basic Usage Example
+## Complete Examples
+
+### Example 1: Minimal Setup (Recommended for Getting Started)
 
 Create `main.go`:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-graphiti/pkg/types"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create Kuzu driver (embedded database - no setup required)
+    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer kuzuDriver.Close(ctx)
+
+    // Create Graphiti client (no LLM or embedder required for basic usage)
+    config := &graphiti.Config{
+        GroupID:  "getting-started",
+        TimeZone: time.UTC,
+    }
+    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    defer client.Close(ctx)
+
+    fmt.Println("Graphiti client created successfully with embedded database!")
+
+    // Add some sample data
+    episodes := []types.Episode{
+        {
+            ID:        "episode-1",
+            Name:      "First Episode",
+            Content:   "This is my first episode in the knowledge graph",
+            Reference: time.Now(),
+            CreatedAt: time.Now(),
+            GroupID:   "getting-started",
+        },
+    }
+
+    err = client.Add(ctx, episodes)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println("Episode added successfully!")
+}
+```
+
+### Example 2: With OpenAI-Compatible LLM
+
+For enhanced features with semantic understanding:
 
 ```go
 package main
@@ -81,29 +217,28 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Neo4j driver
-    neo4jDriver, err := driver.NewNeo4jDriver(
-        os.Getenv("NEO4J_URI"),
-        os.Getenv("NEO4J_USER"),
-        os.Getenv("NEO4J_PASSWORD"),
-        os.Getenv("NEO4J_DATABASE"),
-    )
+    // Create Kuzu driver (still using embedded database)
+    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer neo4jDriver.Close(ctx)
+    defer kuzuDriver.Close(ctx)
 
-    // Create LLM client
+    // Create LLM client (works with OpenAI, Ollama, vLLM, etc.)
     llmConfig := llm.Config{
-        Model:       "gpt-4o-mini",
+        Model:       "gpt-4o-mini",  // or "llama3.2", "mistral", etc.
         Temperature: &[]float32{0.7}[0],
+        BaseURL:     os.Getenv("LLM_BASE_URL"), // Optional: for local LLMs
     }
-    llmClient := llm.NewOpenAIClient(os.Getenv("OPENAI_API_KEY"), llmConfig)
+    llmClient, err := llm.NewOpenAIClient(os.Getenv("OPENAI_API_KEY"), llmConfig)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    // Create embedder
+    // Create embedder (optional but recommended for semantic search)
     embedderConfig := embedder.Config{
-        Model:     "text-embedding-3-small",
-        BatchSize: 100,
+        Model:     "text-embedding-3-small",  // or local embedding model
+        BaseURL:   os.Getenv("EMBEDDING_BASE_URL"), // Optional: for local embeddings
     }
     embedderClient := embedder.NewOpenAIEmbedder(os.Getenv("OPENAI_API_KEY"), embedderConfig)
 
@@ -112,10 +247,10 @@ func main() {
         GroupID:  "getting-started",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config)
+    client := graphiti.NewClient(kuzuDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
-    fmt.Println("Graphiti client created successfully!")
+    fmt.Println("Graphiti client created with LLM integration!")
 }
 ```
 

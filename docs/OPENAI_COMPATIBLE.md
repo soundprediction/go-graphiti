@@ -1,6 +1,8 @@
 # OpenAI-Compatible Services
 
-go-graphiti includes support for any service that implements the OpenAI API specification. This allows you to use local models, alternative providers, or self-hosted services while maintaining the same interface.
+go-graphiti is designed to work with **any** service that implements the OpenAI API specification. You don't need OpenAI specifically - the library works seamlessly with local models, alternative providers, or self-hosted services while maintaining the same interface.
+
+> **Note**: This is the primary way to use LLMs with go-graphiti. OpenAI is just one option among many!
 
 ## Supported Services
 
@@ -21,27 +23,28 @@ go-graphiti includes support for any service that implements the OpenAI API spec
 
 ## Basic Usage
 
-### Generic OpenAI-Compatible Client
+### Standard OpenAI Client (Works with Any Compatible Service)
+
+The `NewOpenAIClient` function works with **any** OpenAI-compatible API:
 
 ```go
 import "github.com/soundprediction/go-graphiti/pkg/llm"
 
-// Create a client for any OpenAI-compatible service
-client, err := llm.NewOpenAICompatibleClient(
-    "http://your-service.com:8080",  // Base URL
-    "your-api-key",                  // API key (use "" if not required)
-    "your-model-name",               // Model identifier
-    llm.Config{
-        Temperature: &[]float32{0.7}[0],
-        MaxTokens:   &[]int{1000}[0],
-    },
-)
+// Works with OpenAI, Ollama, vLLM, LocalAI, etc.
+llmConfig := llm.Config{
+    Model:       "gpt-4o-mini",     // or "llama3.2", "mistral", etc.
+    Temperature: &[]float32{0.7}[0],
+    MaxTokens:   &[]int{1000}[0],
+    BaseURL:     "http://localhost:11434",  // Optional: for local services
+}
+
+client, err := llm.NewOpenAIClient("your-api-key", llmConfig)
 if err != nil {
     log.Fatal(err)
 }
 defer client.Close()
 
-// Use the client
+// Use the client exactly the same way regardless of provider
 messages := []llm.Message{
     llm.NewUserMessage("Hello, how are you?"),
 }

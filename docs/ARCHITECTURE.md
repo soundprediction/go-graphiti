@@ -47,7 +47,8 @@ type GraphDriver interface {
 ```
 
 **Implementations:**
-- `Neo4jDriver`: Production-ready Neo4j integration
+- `KuzuDriver`: Primary embedded graph database (default, recommended)
+- `Neo4jDriver`: Production-ready Neo4j integration for external databases
 - Extensible for other graph databases (ArangoDB, Neptune, etc.)
 
 ### Language Model Layer (`pkg/llm/`)
@@ -63,8 +64,9 @@ type Client interface {
 ```
 
 **Implementations:**
-- `OpenAIClient`: OpenAI GPT models
-- Extensible for Anthropic, Google, local models, etc.
+- `OpenAIClient`: Works with any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
+- Convenience functions for popular services (Ollama, LocalAI, vLLM)
+- Extensible for custom providers
 
 ### Embedding Layer (`pkg/embedder/`)
 
@@ -80,8 +82,9 @@ type Client interface {
 ```
 
 **Implementations:**
-- `OpenAIEmbedder`: OpenAI embedding models
-- Extensible for other providers
+- `OpenAIEmbedder`: Works with any OpenAI-compatible embedding API
+- Supports OpenAI, local services, and alternative providers
+- Extensible for custom embedding services
 
 ## Design Principles
 

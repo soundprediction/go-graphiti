@@ -1,52 +1,73 @@
 # Kuzu Driver Setup Guide
 
-This guide explains how to set up and use the Kuzu graph database driver with go-graphiti.
+This guide explains how to use the Kuzu graph database driver with go-graphiti.
 
 ## What is Kuzu?
 
 [Kuzu](https://kuzudb.com/) is an embedded graph database management system built for speed and scalability. Unlike Neo4j which runs as a separate server, Kuzu is embedded directly into your application, similar to SQLite for relational databases.
 
-## Current Status
+## Why Kuzu is the Default
 
-🚧 **Work in Progress**: The Kuzu driver is currently implemented as a stub that returns "not implemented" errors. This is because the Kuzu Go binding library is not yet readily available through standard Go module distribution.
+Kuzu is the **default and recommended** database driver for go-graphiti because:
+
+- **Zero Setup**: No external database server required
+- **Embedded**: Database files stored locally alongside your application
+- **Fast**: Optimized for graph queries and traversal
+- **No Dependencies**: Works out-of-the-box with no configuration
+- **Portable**: Database files can be easily backed up and moved
 
 ## Prerequisites
 
 - Go 1.24+
-- Kuzu database library (when available)
-- C/C++ build tools (for CGO compilation)
+- **That's it!** No external database installation required
 
 ## Installation
 
-### Step 1: Install Kuzu Library
-
-The Kuzu Go binding is available at https://github.com/kuzudb/go-kuzu but is not yet published as a stable Go module. 
-
-Once available, you can install it with:
+No installation required! Kuzu is embedded and works immediately when you import go-graphiti.
 
 ```bash
-go get github.com/kuzudb/go-kuzu
+go get github.com/soundprediction/go-graphiti
 ```
-
-### Step 2: Enable Kuzu Driver
-
-Currently, the Kuzu driver is disabled with stub implementations. To enable it:
-
-1. **Remove the stub implementation**: The current `pkg/driver/kuzu.go` contains placeholder implementations that return "not implemented" errors.
-
-2. **Add the dependency**: Update `go.mod` to include:
-   ```go
-   require (
-       github.com/kuzudb/go-kuzu v0.0.x
-       // ... other dependencies
-   )
-   ```
-
-3. **Implement full functionality**: Replace the stub implementations with actual Kuzu API calls.
 
 ## Usage
 
-Once the Kuzu driver is fully implemented, you can use it like this:
+### Basic Setup
+
+The simplest way to create a Kuzu-based knowledge graph:
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-graphiti/pkg/types"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create Kuzu driver - creates database files in the specified directory
+    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    if err != nil {
+        log.Fatal("Failed to create Kuzu driver:", err)
+    }
+    defer kuzuDriver.Close(ctx)
+
+    // Create Graphiti client
+    config := &graphiti.Config{
+        GroupID:  "my-app",
+        TimeZone: time.UTC,
+    }
+    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    defer client.Close(ctx)
+
+    log.Println("Kuzu-based knowledge graph ready!")
+}
 
 ### Basic Usage
 

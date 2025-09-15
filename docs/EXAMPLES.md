@@ -2,6 +2,16 @@
 
 This document provides practical examples of using go-graphiti for various use cases.
 
+## Quick Start Approach
+
+go-graphiti is designed to work out-of-the-box with minimal dependencies:
+
+- **Default Database**: Kuzu embedded database (no external setup required)
+- **LLM Integration**: Any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
+- **Zero Dependencies**: Basic functionality works without external services
+
+This means you can start building knowledge graphs immediately without setting up external databases or cloud services.
+
 ## Basic Examples
 
 ### 1. Simple Knowledge Building
@@ -560,29 +570,38 @@ custom, err := llm.NewOpenAICompatibleClient("http://localhost:1234", "", "my-mo
 ```go
 // Create a standard client configuration
 func createStandardClient() graphiti.Graphiti {
-    // Neo4j driver
-    driver, err := driver.NewNeo4jDriver(
-        os.Getenv("NEO4J_URI"),
-        os.Getenv("NEO4J_USER"),
-        os.Getenv("NEO4J_PASSWORD"),
-        os.Getenv("NEO4J_DATABASE"),
-    )
+    // Kuzu embedded driver (recommended default)
+    driver, err := driver.NewKuzuDriver(os.Getenv("KUZU_DB_PATH")) // defaults to "./kuzu_db"
     if err != nil {
         log.Fatal(err)
     }
 
-    // LLM client
+    // Alternative: Neo4j driver for external database
+    // driver, err := driver.NewNeo4jDriver(
+    //     os.Getenv("NEO4J_URI"),
+    //     os.Getenv("NEO4J_USER"),
+    //     os.Getenv("NEO4J_PASSWORD"),
+    //     os.Getenv("NEO4J_DATABASE"),
+    // )
+
+    // LLM client (works with any OpenAI-compatible service)
     llmConfig := llm.Config{
-        Model:       "gpt-4o-mini",
+        Model:       "gpt-4o-mini",  // or "llama3.2", "mistral", etc.
         Temperature: &[]float32{0.7}[0],
         MaxTokens:   &[]int{2000}[0],
+        BaseURL:     os.Getenv("LLM_BASE_URL"), // for local services like Ollama
     }
     llmClient := llm.NewOpenAIClient(os.Getenv("OPENAI_API_KEY"), llmConfig)
 
-    // Embedder client
+    // Alternative: Local LLM services
+    // llmClient, _ := llm.NewOllamaClient("", "llama3.2", llmConfig)
+    // llmClient, _ := llm.NewLocalAIClient("http://localhost:8080", "gpt-3.5-turbo", llmConfig)
+
+    // Embedder client (works with any OpenAI-compatible service)
     embedConfig := embedder.Config{
-        Model:     "text-embedding-3-small",
+        Model:     "text-embedding-3-small",  // or local embedding model
         BatchSize: 100,
+        BaseURL:   os.Getenv("EMBEDDING_BASE_URL"), // for local embedding services
     }
     embedderClient := embedder.NewOpenAIEmbedder(os.Getenv("OPENAI_API_KEY"), embedConfig)
 

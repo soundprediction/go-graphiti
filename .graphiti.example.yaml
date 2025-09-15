@@ -1,5 +1,8 @@
 # Go-Graphiti Configuration Example
 # Copy this file to .graphiti.yaml and customize for your setup
+#
+# This configuration shows options for external services.
+# For minimal setup, use embedded Kuzu database and local LLMs (no config required).
 
 # Logging configuration
 log:
@@ -14,24 +17,35 @@ server:
 
 # Database configuration
 database:
-  driver: neo4j    # neo4j, falkordb
-  uri: bolt://localhost:7687
-  username: neo4j
-  password: password
-  database: neo4j
+  driver: kuzu     # kuzu (embedded, recommended), neo4j, falkordb
+  path: "./kuzu_db"  # For Kuzu embedded database
 
-# LLM configuration
+  # Uncomment for external Neo4j database
+  # driver: neo4j
+  # uri: bolt://localhost:7687
+  # username: neo4j
+  # password: password
+  # database: neo4j
+
+# LLM configuration (supports any OpenAI-compatible API)
 llm:
-  provider: openai    # openai, anthropic
-  model: gpt-4
-  api_key: ""         # Set via OPENAI_API_KEY environment variable
-  base_url: ""        # Optional: custom API endpoint
+  provider: openai    # Works with OpenAI, Ollama, LocalAI, vLLM, etc.
+  model: gpt-4o-mini  # For OpenAI, or "llama3.2" for Ollama, etc.
+  api_key: ""         # Set via OPENAI_API_KEY environment variable (use "dummy" for Ollama)
+  base_url: ""        # Optional: "http://localhost:11434" for Ollama, etc.
   temperature: 0.1
   max_tokens: 2048
 
-# Embedding configuration
+  # Example configurations for local services:
+  # For Ollama:
+  # provider: openai
+  # model: llama3.2
+  # api_key: dummy
+  # base_url: http://localhost:11434
+
+# Embedding configuration (supports any OpenAI-compatible API)
 embedding:
   provider: openai
-  model: text-embedding-3-small
-  api_key: ""         # Set via OPENAI_API_KEY environment variable
-  base_url: ""        # Optional: custom API endpoint
+  model: text-embedding-3-small  # Or local embedding model
+  api_key: ""         # Set via OPENAI_API_KEY environment variable (use "dummy" for local)
+  base_url: ""        # Optional: custom API endpoint for local services

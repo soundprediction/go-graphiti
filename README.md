@@ -10,10 +10,13 @@ Graphiti is designed for building temporally-aware knowledge graphs for AI agent
 
 - **Temporal Knowledge Graphs**: Bi-temporal data model with explicit tracking of event occurrence times
 - **Hybrid Search**: Combines semantic embeddings, keyword search (BM25), and graph traversal
-- **Multiple Backends**: Support for Neo4j and FalkorDB graph databases
-- **LLM Integration**: Built-in support for OpenAI and OpenAI-compatible services (Ollama, LocalAI, vLLM, etc.)
+- **Multiple Graph Backends**: Primary support for embedded Kuzu database, also supports Neo4j and FalkorDB
+- **Flexible LLM Integration**: Works with any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
+- **No Vendor Lock-in**: No required dependencies on specific services - use local or cloud providers
 - **CLI Tool**: Command-line interface for running servers and managing the knowledge graph
 - **HTTP Server**: REST API server for web applications and services
+- **MCP Protocol**: Model Context Protocol support for integration with Claude Desktop and other MCP clients
+- **Cross-Encoder Reranking**: Advanced reranking with multiple backends (Jina API, embedding similarity, LLM-based)
 - **Go Idioms**: Follows Go conventions and coding patterns similar to [go-light-rag](https://github.com/MegaGrindStone/go-light-rag)
 
 ## Installation
@@ -27,19 +30,90 @@ go get github.com/soundprediction/go-graphiti
 ### Prerequisites
 
 - Go 1.24+
-- Graph database (Neo4j or Kuzu)
-- OpenAI API key
+- **Optional**: Graph database (Kuzu embedded by default, or external Neo4j/FalkorDB)
+- **Optional**: LLM API access (OpenAI, Ollama, vLLM, or any OpenAI-compatible service)
 
 ### Environment Variables
 
+**Minimal Setup (Local/Embedded):**
 ```bash
-export OPENAI_API_KEY="your-openai-api-key"
+# No environment variables required for basic usage with Kuzu embedded database
+# and without LLM features
+```
+
+**With OpenAI-compatible LLM (optional):**
+```bash
+export OPENAI_API_KEY="your-api-key"           # For OpenAI
+export LLM_BASE_URL="http://localhost:11434"   # For local LLMs like Ollama
+```
+
+**With External Graph Database (optional):**
+```bash
+# For Neo4j
 export NEO4J_URI="bolt://localhost:7687"
 export NEO4J_USER="neo4j"
 export NEO4J_PASSWORD="your-neo4j-password"
+
+# Or for embedded Kuzu (default)
+export KUZU_DB_PATH="./kuzu_db"  # Optional: defaults to "./kuzu_db"
 ```
 
 ### Basic Usage
+
+**Minimal Example (Kuzu + No LLM):**
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    "github.com/soundprediction/go-graphiti"
+    "github.com/soundprediction/go-graphiti/pkg/driver"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create Kuzu driver (embedded database)
+    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer kuzuDriver.Close(ctx)
+
+    // Create Graphiti client (LLM and embedder are optional)
+    config := &graphiti.Config{
+        GroupID:  "my-group",
+        TimeZone: time.UTC,
+    }
+    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    defer client.Close(ctx)
+
+    // Add episodes
+    episodes := []graphiti.Episode{
+        {
+            ID:        "meeting-1",
+            Name:      "Team Meeting",
+            Content:   "Discussed project timeline and resource allocation",
+            Reference: time.Now(),
+            CreatedAt: time.Now(),
+            GroupID:   "my-group",
+        },
+    }
+
+    err = client.Add(ctx, episodes)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Println("Episode added to knowledge graph")
+}
+```
+
+**With OpenAI-Compatible LLM:**
 
 ```go
 package main
@@ -58,29 +132,28 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Neo4j driver
-    neo4jDriver, err := driver.NewNeo4jDriver(
-        "bolt://localhost:7687", 
-        "neo4j", 
-        "password", 
-        "neo4j",
-    )
+    // Create Kuzu driver (embedded database)
+    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer neo4jDriver.Close(ctx)
+    defer kuzuDriver.Close(ctx)
 
-    // Create LLM client
+    // Create LLM client (works with any OpenAI-compatible API)
     llmConfig := llm.Config{
-        Model:       "gpt-4o-mini",
+        Model:       "gpt-4o-mini",  // Or "llama3", "mistral", etc.
         Temperature: &[]float32{0.7}[0],
+        BaseURL:     "http://localhost:11434",  // Optional: for local LLMs
     }
-    llmClient := llm.NewOpenAIClient("your-api-key", llmConfig)
+    llmClient, err := llm.NewOpenAIClient("your-api-key", llmConfig)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    // Create embedder
+    // Create embedder (optional, but recommended for semantic search)
     embedderConfig := embedder.Config{
-        Model:     "text-embedding-3-small",
-        BatchSize: 100,
+        Model:     "text-embedding-3-small",  // Or local embedding model
+        BaseURL:   "http://localhost:11434",  // Optional: for local embeddings
     }
     embedderClient := embedder.NewOpenAIEmbedder("your-api-key", embedderConfig)
 
@@ -89,7 +162,7 @@ func main() {
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config)
+    client := graphiti.NewClient(kuzuDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
     // Add episodes
@@ -103,18 +176,18 @@ func main() {
             GroupID:   "my-group",
         },
     }
-    
+
     err = client.Add(ctx, episodes)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Search the knowledge graph
+    // Search the knowledge graph (requires embedder for semantic search)
     results, err := client.Search(ctx, "project timeline", nil)
     if err != nil {
         log.Fatal(err)
     }
-    
+
     log.Printf("Found %d nodes", len(results.Nodes))
 }
 ```
@@ -243,9 +316,10 @@ The library is structured into several key packages:
 
 See the `examples/` directory for complete usage examples:
 
-- `examples/basic/`: Basic usage with Neo4j
+- `examples/minimal/`: Minimal setup with Kuzu embedded database
 - `examples/kuzu_ollama/`: Local setup with Kuzu + Ollama (maximum privacy)
 - `examples/openai_compatible/`: Using various OpenAI-compatible services
+- `examples/neo4j/`: Advanced setup with external Neo4j database
 - More examples in [docs/EXAMPLES.md](docs/EXAMPLES.md)
 
 ## Development
@@ -265,7 +339,12 @@ go build ./...
 ### Running Examples
 
 ```bash
-cd examples/basic
+# Minimal example (no external dependencies)
+cd examples/minimal
+go run main.go
+
+# Or with local LLM
+cd examples/kuzu_ollama
 go run main.go
 ```
 

@@ -1,17 +1,25 @@
-# Basic Go-Graphiti Example
+# Basic Go-Graphiti Example (Neo4j + OpenAI)
 
-This example demonstrates the basic usage of go-graphiti with OpenAI LLM and Neo4j database.
+This example demonstrates using go-graphiti with external services: Neo4j database and OpenAI APIs.
+
+> **Note**: For the recommended minimal setup, see the [Kuzu + Ollama example](../kuzu_ollama/) which requires no external dependencies.
 
 ## Features
 
 This example shows how to:
-- Create and configure a Graphiti client with Neo4j and OpenAI
+- Create and configure a Graphiti client with external Neo4j database and OpenAI APIs
 - Add episodes (data) to the knowledge graph
 - Search the knowledge graph for relevant information
 
+**When to use this setup:**
+- Production deployments requiring shared database access
+- Teams needing to collaborate on a shared knowledge graph
+- Applications requiring cloud-scale databases
+- When you prefer managed services over embedded solutions
+
 ## Prerequisites
 
-Before running this example, you need:
+**External Services Required:**
 
 1. **Neo4j Database**: A running Neo4j instance
    - Default connection: `bolt://localhost:7687`
@@ -19,8 +27,13 @@ Before running this example, you need:
      ```bash
      docker run --name neo4j -p 7687:7687 -p 7474:7474 -e NEO4J_AUTH=neo4j/password neo4j:latest
      ```
+   - Or use Neo4j Aura (cloud) or Neo4j Desktop
 
 2. **OpenAI API Key**: An active OpenAI API key for LLM and embedding services
+   - Sign up at https://platform.openai.com/
+   - Requires API credits for usage
+
+> **Alternative**: For a setup requiring no external services, see the [Kuzu + Ollama example](../kuzu_ollama/)
 
 ## Environment Variables
 
