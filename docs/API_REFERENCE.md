@@ -373,18 +373,33 @@ type GraphDriver interface {
 }
 ```
 
+### NewKuzuDriver
+
+```go
+func NewKuzuDriver(dbPath string) (*KuzuDriver, error)
+```
+
+Creates a new Kuzu embedded database driver instance (recommended default).
+
+**Parameters:**
+- `dbPath`: Path to database directory (defaults to "./kuzu_db" if empty)
+
+**Returns:**
+- `*KuzuDriver`: Kuzu driver instance
+- `error`: Creation error, if any
+
 ### NewNeo4jDriver
 
 ```go
 func NewNeo4jDriver(uri, username, password, database string) (*Neo4jDriver, error)
 ```
 
-Creates a new Neo4j driver instance.
+Creates a new Neo4j driver instance for external database setups.
 
 **Parameters:**
 - `uri`: Neo4j connection URI (e.g., "bolt://localhost:7687")
 - `username`: Database username
-- `password`: Database password  
+- `password`: Database password
 - `database`: Database name (defaults to "neo4j" if empty)
 
 **Returns:**
@@ -409,14 +424,40 @@ type Client interface {
 func NewOpenAIClient(apiKey string, config Config) *OpenAIClient
 ```
 
-Creates a new OpenAI LLM client.
+Creates a new OpenAI-compatible LLM client. Works with any service implementing the OpenAI API specification.
 
 **Parameters:**
-- `apiKey`: OpenAI API key
-- `config`: LLM configuration
+- `apiKey`: API key (use "dummy" for services that don't require keys like Ollama)
+- `config`: LLM configuration (includes BaseURL for local services)
 
 **Returns:**
-- `*OpenAIClient`: OpenAI client instance
+- `*OpenAIClient`: OpenAI-compatible client instance
+
+### Convenience Functions
+
+#### NewOllamaClient
+
+```go
+func NewOllamaClient(baseURL, model string, config Config) (*OpenAIClient, error)
+```
+
+Creates a client for Ollama local LLM service.
+
+#### NewLocalAIClient
+
+```go
+func NewLocalAIClient(baseURL, model string, config Config) (*OpenAIClient, error)
+```
+
+Creates a client for LocalAI self-hosted service.
+
+#### NewVLLMClient
+
+```go
+func NewVLLMClient(baseURL, model string, config Config) (*OpenAIClient, error)
+```
+
+Creates a client for vLLM high-performance serving.
 
 ### LLM Config
 
@@ -491,14 +532,14 @@ type Client interface {
 func NewOpenAIEmbedder(apiKey string, config Config) *OpenAIEmbedder
 ```
 
-Creates a new OpenAI embedder client.
+Creates a new OpenAI-compatible embedder client. Works with any service implementing the OpenAI embeddings API.
 
 **Parameters:**
-- `apiKey`: OpenAI API key
-- `config`: Embedder configuration
+- `apiKey`: API key (use "dummy" for services that don't require keys)
+- `config`: Embedder configuration (includes BaseURL for local services)
 
 **Returns:**
-- `*OpenAIEmbedder`: OpenAI embedder instance
+- `*OpenAIEmbedder`: OpenAI-compatible embedder instance
 
 ### Embedder Config
 
@@ -541,8 +582,17 @@ if err != nil {
 
 ```go
 // Create all required clients
-driver, _ := driver.NewNeo4jDriver(uri, user, pass, db)
-llmClient := llm.NewOpenAIClient(apiKey, llmConfig)
+
+// Option 1: Embedded database (recommended)
+driver, _ := driver.NewKuzuDriver("./my_graph_db")
+
+// Option 2: External database
+// driver, _ := driver.NewNeo4jDriver(uri, user, pass, db)
+
+// LLM client (works with any OpenAI-compatible service)
+llmClient := llm.NewOpenAIClient(apiKey, llmConfig)  // or NewOllamaClient, etc.
+
+// Embedder client (works with any compatible service)
 embedder := embedder.NewOpenAIEmbedder(apiKey, embedConfig)
 
 // Create Graphiti client

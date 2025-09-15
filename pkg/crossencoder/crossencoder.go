@@ -4,8 +4,9 @@ based on their relevance to a query.
 
 Cross-encoders are used in information retrieval to rerank search results by
 computing relevance scores between a query and candidate passages. This package
-provides multiple implementations including OpenAI-based, local similarity-based,
-and mock implementations for testing.
+provides multiple implementations including OpenAI-based, Jina-compatible APIs
+(vLLM, LocalAI, etc.), embedding-based, local similarity-based, and mock
+implementations for testing.
 
 Usage:
 
@@ -21,12 +22,18 @@ Usage:
 		"passage 2 text",
 	})
 	
+	// Using Jina-compatible reranker (works with vLLM, LocalAI, etc.)
+	vllmReranker := crossencoder.NewVLLMRerankerClient("http://localhost:8000/v1", "BAAI/bge-reranker-large")
+	results, err := vllmReranker.Rank(ctx, query, passages)
+
 	// Using local similarity reranker
 	localReranker := crossencoder.NewLocalRerankerClient(crossencoder.Config{})
 	results, err := localReranker.Rank(ctx, query, passages)
 
 The package supports different reranking strategies:
 - OpenAI API-based reranking using boolean classification prompts
+- Jina-compatible API reranking (supports vLLM, LocalAI, Jina AI, and others)
+- Embedding-based similarity reranking using cosine similarity
 - Local text similarity using cosine similarity of term frequency vectors
 - Mock implementation for testing with deterministic results
 */
@@ -52,8 +59,8 @@ const (
 	// ProviderMock uses mock implementation for testing
 	ProviderMock Provider = "mock"
 
-	// ProviderJina uses Jina's reranking API (compatible with VLLM)
-	ProviderJina Provider = "jina"
+	// ProviderReranker uses Jina-compatible reranking APIs (Jina, vLLM, LocalAI, etc.)
+	ProviderReranker Provider = "reranker"
 
 	// ProviderEmbedding uses embedding-based similarity for reranking
 	ProviderEmbedding Provider = "embedding"
@@ -65,7 +72,7 @@ type ClientConfig struct {
 	Config          Config           `json:"config"`
 	LLMClient       llm.Client       `json:"-"` // Not serialized, passed at runtime
 	EmbedderClient  embedder.Client  `json:"-"` // Required for embedding provider
-	JinaConfig      *JinaConfig      `json:"jina_config,omitempty"`     // Jina-specific config
+	RerankerConfig  *RerankerConfig  `json:"reranker_config,omitempty"` // Jina-compatible reranker config
 	EmbeddingConfig *EmbeddingConfig `json:"embedding_config,omitempty"` // Embedding-specific config
 }
 
@@ -84,12 +91,12 @@ func NewClient(clientConfig ClientConfig) (Client, error) {
 	case ProviderMock:
 		return NewMockRerankerClient(clientConfig.Config), nil
 
-	case ProviderJina:
-		jinaConfig := JinaConfig{Config: clientConfig.Config}
-		if clientConfig.JinaConfig != nil {
-			jinaConfig = *clientConfig.JinaConfig
+	case ProviderReranker:
+		rerankerConfig := RerankerConfig{Config: clientConfig.Config}
+		if clientConfig.RerankerConfig != nil {
+			rerankerConfig = *clientConfig.RerankerConfig
 		}
-		return NewJinaRerankerClient(jinaConfig), nil
+		return NewRerankerClient(rerankerConfig), nil
 
 	case ProviderEmbedding:
 		if clientConfig.EmbedderClient == nil {
@@ -123,11 +130,11 @@ func DefaultConfig(provider Provider) Config {
 		return Config{
 			BatchSize: 100,
 		}
-	case ProviderJina:
+	case ProviderReranker:
 		return Config{
-			Model:          "jina-reranker-v1-base-en",
-			BatchSize:      100, // Jina API can handle large batches
-			MaxConcurrency: 3,   // Conservative for external API
+			Model:          "reranker", // Generic default, should be overridden
+			BatchSize:      100,        // Jina-compatible APIs can handle large batches
+			MaxConcurrency: 3,          // Conservative for external APIs
 		}
 	case ProviderEmbedding:
 		return Config{

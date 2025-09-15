@@ -28,24 +28,29 @@ The Go version maintains the same core concepts but follows Go idioms and patter
 ### What databases are supported?
 
 Currently supported:
-- **Neo4j**: Production-ready implementation with full feature support
-- **Planned**: ArangoDB, Amazon Neptune, other graph databases
+- **Kuzu**: Embedded graph database (default, recommended) - no external setup required
+- **Neo4j**: External graph database for advanced production deployments
+- **Planned**: FalkorDB, ArangoDB, Amazon Neptune, other graph databases
 
-The modular driver architecture makes it easy to add new database backends.
+The modular driver architecture makes it easy to add new database backends. Kuzu is recommended for most use cases due to its simplicity and zero-setup requirements.
 
 ### What LLM providers are supported?
 
-Currently supported:
+go-graphiti works with **any OpenAI-compatible API**, including:
 - **OpenAI**: GPT-3.5, GPT-4, and all variants
-- **Planned**: Anthropic Claude, Google Gemini, local models via Ollama
+- **Local services**: Ollama, LocalAI, vLLM, Text Generation Inference
+- **Cloud alternatives**: Together AI, Anyscale, Replicate, Hugging Face
+- **Self-hosted**: Any service implementing OpenAI's API specification
 
-The interface-based design allows easy extension to new providers.
+The library provides convenience functions for popular services, but the standard OpenAI client works with any compatible API.
 
 ### What embedding providers are supported?
 
-Currently supported:
+go-graphiti works with **any OpenAI-compatible embedding API**, including:
 - **OpenAI**: text-embedding-ada-002, text-embedding-3-small, text-embedding-3-large
-- **Planned**: Voyage AI, Cohere, local embeddings
+- **Local services**: Ollama with embedding models, LocalAI, vLLM
+- **Cloud alternatives**: Together AI, Voyage AI, Cohere (via compatibility layers)
+- **Self-hosted**: Any service implementing OpenAI's embeddings API
 
 ### How does temporal awareness work?
 
@@ -81,15 +86,31 @@ config := &graphiti.Config{
 
 ### What are the minimum requirements?
 
+**Minimal Setup (Recommended):**
 - **Go**: Version 1.24 or later
-- **Database**: Neo4j 5.0+ (local, cloud, or Docker)
-- **API Keys**: OpenAI API key for LLM and embeddings
-- **Memory**: 512MB+ recommended for basic usage
-- **Storage**: Depends on data volume, typically 1GB+ for Neo4j
+- **Database**: Kuzu embedded (no external setup required)
+- **LLM/Embeddings**: Optional - can work without LLM features
+- **Memory**: 256MB+ for basic usage
+- **Storage**: Minimal - database files stored locally
 
-### How do I set up Neo4j?
+**With External Services:**
+- **Database**: Neo4j 5.0+ (if not using Kuzu)
+- **API Keys**: For external LLM/embedding services (OpenAI, etc.)
+- **Memory**: 512MB+ recommended
+- **Storage**: Depends on database choice and data volume
 
-**Option 1 - Docker (Easiest):**
+### How do I set up the graph database?
+
+**Option 1 - Kuzu Embedded (Recommended):**
+```go
+// No setup required! Just specify a directory path
+driver, err := driver.NewKuzuDriver("./my_graph_db")
+```
+Kuzu creates database files locally and requires no external services.
+
+**Option 2 - Neo4j (For External Database):**
+
+**Docker (Easiest):**
 ```bash
 docker run \
     --name neo4j \
@@ -98,36 +119,61 @@ docker run \
     neo4j:latest
 ```
 
-**Option 2 - Neo4j Desktop:**
+**Neo4j Desktop:**
 1. Download from https://neo4j.com/download/
 2. Create new project and database
 3. Set password and note connection details
 
-**Option 3 - Neo4j Aura (Cloud):**
+**Neo4j Aura (Cloud):**
 1. Sign up at https://neo4j.com/cloud/aura/
 2. Create database instance
 3. Use provided connection URI
 
-### How do I get OpenAI API keys?
+### How do I get API keys for LLM services?
 
+**For OpenAI:**
 1. Sign up at https://platform.openai.com/
 2. Go to API Keys section
 3. Create new secret key
 4. Set environment variable: `OPENAI_API_KEY=sk-...`
 
+**For Local Services (No API key needed):**
+- **Ollama**: Just install and run `ollama serve`
+- **LocalAI**: Run with Docker, no key required
+- **vLLM**: Self-hosted, no key required
+
+**For Alternative Cloud Services:**
+- Check the specific provider's documentation
+- Most use similar API key mechanisms
+
 ### What environment variables do I need?
 
-Required:
+**Minimal Setup (No external dependencies):**
 ```bash
+# No environment variables required!
+# Kuzu database and basic functionality work out-of-the-box
+```
+
+**With LLM Services:**
+```bash
+# For OpenAI
 OPENAI_API_KEY=sk-your-key-here
+
+# For local LLMs (Ollama, LocalAI, etc.)
+LLM_BASE_URL=http://localhost:11434  # Optional: defaults vary by service
+```
+
+**With External Database (Neo4j):**
+```bash
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
+NEO4J_DATABASE=neo4j  # Optional: defaults to "neo4j"
 ```
 
-Optional:
+**With Kuzu (Optional):**
 ```bash
-NEO4J_DATABASE=neo4j  # defaults to "neo4j"
+KUZU_DB_PATH=./my_graph_db  # Optional: defaults to "./kuzu_db"
 ```
 
 ## Usage Questions
