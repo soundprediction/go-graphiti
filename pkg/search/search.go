@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/soundprediction/go-graphiti/pkg/crossencoder"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -86,17 +88,24 @@ type HybridSearchResult struct {
 }
 
 type Searcher struct {
-	driver    driver.GraphDriver
-	embedder  embedder.Client
-	llm       llm.Client
+	driver       driver.GraphDriver
+	embedder     embedder.Client
+	llm          llm.Client
+	crossEncoder crossencoder.Client
 }
 
 func NewSearcher(driver driver.GraphDriver, embedder embedder.Client, llm llm.Client) *Searcher {
 	return &Searcher{
-		driver:    driver,
-		embedder:  embedder,
-		llm:       llm,
+		driver:       driver,
+		embedder:     embedder,
+		llm:          llm,
+		crossEncoder: nil, // Will be set separately if needed
 	}
+}
+
+// SetCrossEncoder sets the cross-encoder client for advanced reranking
+func (s *Searcher) SetCrossEncoder(crossEncoder crossencoder.Client) {
+	s.crossEncoder = crossEncoder
 }
 
 func (s *Searcher) Search(ctx context.Context, query string, config *SearchConfig, filters *SearchFilters, groupID string) (*HybridSearchResult, error) {
@@ -548,25 +557,339 @@ func (s *Searcher) mmrRerankEdges(ctx context.Context, queryVector []float32, ed
 
 // Cross-encoder reranking
 func (s *Searcher) crossEncoderRerankNodes(ctx context.Context, query string, nodes []*types.Node, minScore float64, limit int) ([]*types.Node, []float64, error) {
-	// TODO: Implement cross-encoder reranking using LLM
-	// For now, return nodes with default scores
-	scores := make([]float64, min(limit, len(nodes)))
-	for i := range scores {
-		scores[i] = 1.0
+	if s.crossEncoder == nil {
+		// Fallback to LLM-based scoring if no cross-encoder available
+		return s.fallbackLLMRerankNodes(ctx, query, nodes, minScore, limit)
 	}
-	
-	return nodes[:min(limit, len(nodes))], scores, nil
+
+	if len(nodes) == 0 {
+		return []*types.Node{}, []float64{}, nil
+	}
+
+	// Prepare passages for reranking
+	passages := make([]string, len(nodes))
+	for i, node := range nodes {
+		nodeContent := node.Summary
+		if nodeContent == "" {
+			nodeContent = node.Content
+		}
+		if nodeContent == "" {
+			nodeContent = node.Name
+		}
+		passages[i] = nodeContent
+	}
+
+	// Use cross-encoder to rank passages
+	rankedPassages, err := s.crossEncoder.Rank(ctx, query, passages)
+	if err != nil {
+		// Fallback to LLM-based scoring on error
+		return s.fallbackLLMRerankNodes(ctx, query, nodes, minScore, limit)
+	}
+
+	// Map ranked passages back to nodes
+	var resultNodes []*types.Node
+	var resultScores []float64
+
+	// Create a map for efficient lookup
+	passageToNode := make(map[string]*types.Node)
+	for i, passage := range passages {
+		passageToNode[passage] = nodes[i]
+	}
+
+	// Convert ranked passages to nodes, applying filters
+	for _, rankedPassage := range rankedPassages {
+		if rankedPassage.Score >= minScore && len(resultNodes) < limit {
+			if node, exists := passageToNode[rankedPassage.Passage]; exists {
+				resultNodes = append(resultNodes, node)
+				resultScores = append(resultScores, rankedPassage.Score)
+			}
+		}
+	}
+
+	return resultNodes, resultScores, nil
+}
+
+// fallbackLLMRerankNodes provides LLM-based reranking when cross-encoder is not available
+func (s *Searcher) fallbackLLMRerankNodes(ctx context.Context, query string, nodes []*types.Node, minScore float64, limit int) ([]*types.Node, []float64, error) {
+	if s.llm == nil {
+		// Ultimate fallback to default scores
+		scores := make([]float64, min(limit, len(nodes)))
+		for i := range scores {
+			scores[i] = 1.0
+		}
+		return nodes[:min(limit, len(nodes))], scores, nil
+	}
+
+	// Create pairs of query and node content for reranking
+	type nodeScore struct {
+		node  *types.Node
+		score float64
+		index int
+	}
+
+	nodeScores := make([]nodeScore, len(nodes))
+
+	// Process nodes in batches to avoid overwhelming the LLM
+	batchSize := 10
+	for i := 0; i < len(nodes); i += batchSize {
+		end := min(i+batchSize, len(nodes))
+		batch := nodes[i:end]
+
+		// Create relevance scoring prompt
+		prompt := fmt.Sprintf(`Given the search query and a list of nodes, score each node's relevance to the query from 0.0 to 1.0.
+
+Query: "%s"
+
+Nodes to score:`, query)
+
+		for j, node := range batch {
+			nodeContent := node.Summary
+			if nodeContent == "" {
+				nodeContent = node.Content
+			}
+			if nodeContent == "" {
+				nodeContent = node.Name
+			}
+			prompt += fmt.Sprintf("\n%d. %s", j+1, nodeContent)
+		}
+
+		prompt += `
+
+Please respond with only comma-separated scores for each node in order (e.g., "0.9,0.3,0.7,0.1").
+Consider semantic relevance, topical alignment, and contextual importance.`
+
+		messages := []llm.Message{
+			llm.NewSystemMessage("You are a relevance scoring system. Score how relevant each node is to the given query."),
+			llm.NewUserMessage(prompt),
+		}
+
+		response, err := s.llm.Chat(ctx, messages)
+		if err != nil {
+			// On error, assign default scores
+			for j := range batch {
+				nodeScores[i+j] = nodeScore{
+					node:  batch[j],
+					score: 0.5, // Default mid-range score
+					index: i + j,
+				}
+			}
+			continue
+		}
+
+		// Parse scores from response
+		scoreStrs := strings.Split(strings.TrimSpace(response.Content), ",")
+		for j, scoreStr := range scoreStrs {
+			if i+j >= len(nodes) {
+				break
+			}
+
+			score := 0.5 // Default score
+			if parsedScore, err := strconv.ParseFloat(strings.TrimSpace(scoreStr), 64); err == nil {
+				score = parsedScore
+			}
+
+			nodeScores[i+j] = nodeScore{
+				node:  batch[j],
+				score: score,
+				index: i + j,
+			}
+		}
+
+		// Handle case where we have more nodes than scores returned
+		for j := len(scoreStrs); j < len(batch); j++ {
+			nodeScores[i+j] = nodeScore{
+				node:  batch[j],
+				score: 0.5,
+				index: i + j,
+			}
+		}
+	}
+
+	// Sort by score (descending)
+	sort.Slice(nodeScores, func(i, j int) bool {
+		return nodeScores[i].score > nodeScores[j].score
+	})
+
+	// Filter by minimum score and apply limit
+	var resultNodes []*types.Node
+	var resultScores []float64
+
+	for _, ns := range nodeScores {
+		if ns.score >= minScore && len(resultNodes) < limit {
+			resultNodes = append(resultNodes, ns.node)
+			resultScores = append(resultScores, ns.score)
+		}
+	}
+
+	return resultNodes, resultScores, nil
 }
 
 func (s *Searcher) crossEncoderRerankEdges(ctx context.Context, query string, edges []*types.Edge, minScore float64, limit int) ([]*types.Edge, []float64, error) {
-	// TODO: Implement cross-encoder reranking using LLM
-	// For now, return edges with default scores
-	scores := make([]float64, min(limit, len(edges)))
-	for i := range scores {
-		scores[i] = 1.0
+	if s.crossEncoder == nil {
+		// Fallback to LLM-based scoring if no cross-encoder available
+		return s.fallbackLLMRerankEdges(ctx, query, edges, minScore, limit)
 	}
-	
-	return edges[:min(limit, len(edges))], scores, nil
+
+	if len(edges) == 0 {
+		return []*types.Edge{}, []float64{}, nil
+	}
+
+	// Prepare passages for reranking
+	passages := make([]string, len(edges))
+	for i, edge := range edges {
+		edgeContent := edge.Summary
+		if edgeContent == "" {
+			edgeContent = edge.Name
+		}
+		if edgeContent == "" {
+			edgeContent = fmt.Sprintf("%s %s %s", edge.SourceID, string(edge.Type), edge.TargetID)
+		}
+		passages[i] = fmt.Sprintf("%s -> %s: %s", edge.SourceID, edge.TargetID, edgeContent)
+	}
+
+	// Use cross-encoder to rank passages
+	rankedPassages, err := s.crossEncoder.Rank(ctx, query, passages)
+	if err != nil {
+		// Fallback to LLM-based scoring on error
+		return s.fallbackLLMRerankEdges(ctx, query, edges, minScore, limit)
+	}
+
+	// Map ranked passages back to edges
+	var resultEdges []*types.Edge
+	var resultScores []float64
+
+	// Create a map for efficient lookup
+	passageToEdge := make(map[string]*types.Edge)
+	for i, passage := range passages {
+		passageToEdge[passage] = edges[i]
+	}
+
+	// Convert ranked passages to edges, applying filters
+	for _, rankedPassage := range rankedPassages {
+		if rankedPassage.Score >= minScore && len(resultEdges) < limit {
+			if edge, exists := passageToEdge[rankedPassage.Passage]; exists {
+				resultEdges = append(resultEdges, edge)
+				resultScores = append(resultScores, rankedPassage.Score)
+			}
+		}
+	}
+
+	return resultEdges, resultScores, nil
+}
+
+// fallbackLLMRerankEdges provides LLM-based reranking when cross-encoder is not available
+func (s *Searcher) fallbackLLMRerankEdges(ctx context.Context, query string, edges []*types.Edge, minScore float64, limit int) ([]*types.Edge, []float64, error) {
+	if s.llm == nil {
+		// Ultimate fallback to default scores
+		scores := make([]float64, min(limit, len(edges)))
+		for i := range scores {
+			scores[i] = 1.0
+		}
+		return edges[:min(limit, len(edges))], scores, nil
+	}
+
+	// Create pairs of query and edge content for reranking
+	type edgeScore struct {
+		edge  *types.Edge
+		score float64
+		index int
+	}
+
+	edgeScores := make([]edgeScore, len(edges))
+
+	// Process edges in batches to avoid overwhelming the LLM
+	batchSize := 10
+	for i := 0; i < len(edges); i += batchSize {
+		end := min(i+batchSize, len(edges))
+		batch := edges[i:end]
+
+		// Create relevance scoring prompt
+		prompt := fmt.Sprintf(`Given the search query and a list of relationship edges, score each edge's relevance to the query from 0.0 to 1.0.
+
+Query: "%s"
+
+Edges to score (format: source -> target: description):`, query)
+
+		for j, edge := range batch {
+			edgeContent := edge.Summary
+			if edgeContent == "" {
+				edgeContent = edge.Name
+			}
+			if edgeContent == "" {
+				edgeContent = fmt.Sprintf("%s %s %s", edge.SourceID, string(edge.Type), edge.TargetID)
+			}
+			prompt += fmt.Sprintf("\n%d. %s -> %s: %s", j+1, edge.SourceID, edge.TargetID, edgeContent)
+		}
+
+		prompt += `
+
+Please respond with only comma-separated scores for each edge in order (e.g., "0.9,0.3,0.7,0.1").
+Consider semantic relevance, relationship importance, and contextual significance.`
+
+		messages := []llm.Message{
+			llm.NewSystemMessage("You are a relevance scoring system. Score how relevant each relationship edge is to the given query."),
+			llm.NewUserMessage(prompt),
+		}
+
+		response, err := s.llm.Chat(ctx, messages)
+		if err != nil {
+			// On error, assign default scores
+			for j := range batch {
+				edgeScores[i+j] = edgeScore{
+					edge:  batch[j],
+					score: 0.5, // Default mid-range score
+					index: i + j,
+				}
+			}
+			continue
+		}
+
+		// Parse scores from response
+		scoreStrs := strings.Split(strings.TrimSpace(response.Content), ",")
+		for j, scoreStr := range scoreStrs {
+			if i+j >= len(edges) {
+				break
+			}
+
+			score := 0.5 // Default score
+			if parsedScore, err := strconv.ParseFloat(strings.TrimSpace(scoreStr), 64); err == nil {
+				score = parsedScore
+			}
+
+			edgeScores[i+j] = edgeScore{
+				edge:  batch[j],
+				score: score,
+				index: i + j,
+			}
+		}
+
+		// Handle case where we have more edges than scores returned
+		for j := len(scoreStrs); j < len(batch); j++ {
+			edgeScores[i+j] = edgeScore{
+				edge:  batch[j],
+				score: 0.5,
+				index: i + j,
+			}
+		}
+	}
+
+	// Sort by score (descending)
+	sort.Slice(edgeScores, func(i, j int) bool {
+		return edgeScores[i].score > edgeScores[j].score
+	})
+
+	// Filter by minimum score and apply limit
+	var resultEdges []*types.Edge
+	var resultScores []float64
+
+	for _, es := range edgeScores {
+		if es.score >= minScore && len(resultEdges) < limit {
+			resultEdges = append(resultEdges, es.edge)
+			resultScores = append(resultScores, es.score)
+		}
+	}
+
+	return resultEdges, resultScores, nil
 }
 
 func min(a, b int) int {
