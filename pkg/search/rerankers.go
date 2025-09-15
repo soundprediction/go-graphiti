@@ -334,6 +334,24 @@ func GetEmbeddingsForNodes(ctx context.Context, driver driver.GraphDriver, nodes
 	return embeddings, nil
 }
 
+// GetEmbeddingsForEdges retrieves embeddings for the given edges from the database
+func GetEmbeddingsForEdges(ctx context.Context, driver driver.GraphDriver, edges []*types.Edge) (map[string][]float32, error) {
+	embeddings := make(map[string][]float32)
+
+	for _, edge := range edges {
+		// Extract embeddings from edge metadata if available
+		if edge.Metadata != nil {
+			if embeddingData, exists := edge.Metadata["name_embedding"]; exists {
+				if embedding := toFloat32Slice(embeddingData); embedding != nil {
+					embeddings[edge.ID] = embedding
+				}
+			}
+		}
+	}
+
+	return embeddings, nil
+}
+
 // GetEmbeddingsForCommunities retrieves embeddings for community nodes
 func GetEmbeddingsForCommunities(ctx context.Context, driver driver.GraphDriver, communities []*types.Node) (map[string][]float32, error) {
 	embeddings := make(map[string][]float32)

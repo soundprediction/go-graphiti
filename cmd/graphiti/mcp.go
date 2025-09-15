@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +14,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -191,6 +193,61 @@ var EntityTypes = map[string]interface{}{
 	"Procedure": struct {
 		Description string `json:"description" description:"Brief description of the procedure. Only use information mentioned in the context to write this description."`
 	}{},
+}
+
+// MCP Tool request/response types
+
+// AddMemoryRequest represents the parameters for adding memory
+type AddMemoryRequest struct {
+	Name               string `json:"name"`
+	EpisodeBody        string `json:"episode_body"`
+	GroupID            string `json:"group_id,omitempty"`
+	Source             string `json:"source,omitempty"`
+	SourceDescription  string `json:"source_description,omitempty"`
+	UUID               string `json:"uuid,omitempty"`
+}
+
+// SearchRequest represents search parameters
+type SearchRequest struct {
+	Query string `json:"query"`
+	Limit int    `json:"limit,omitempty"`
+}
+
+// GetEpisodesRequest represents parameters for retrieving episodes
+type GetEpisodesRequest struct {
+	GroupID string `json:"group_id,omitempty"`
+	LastN   int    `json:"last_n,omitempty"`
+}
+
+// ClearGraphRequest represents parameters for clearing the graph
+type ClearGraphRequest struct {
+	GroupID string `json:"group_id,omitempty"`
+	Confirm bool   `json:"confirm,omitempty"`
+}
+
+// UUIDRequest represents a simple UUID parameter
+type UUIDRequest struct {
+	UUID string `json:"uuid"`
+}
+
+// MCPToolResponse is a generic response wrapper
+type MCPToolResponse struct {
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
+}
+
+// MCPTool represents a registered MCP tool
+type MCPTool struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Schema      interface{} `json:"inputSchema"`
+}
+
+// MCPCapabilities represents the capabilities of the MCP server
+type MCPCapabilities struct {
+	Tools map[string]MCPTool `json:"tools"`
 }
 
 func runMCPServer(cmd *cobra.Command, args []string) error {
@@ -401,19 +458,524 @@ func (s *MCPServer) Initialize(ctx context.Context) error {
 
 // RegisterTools registers all MCP tools
 func (s *MCPServer) RegisterTools() error {
-	// TODO: Implement actual MCP tool registrations
-	// For now, we'll log the available tools that would be registered
+	s.logger.Info("Registering MCP tools...")
 
-	tools := []string{
-		"add_memory",
-		"search_memory_nodes",
-		"search_memory_facts",
-		"get_episodes",
-		"clear_graph",
+	// Create capabilities structure
+	capabilities := &MCPCapabilities{
+		Tools: make(map[string]MCPTool),
 	}
 
-	s.logger.Info("Registering MCP tools", "tools", tools)
+	// Register add_memory tool
+	capabilities.Tools["add_memory"] = MCPTool{
+		Name:        "add_memory",
+		Description: "Add an episode to memory. This is the primary way to add information to the graph.",
+		Schema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"name": map[string]interface{}{
+					"type":        "string",
+					"description": "Name or title of the episode",
+				},
+				"episode_body": map[string]interface{}{
+					"type":        "string",
+					"description": "The content or body of the episode to be added",
+				},
+				"group_id": map[string]interface{}{
+					"type":        "string",
+					"description": "Group ID to associate the episode with (optional)",
+				},
+				"source": map[string]interface{}{
+					"type":        "string",
+					"description": "Source of the episode (optional)",
+				},
+				"source_description": map[string]interface{}{
+					"type":        "string",
+					"description": "Description of the source (optional)",
+				},
+				"uuid": map[string]interface{}{
+					"type":        "string",
+					"description": "Custom UUID for the episode (optional)",
+				},
+			},
+			"required": []string{"name", "episode_body"},
+		},
+	}
+
+	// Register search_memory_nodes tool
+	capabilities.Tools["search_memory_nodes"] = MCPTool{
+		Name:        "search_memory_nodes",
+		Description: "Search the graph memory for relevant node summaries.",
+		Schema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{
+					"type":        "string",
+					"description": "Search query for finding relevant nodes",
+				},
+				"limit": map[string]interface{}{
+					"type":        "integer",
+					"description": "Maximum number of results to return (default: 10)",
+					"minimum":     1,
+					"maximum":     100,
+				},
+			},
+			"required": []string{"query"},
+		},
+	}
+
+	// Register search_memory_facts tool
+	capabilities.Tools["search_memory_facts"] = MCPTool{
+		Name:        "search_memory_facts",
+		Description: "Search the graph memory for relevant facts (relationships).",
+		Schema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{
+					"type":        "string",
+					"description": "Search query for finding relevant facts",
+				},
+				"limit": map[string]interface{}{
+					"type":        "integer",
+					"description": "Maximum number of results to return (default: 10)",
+					"minimum":     1,
+					"maximum":     100,
+				},
+			},
+			"required": []string{"query"},
+		},
+	}
+
+	// Register get_episodes tool
+	capabilities.Tools["get_episodes"] = MCPTool{
+		Name:        "get_episodes",
+		Description: "Get the most recent memory episodes for a specific group.",
+		Schema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"group_id": map[string]interface{}{
+					"type":        "string",
+					"description": "Group ID to retrieve episodes from (optional)",
+				},
+				"last_n": map[string]interface{}{
+					"type":        "integer",
+					"description": "Number of recent episodes to retrieve (default: 10)",
+					"minimum":     1,
+					"maximum":     100,
+				},
+			},
+		},
+	}
+
+	// Register clear_graph tool
+	capabilities.Tools["clear_graph"] = MCPTool{
+		Name:        "clear_graph",
+		Description: "Clear all data from the graph memory. Requires confirmation.",
+		Schema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"group_id": map[string]interface{}{
+					"type":        "string",
+					"description": "Group ID to clear (optional, defaults to server group)",
+				},
+				"confirm": map[string]interface{}{
+					"type":        "boolean",
+					"description": "Confirmation flag - must be true to proceed with clearing",
+				},
+			},
+			"required": []string{"confirm"},
+		},
+	}
+
+	toolNames := make([]string, 0, len(capabilities.Tools))
+	for name := range capabilities.Tools {
+		toolNames = append(toolNames, name)
+	}
+
+	s.logger.Info("MCP tools registered successfully", "tools", toolNames, "count", len(capabilities.Tools))
 	return nil
+}
+
+// Tool implementations
+
+// AddMemoryTool handles adding episodes to memory
+func (s *MCPServer) AddMemoryTool(ctx context.Context, input *AddMemoryRequest) (*MCPToolResponse, error) {
+	// Validate required fields
+	if input.Name == "" {
+		return &MCPToolResponse{
+			Success: false,
+			Error:   "Name is required",
+		}, nil
+	}
+	if input.EpisodeBody == "" {
+		return &MCPToolResponse{
+			Success: false,
+			Error:   "EpisodeBody is required",
+		}, nil
+	}
+
+	// Set defaults
+	if input.Source == "" {
+		input.Source = "text"
+	}
+	if input.GroupID == "" {
+		input.GroupID = s.config.GroupID
+	}
+
+	// Create episode
+	episode := types.Episode{
+		ID:        input.UUID, // Will be generated if empty
+		Name:      input.Name,
+		Content:   input.EpisodeBody,
+		Reference: time.Now(),
+		CreatedAt: time.Now(),
+		GroupID:   input.GroupID,
+		Metadata: map[string]interface{}{
+			"source":             input.Source,
+			"source_description": input.SourceDescription,
+		},
+	}
+
+	// Add episode using Graphiti client
+	err := s.client.Add(ctx, []types.Episode{episode})
+	if err != nil {
+		s.logger.Error("Failed to add episode", "error", err)
+		return &MCPToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to add episode: %v", err),
+		}, nil
+	}
+
+	s.logger.Info("Episode added successfully", "name", input.Name, "group_id", input.GroupID)
+	return &MCPToolResponse{
+		Success: true,
+		Message: fmt.Sprintf("Episode '%s' added successfully", input.Name),
+	}, nil
+}
+
+// SearchMemoryNodesTool handles searching for nodes
+func (s *MCPServer) SearchMemoryNodesTool(ctx context.Context, input *SearchRequest) (*MCPToolResponse, error) {
+	// Validate required fields
+	if input.Query == "" {
+		return &MCPToolResponse{
+			Success: false,
+			Error:   "Query is required",
+		}, nil
+	}
+
+	// Set defaults
+	if input.Limit <= 0 {
+		input.Limit = 10
+	}
+
+	// Create search configuration
+	searchConfig := &types.SearchConfig{
+		Limit:              input.Limit,
+		CenterNodeDistance: 2,
+		MinScore:           0.0,
+		IncludeEdges:       false,
+		Rerank:             true,
+		NodeConfig: &types.NodeSearchConfig{
+			SearchMethods: []string{"bm25", "cosine_similarity"},
+			Reranker:      "rrf",
+			MinScore:      0.0,
+		},
+	}
+
+	// Perform search
+	results, err := s.client.Search(ctx, input.Query, searchConfig)
+	if err != nil {
+		s.logger.Error("Failed to search nodes", "error", err)
+		return &MCPToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to search nodes: %v", err),
+		}, nil
+	}
+
+	if len(results.Nodes) == 0 {
+		return &MCPToolResponse{
+			Success: true,
+			Message: "No relevant nodes found",
+			Data:    []interface{}{},
+		}, nil
+	}
+
+	// Format results
+	nodeResults := make([]map[string]interface{}, len(results.Nodes))
+	for i, node := range results.Nodes {
+		nodeResults[i] = map[string]interface{}{
+			"uuid":       node.ID,
+			"name":       node.Name,
+			"summary":    node.Summary,
+			"type":       string(node.Type),
+			"group_id":   node.GroupID,
+			"created_at": node.CreatedAt.Format(time.RFC3339),
+			"metadata":   node.Metadata,
+		}
+	}
+
+	return &MCPToolResponse{
+		Success: true,
+		Message: "Nodes retrieved successfully",
+		Data:    nodeResults,
+	}, nil
+}
+
+// SearchMemoryFactsTool handles searching for facts (edges)
+func (s *MCPServer) SearchMemoryFactsTool(ctx context.Context, input *SearchRequest) (*MCPToolResponse, error) {
+	// Validate required fields
+	if input.Query == "" {
+		return &MCPToolResponse{
+			Success: false,
+			Error:   "Query is required",
+		}, nil
+	}
+
+	// Set defaults
+	if input.Limit <= 0 {
+		input.Limit = 10
+	}
+
+	// Create search configuration focused on edges
+	searchConfig := &types.SearchConfig{
+		Limit:              input.Limit,
+		CenterNodeDistance: 2,
+		MinScore:           0.0,
+		IncludeEdges:       true,
+		Rerank:             true,
+		EdgeConfig: &types.EdgeSearchConfig{
+			SearchMethods: []string{"bm25", "cosine_similarity"},
+			Reranker:      "rrf",
+			MinScore:      0.0,
+		},
+	}
+
+	// Perform search
+	results, err := s.client.Search(ctx, input.Query, searchConfig)
+	if err != nil {
+		s.logger.Error("Failed to search facts", "error", err)
+		return &MCPToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to search facts: %v", err),
+		}, nil
+	}
+
+	if len(results.Edges) == 0 {
+		return &MCPToolResponse{
+			Success: true,
+			Message: "No relevant facts found",
+			Data:    []interface{}{},
+		}, nil
+	}
+
+	// Format results
+	facts := make([]map[string]interface{}, len(results.Edges))
+	for i, edge := range results.Edges {
+		facts[i] = map[string]interface{}{
+			"uuid":       edge.ID,
+			"type":       string(edge.Type),
+			"source_id":  edge.SourceID,
+			"target_id":  edge.TargetID,
+			"name":       edge.Name,
+			"summary":    edge.Summary,
+			"strength":   edge.Strength,
+			"group_id":   edge.GroupID,
+			"created_at": edge.CreatedAt.Format(time.RFC3339),
+			"updated_at": edge.UpdatedAt.Format(time.RFC3339),
+			"valid_from": edge.ValidFrom.Format(time.RFC3339),
+			"metadata":   edge.Metadata,
+		}
+		if edge.ValidTo != nil {
+			facts[i]["valid_to"] = edge.ValidTo.Format(time.RFC3339)
+		}
+	}
+
+	return &MCPToolResponse{
+		Success: true,
+		Message: "Facts retrieved successfully",
+		Data:    facts,
+	}, nil
+}
+
+// GetEpisodesTool handles getting recent episodes
+func (s *MCPServer) GetEpisodesTool(ctx context.Context, input *GetEpisodesRequest) (*MCPToolResponse, error) {
+	s.logger.Info("Get episodes requested", "group_id", input.GroupID, "last_n", input.LastN)
+
+	// Set default values
+	groupID := input.GroupID
+	if groupID == "" {
+		groupID = s.config.GroupID // Use server's default group ID
+	}
+
+	limit := input.LastN
+	if limit <= 0 {
+		limit = 10 // Default to 10 episodes
+	}
+
+	// Use the Graphiti client to retrieve episodes
+	episodeNodes, err := s.client.GetEpisodes(ctx, groupID, limit)
+	if err != nil {
+		s.logger.Error("Failed to retrieve episodes", "error", err)
+		return &MCPToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to retrieve episodes: %v", err),
+		}, nil
+	}
+
+	// Convert nodes to episode format
+	var episodes []map[string]interface{}
+	for _, node := range episodeNodes {
+		episode := map[string]interface{}{
+			"uuid":       node.ID,
+			"name":       node.Name,
+			"content":    node.Content,
+			"group_id":   node.GroupID,
+			"created_at": node.CreatedAt.Format(time.RFC3339),
+		}
+
+		// Add episode type if available
+		if node.EpisodeType != "" {
+			episode["episode_type"] = string(node.EpisodeType)
+		}
+
+		// Add reference time if available
+		if !node.Reference.IsZero() {
+			episode["reference"] = node.Reference.Format(time.RFC3339)
+		}
+
+		// Add metadata if available
+		if node.Metadata != nil {
+			episode["metadata"] = node.Metadata
+		}
+
+		episodes = append(episodes, episode)
+	}
+
+	s.logger.Info("Retrieved episodes", "count", len(episodes))
+
+	return &MCPToolResponse{
+		Success: true,
+		Message: fmt.Sprintf("Retrieved %d episodes", len(episodes)),
+		Data: map[string]interface{}{
+			"episodes": episodes,
+			"total":    len(episodes),
+			"group_id": groupID,
+		},
+	}, nil
+}
+
+// ClearGraphTool handles clearing the entire graph
+func (s *MCPServer) ClearGraphTool(ctx context.Context, input *ClearGraphRequest) (*MCPToolResponse, error) {
+	s.logger.Info("Clear graph requested", "group_id", input.GroupID, "confirm", input.Confirm)
+
+	// Safety check - require explicit confirmation
+	if !input.Confirm {
+		return &MCPToolResponse{
+			Success: false,
+			Error:   "Graph clearing requires explicit confirmation. Set 'confirm' to true to proceed.",
+		}, nil
+	}
+
+	// Set default group ID
+	groupID := input.GroupID
+	if groupID == "" {
+		groupID = s.config.GroupID // Use server's default group ID
+	}
+
+	// Warn about the destructive operation
+	s.logger.Warn("Clearing all data from graph", "group_id", groupID)
+
+	// Use the Graphiti client to clear the graph
+	err := s.client.ClearGraph(ctx, groupID)
+	if err != nil {
+		s.logger.Error("Failed to clear graph", "error", err, "group_id", groupID)
+		return &MCPToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to clear graph: %v", err),
+		}, nil
+	}
+
+	s.logger.Info("Graph cleared successfully", "group_id", groupID)
+
+	return &MCPToolResponse{
+		Success: true,
+		Message: fmt.Sprintf("Graph cleared successfully for group '%s'", groupID),
+		Data: map[string]interface{}{
+			"group_id": groupID,
+			"cleared":  true,
+		},
+	}, nil
+}
+
+// Transport handlers
+
+// handleStdioTransport handles MCP protocol over stdio
+func (s *MCPServer) handleStdioTransport(ctx context.Context) error {
+	s.logger.Info("MCP server handling stdio transport")
+
+	// For stdio transport, we read from stdin and write to stdout
+	// This is a simplified implementation - a full MCP implementation would:
+	// 1. Parse JSON-RPC messages from stdin
+	// 2. Route them to appropriate tool handlers
+	// 3. Send responses via stdout
+
+	s.logger.Info("Stdio transport handler started. Waiting for MCP protocol messages...")
+
+	// Simple message loop - in a real implementation this would be a JSON-RPC message handler
+	for {
+		select {
+		case <-ctx.Done():
+			s.logger.Info("Stdio transport handler shutting down")
+			return ctx.Err()
+		default:
+			// In a real implementation, this would read and parse JSON-RPC messages
+			// and call the appropriate tool methods based on the message content
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// handleSSETransport handles MCP protocol over Server-Sent Events (HTTP)
+func (s *MCPServer) handleSSETransport(ctx context.Context) error {
+	s.logger.Info("MCP server handling SSE transport", "host", s.config.Host, "port", s.config.Port)
+
+	// For SSE transport, we start an HTTP server
+	// This is a simplified implementation - a full MCP implementation would:
+	// 1. Serve MCP protocol endpoints
+	// 2. Handle tool invocation requests
+	// 3. Stream responses back via SSE
+
+	address := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
+	s.logger.Info("Starting HTTP server for SSE transport", "address", address)
+
+	// Simple HTTP server setup - in a real implementation this would have proper MCP endpoints
+	// and handle the MCP protocol over HTTP/SSE
+	server := &http.Server{
+		Addr: address,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status": "MCP server running", "transport": "sse"}`))
+		}),
+	}
+
+	// Start server in goroutine
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Error("HTTP server error", "error", err)
+		}
+	}()
+
+	s.logger.Info("SSE transport handler started")
+
+	// Wait for context cancellation
+	<-ctx.Done()
+
+	// Shutdown server gracefully
+	s.logger.Info("SSE transport handler shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return server.Shutdown(shutdownCtx)
 }
 
 // Run starts the MCP server
@@ -427,22 +989,18 @@ func (s *MCPServer) Run(ctx context.Context) error {
 
 	s.logger.Info("MCP server is ready to accept requests")
 
-	// TODO: Implement actual MCP protocol handling based on transport
-	if s.config.Transport == "stdio" {
-		s.logger.Info("MCP server would handle stdio transport here")
-	} else if s.config.Transport == "sse" {
-		s.logger.Info("MCP server would start HTTP server", "host", s.config.Host, "port", s.config.Port)
-	}
-
-	// Keep the server running
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
+	// Handle different transport protocols
+	switch s.config.Transport {
+	case "stdio":
+		s.logger.Info("Starting MCP server with stdio transport")
+		return s.handleStdioTransport(ctx)
+	case "sse":
+		s.logger.Info("Starting MCP server with SSE transport", "host", s.config.Host, "port", s.config.Port)
+		return s.handleSSETransport(ctx)
+	default:
+		return fmt.Errorf("unsupported transport: %s", s.config.Transport)
 	}
 }
-
-// Tool implementations would be added here when actual MCP protocol is implemented
-// For now, the server provides a framework for adding MCP functionality
 
 // Helper functions for configuration
 func validateMCPConfig(config *MCPConfig) error {

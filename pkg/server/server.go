@@ -54,7 +54,7 @@ func (s *Server) Setup() {
 // setupRoutes sets up all the routes
 func (s *Server) setupRoutes() {
 	// Create handlers
-	healthHandler := handlers.NewHealthHandler()
+	healthHandler := handlers.NewHealthHandler(s.graphiti)
 	ingestHandler := handlers.NewIngestHandler(s.graphiti)
 	retrieveHandler := handlers.NewRetrieveHandler(s.graphiti)
 	
@@ -62,6 +62,8 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/health", healthHandler.HealthCheck)
 	s.router.GET("/healthcheck", healthHandler.HealthCheck) // Legacy endpoint
 	s.router.GET("/ready", healthHandler.ReadinessCheck)
+	s.router.GET("/live", healthHandler.LivenessCheck)       // Kubernetes liveness probe
+	s.router.GET("/health/detailed", healthHandler.DetailedHealthCheck)
 	
 	// API v1 routes
 	v1 := s.router.Group("/api/v1")
