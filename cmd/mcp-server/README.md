@@ -184,8 +184,6 @@ The implementation consists of:
 
 Current limitations (TODOs):
 
-- Graph clearing functionality not yet implemented
-- Episode retrieval not yet implemented
 - Some advanced search features from Python version not ported
 - Limited error handling and validation
 
