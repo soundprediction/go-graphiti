@@ -1388,11 +1388,11 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt.Format(time.RFC3339)
-		params["source"] = node.Reference.Format(time.RFC3339)
+		params["created_at"] = node.CreatedAt
+		params["source"] = node.Reference
 		params["source_description"] = "" // source_description from metadata if available
 		params["content"] = node.Content
-		params["valid_at"] = node.ValidFrom.Format(time.RFC3339)
+		params["valid_at"] = node.ValidFrom
 	case "Entity":
 		query = `
 			CREATE (n:Entity {
@@ -1409,7 +1409,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt.Format(time.RFC3339)
+		params["created_at"] = node.CreatedAt
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
 	case "Community":
@@ -1426,7 +1426,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt.Format(time.RFC3339)
+		params["created_at"] = node.CreatedAt
 		params["summary"] = node.Summary
 	default:
 		// Default to Entity
@@ -1445,7 +1445,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt.Format(time.RFC3339)
+		params["created_at"] = node.CreatedAt
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
 	}
@@ -1492,7 +1492,7 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 		params["group_id"] = node.GroupID
 		params["name"] = node.Name
 		params["content"] = node.Content
-		params["valid_at"] = node.ValidFrom.Format(time.RFC3339)
+		params["valid_at"] = node.ValidFrom
 	case "Entity":
 		query = `
 			MATCH (n:Entity)
@@ -1601,15 +1601,15 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	params["target_uuid"] = edge.TargetID
 	params["group_id"] = edge.GroupID
 	params["uuid"] = edge.ID
-	params["created_at"] = edge.CreatedAt.Format(time.RFC3339)
+	params["created_at"] = edge.CreatedAt
 	params["name"] = edge.Name
 	params["fact"] = edge.Summary // Use summary as fact
 	params["attributes"] = metadataJSON
-	params["valid_at"] = edge.ValidFrom.Format(time.RFC3339)
+	params["valid_at"] = edge.ValidFrom
 
 	if edge.ValidTo != nil {
-		params["expired_at"] = edge.ValidTo.Format(time.RFC3339)
-		params["invalid_at"] = edge.ValidTo.Format(time.RFC3339)
+		params["expired_at"] = edge.ValidTo
+		params["invalid_at"] = edge.ValidTo
 	} else {
 		params["expired_at"] = nil
 		params["invalid_at"] = nil
@@ -1658,11 +1658,11 @@ func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 	params["name"] = edge.Name
 	params["fact"] = edge.Summary // Use summary as fact
 	params["attributes"] = metadataJSON
-	params["valid_at"] = edge.ValidFrom.Format(time.RFC3339)
+	params["valid_at"] = edge.ValidFrom
 
 	if edge.ValidTo != nil {
-		params["expired_at"] = edge.ValidTo.Format(time.RFC3339)
-		params["invalid_at"] = edge.ValidTo.Format(time.RFC3339)
+		params["expired_at"] = edge.ValidTo
+		params["invalid_at"] = edge.ValidTo
 	} else {
 		params["expired_at"] = nil
 		params["invalid_at"] = nil
