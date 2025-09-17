@@ -199,11 +199,22 @@ func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*type
 	for _, table := range tables {
 		query := fmt.Sprintf(`
 			MATCH (n:%s)
-			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			WHERE n.uuid = $uuid AND n.group_id = $group_id
 			RETURN n.*
-		`, table, strings.ReplaceAll(nodeID, "'", "\\'"), strings.ReplaceAll(groupID, "'", "\\'"))
+		`, table)
 
-		result, err := k.conn.Query(query)
+		params := map[string]interface{}{
+			"uuid":     nodeID,
+			"group_id": groupID,
+		}
+
+		preparedStmt, err := k.conn.Prepare(query)
+		if err != nil {
+			continue
+		}
+
+		result, err := k.conn.Execute(preparedStmt, params)
+		preparedStmt.Close()
 		if err != nil {
 			continue
 		}
@@ -235,12 +246,10 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	tableName := k.getTableNameForNodeType(node.Type)
 
 	// Try to create first
-	createQuery := k.prepareNodeCreateQuery(node, tableName)
-	_, err := k.conn.Query(createQuery)
+	err := k.executeNodeCreateQuery(node, tableName)
 	if err != nil {
 		// If creation fails, try to update
-		updateQuery := k.prepareNodeUpdateQuery(node, tableName)
-		_, updateErr := k.conn.Query(updateQuery)
+		updateErr := k.executeNodeUpdateQuery(node, tableName)
 		if updateErr != nil {
 			return fmt.Errorf("failed to create or update node: create error: %w, update error: %w", err, updateErr)
 		}
@@ -378,12 +387,10 @@ func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 	}
 
 	// Try to create the edge using RelatesToNode_ pattern
-	createQuery := k.prepareEdgeCreateQuery(edge)
-	_, err = k.conn.Query(createQuery)
+	err = k.executeEdgeCreateQuery(edge)
 	if err != nil {
 		// If creation fails, try to update
-		updateQuery := k.prepareEdgeUpdateQuery(edge)
-		_, updateErr := k.conn.Query(updateQuery)
+		updateErr := k.executeEdgeUpdateQuery(edge)
 		if updateErr != nil {
 			return fmt.Errorf("failed to create or update edge: create error: %w, update error: %w", err, updateErr)
 		}
@@ -1349,8 +1356,8 @@ func (k *KuzuDriver) flatTupleToEdge(tuple *kuzu.FlatTuple) (*types.Edge, error)
 	return edge, nil
 }
 
-// prepareNodeCreateQuery prepares a CREATE query for a node in the specified table
-func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) string {
+// executeNodeCreateQuery executes a CREATE query for a node using prepared statements
+func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) error {
 	// Convert metadata to JSON string
 	var metadataJSON string
 	if node.Metadata != nil {
@@ -1359,90 +1366,107 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) 
 		}
 	}
 
-	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
-	createdAt := fmt.Sprintf("TIMESTAMP('%s')", node.CreatedAt.Format(time.RFC3339))
-	validFrom := fmt.Sprintf("TIMESTAMP('%s')", node.ValidFrom.Format(time.RFC3339))
+	// Prepare query and parameters based on table type
+	var query string
+	params := make(map[string]interface{})
 
-	// Generate query based on table type
 	switch tableName {
 	case "Episodic":
-		return fmt.Sprintf(`
+		query = `
 			CREATE (n:Episodic {
-				uuid: '%s',
-				name: '%s',
-				group_id: '%s',
-				created_at: %s,
-				source: '%s',
-				source_description: '%s',
-				content: '%s',
-				valid_at: %s,
+				uuid: $uuid,
+				name: $name,
+				group_id: $group_id,
+				created_at: $created_at,
+				source: $source,
+				source_description: $source_description,
+				content: $content,
+				valid_at: $valid_at,
 				entity_edges: []
 			})
-		`, k.escapeString(node.ID),
-			k.escapeString(node.Name),
-			k.escapeString(node.GroupID),
-			createdAt,
-			k.escapeString(node.Reference.Format(time.RFC3339)),
-			k.escapeString(""), // source_description from metadata if available
-			k.escapeString(node.Content),
-			validFrom)
+		`
+		params["uuid"] = node.ID
+		params["name"] = node.Name
+		params["group_id"] = node.GroupID
+		params["created_at"] = node.CreatedAt
+		params["source"] = node.Reference
+		params["source_description"] = "" // source_description from metadata if available
+		params["content"] = node.Content
+		params["valid_at"] = node.ValidFrom
 	case "Entity":
-		return fmt.Sprintf(`
+		query = `
 			CREATE (n:Entity {
-				uuid: '%s',
-				name: '%s',
-				group_id: '%s',
+				uuid: $uuid,
+				name: $name,
+				group_id: $group_id,
 				labels: [],
-				created_at: %s,
+				created_at: $created_at,
 				name_embedding: [],
-				summary: '%s',
-				attributes: '%s'
+				summary: $summary,
+				attributes: $attributes
 			})
-		`, k.escapeString(node.ID),
-			k.escapeString(node.Name),
-			k.escapeString(node.GroupID),
-			createdAt,
-			k.escapeString(node.Summary),
-			k.escapeString(metadataJSON))
+		`
+		params["uuid"] = node.ID
+		params["name"] = node.Name
+		params["group_id"] = node.GroupID
+		params["created_at"] = node.CreatedAt
+		params["summary"] = node.Summary
+		params["attributes"] = metadataJSON
 	case "Community":
-		return fmt.Sprintf(`
+		query = `
 			CREATE (n:Community {
-				uuid: '%s',
-				name: '%s',
-				group_id: '%s',
-				created_at: %s,
+				uuid: $uuid,
+				name: $name,
+				group_id: $group_id,
+				created_at: $created_at,
 				name_embedding: [],
-				summary: '%s'
+				summary: $summary
 			})
-		`, k.escapeString(node.ID),
-			k.escapeString(node.Name),
-			k.escapeString(node.GroupID),
-			createdAt,
-			k.escapeString(node.Summary))
+		`
+		params["uuid"] = node.ID
+		params["name"] = node.Name
+		params["group_id"] = node.GroupID
+		params["created_at"] = node.CreatedAt
+		params["summary"] = node.Summary
 	default:
 		// Default to Entity
-		return fmt.Sprintf(`
+		query = `
 			CREATE (n:Entity {
-				uuid: '%s',
-				name: '%s',
-				group_id: '%s',
+				uuid: $uuid,
+				name: $name,
+				group_id: $group_id,
 				labels: [],
-				created_at: %s,
+				created_at: $created_at,
 				name_embedding: [],
-				summary: '%s',
-				attributes: '%s'
+				summary: $summary,
+				attributes: $attributes
 			})
-		`, k.escapeString(node.ID),
-			k.escapeString(node.Name),
-			k.escapeString(node.GroupID),
-			createdAt,
-			k.escapeString(node.Summary),
-			k.escapeString(metadataJSON))
+		`
+		params["uuid"] = node.ID
+		params["name"] = node.Name
+		params["group_id"] = node.GroupID
+		params["created_at"] = node.CreatedAt
+		params["summary"] = node.Summary
+		params["attributes"] = metadataJSON
 	}
+
+	// Prepare and execute the statement
+	preparedStmt, err := k.conn.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare node create statement: %w", err)
+	}
+	defer preparedStmt.Close()
+
+	_, err = k.conn.Execute(preparedStmt, params)
+	if err != nil {
+		return fmt.Errorf("failed to execute node create statement: %w", err)
+	}
+
+	return nil
 }
 
-// prepareNodeUpdateQuery prepares an UPDATE query for a node in the specified table
-func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node, tableName string) string {
+// executeNodeUpdateQuery executes an UPDATE query for a node using prepared statements
+func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) error {
 	// Convert metadata to JSON string
 	var metadataJSON string
 	if node.Metadata != nil {
@@ -1451,59 +1475,77 @@ func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node, tableName string) 
 		}
 	}
 
-	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
-	validFrom := fmt.Sprintf("TIMESTAMP('%s')", node.ValidFrom.Format(time.RFC3339))
+	// Prepare query and parameters based on table type
+	var query string
+	params := make(map[string]interface{})
 
-	// Generate update query based on table type
 	switch tableName {
 	case "Episodic":
-		return fmt.Sprintf(`
+		query = `
 			MATCH (n:Episodic)
-			WHERE n.uuid = '%s' AND n.group_id = '%s'
-			SET n.name = '%s',
-				n.content = '%s',
-				n.valid_at = %s
-		`, k.escapeString(node.ID),
-			k.escapeString(node.GroupID),
-			k.escapeString(node.Name),
-			k.escapeString(node.Content),
-			validFrom)
+			WHERE n.uuid = $uuid AND n.group_id = $group_id
+			SET n.name = $name,
+				n.content = $content,
+				n.valid_at = $valid_at
+		`
+		params["uuid"] = node.ID
+		params["group_id"] = node.GroupID
+		params["name"] = node.Name
+		params["content"] = node.Content
+		params["valid_at"] = node.ValidFrom
 	case "Entity":
-		return fmt.Sprintf(`
+		query = `
 			MATCH (n:Entity)
-			WHERE n.uuid = '%s' AND n.group_id = '%s'
-			SET n.name = '%s',
-				n.summary = '%s',
-				n.attributes = '%s'
-		`, k.escapeString(node.ID),
-			k.escapeString(node.GroupID),
-			k.escapeString(node.Name),
-			k.escapeString(node.Summary),
-			k.escapeString(metadataJSON))
+			WHERE n.uuid = $uuid AND n.group_id = $group_id
+			SET n.name = $name,
+				n.summary = $summary,
+				n.attributes = $attributes
+		`
+		params["uuid"] = node.ID
+		params["group_id"] = node.GroupID
+		params["name"] = node.Name
+		params["summary"] = node.Summary
+		params["attributes"] = metadataJSON
 	case "Community":
-		return fmt.Sprintf(`
+		query = `
 			MATCH (n:Community)
-			WHERE n.uuid = '%s' AND n.group_id = '%s'
-			SET n.name = '%s',
-				n.summary = '%s'
-		`, k.escapeString(node.ID),
-			k.escapeString(node.GroupID),
-			k.escapeString(node.Name),
-			k.escapeString(node.Summary))
+			WHERE n.uuid = $uuid AND n.group_id = $group_id
+			SET n.name = $name,
+				n.summary = $summary
+		`
+		params["uuid"] = node.ID
+		params["group_id"] = node.GroupID
+		params["name"] = node.Name
+		params["summary"] = node.Summary
 	default:
 		// Default to Entity
-		return fmt.Sprintf(`
+		query = `
 			MATCH (n:Entity)
-			WHERE n.uuid = '%s' AND n.group_id = '%s'
-			SET n.name = '%s',
-				n.summary = '%s',
-				n.attributes = '%s'
-		`, k.escapeString(node.ID),
-			k.escapeString(node.GroupID),
-			k.escapeString(node.Name),
-			k.escapeString(node.Summary),
-			k.escapeString(metadataJSON))
+			WHERE n.uuid = $uuid AND n.group_id = $group_id
+			SET n.name = $name,
+				n.summary = $summary,
+				n.attributes = $attributes
+		`
+		params["uuid"] = node.ID
+		params["group_id"] = node.GroupID
+		params["name"] = node.Name
+		params["summary"] = node.Summary
+		params["attributes"] = metadataJSON
 	}
+
+	// Prepare and execute the statement
+	preparedStmt, err := k.conn.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare node update statement: %w", err)
+	}
+	defer preparedStmt.Close()
+
+	_, err = k.conn.Execute(preparedStmt, params)
+	if err != nil {
+		return fmt.Errorf("failed to execute node update statement: %w", err)
+	}
+
+	return nil
 }
 
 // escapeString escapes dangerous characters in strings for Kuzu queries
@@ -1523,70 +1565,73 @@ func (k *KuzuDriver) escapeString(s string) string {
 	return s
 }
 
-// prepareEdgeCreateQuery prepares a CREATE query for an edge using RelatesToNode_ pattern
-func (k *KuzuDriver) prepareEdgeCreateQuery(edge *types.Edge) string {
+// executeEdgeCreateQuery executes a CREATE query for an edge using prepared statements
+func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	// Convert metadata to JSON string
 	var metadataJSON string
 	if edge.Metadata != nil {
 		if data, err := json.Marshal(edge.Metadata); err == nil {
 			metadataJSON = string(data)
 		}
-	}
-
-	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
-	createdAt := fmt.Sprintf("TIMESTAMP('%s')", edge.CreatedAt.Format(time.RFC3339))
-	validFrom := fmt.Sprintf("TIMESTAMP('%s')", edge.ValidFrom.Format(time.RFC3339))
-
-	var validToStr string
-	if edge.ValidTo != nil {
-		validToStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
-	} else {
-		validToStr = "NULL"
-	}
-
-	var invalidAtStr string
-	if edge.ValidTo != nil {
-		invalidAtStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
-	} else {
-		invalidAtStr = "NULL"
 	}
 
 	// Use the RelatesToNode_ pattern from Python implementation
-	return fmt.Sprintf(`
-		MATCH (a:Entity {uuid: '%s', group_id: '%s'})
-		MATCH (b:Entity {uuid: '%s', group_id: '%s'})
+	query := `
+		MATCH (a:Entity {uuid: $source_uuid, group_id: $group_id})
+		MATCH (b:Entity {uuid: $target_uuid, group_id: $group_id})
 		CREATE (rel:RelatesToNode_ {
-			uuid: '%s',
-			group_id: '%s',
-			created_at: %s,
-			name: '%s',
-			fact: '%s',
+			uuid: $uuid,
+			group_id: $group_id,
+			created_at: $created_at,
+			name: $name,
+			fact: $fact,
 			fact_embedding: [],
 			episodes: [],
-			expired_at: %s,
-			valid_at: %s,
-			invalid_at: %s,
-			attributes: '%s'
+			expired_at: $expired_at,
+			valid_at: $valid_at,
+			invalid_at: $invalid_at,
+			attributes: $attributes
 		})
 		CREATE (a)-[:RELATES_TO]->(rel)
 		CREATE (rel)-[:RELATES_TO]->(b)
-	`, k.escapeString(edge.SourceID),
-		k.escapeString(edge.GroupID),
-		k.escapeString(edge.TargetID),
-		k.escapeString(edge.GroupID),
-		k.escapeString(edge.ID),
-		k.escapeString(edge.GroupID),
-		createdAt,
-		k.escapeString(edge.Name),
-		k.escapeString(edge.Summary), // Use summary as fact
-		validToStr, // expired_at
-		validFrom, // valid_at
-		invalidAtStr, // invalid_at
-		k.escapeString(metadataJSON))
+	`
+
+	params := make(map[string]interface{})
+	params["source_uuid"] = edge.SourceID
+	params["target_uuid"] = edge.TargetID
+	params["group_id"] = edge.GroupID
+	params["uuid"] = edge.ID
+	params["created_at"] = edge.CreatedAt
+	params["name"] = edge.Name
+	params["fact"] = edge.Summary // Use summary as fact
+	params["attributes"] = metadataJSON
+	params["valid_at"] = edge.ValidFrom
+
+	if edge.ValidTo != nil {
+		params["expired_at"] = edge.ValidTo
+		params["invalid_at"] = edge.ValidTo
+	} else {
+		params["expired_at"] = nil
+		params["invalid_at"] = nil
+	}
+
+	// Prepare and execute the statement
+	preparedStmt, err := k.conn.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare edge create statement: %w", err)
+	}
+	defer preparedStmt.Close()
+
+	_, err = k.conn.Execute(preparedStmt, params)
+	if err != nil {
+		return fmt.Errorf("failed to execute edge create statement: %w", err)
+	}
+
+	return nil
 }
 
-// prepareEdgeUpdateQuery prepares an UPDATE query for an edge using RelatesToNode_ pattern
-func (k *KuzuDriver) prepareEdgeUpdateQuery(edge *types.Edge) string {
+// executeEdgeUpdateQuery executes an UPDATE query for an edge using prepared statements
+func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 	// Convert metadata to JSON string
 	var metadataJSON string
 	if edge.Metadata != nil {
@@ -1595,41 +1640,47 @@ func (k *KuzuDriver) prepareEdgeUpdateQuery(edge *types.Edge) string {
 		}
 	}
 
-	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
-	validFrom := fmt.Sprintf("TIMESTAMP('%s')", edge.ValidFrom.Format(time.RFC3339))
-
-	var validToStr string
-	if edge.ValidTo != nil {
-		validToStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
-	} else {
-		validToStr = "NULL"
-	}
-
-	var invalidAtStr string
-	if edge.ValidTo != nil {
-		invalidAtStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
-	} else {
-		invalidAtStr = "NULL"
-	}
-
 	// Update using RelatesToNode_ pattern
-	return fmt.Sprintf(`
+	query := `
 		MATCH (rel:RelatesToNode_)
-		WHERE rel.uuid = '%s' AND rel.group_id = '%s'
-		SET rel.name = '%s',
-			rel.fact = '%s',
-			rel.expired_at = %s,
-			rel.valid_at = %s,
-			rel.invalid_at = %s,
-			rel.attributes = '%s'
-	`, k.escapeString(edge.ID),
-		k.escapeString(edge.GroupID),
-		k.escapeString(edge.Name),
-		k.escapeString(edge.Summary), // Use summary as fact
-		validToStr, // expired_at
-		validFrom, // valid_at
-		invalidAtStr, // invalid_at
-		k.escapeString(metadataJSON))
+		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
+		SET rel.name = $name,
+			rel.fact = $fact,
+			rel.expired_at = $expired_at,
+			rel.valid_at = $valid_at,
+			rel.invalid_at = $invalid_at,
+			rel.attributes = $attributes
+	`
+
+	params := make(map[string]interface{})
+	params["uuid"] = edge.ID
+	params["group_id"] = edge.GroupID
+	params["name"] = edge.Name
+	params["fact"] = edge.Summary // Use summary as fact
+	params["attributes"] = metadataJSON
+	params["valid_at"] = edge.ValidFrom
+
+	if edge.ValidTo != nil {
+		params["expired_at"] = edge.ValidTo
+		params["invalid_at"] = edge.ValidTo
+	} else {
+		params["expired_at"] = nil
+		params["invalid_at"] = nil
+	}
+
+	// Prepare and execute the statement
+	preparedStmt, err := k.conn.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare edge update statement: %w", err)
+	}
+	defer preparedStmt.Close()
+
+	_, err = k.conn.Execute(preparedStmt, params)
+	if err != nil {
+		return fmt.Errorf("failed to execute edge update statement: %w", err)
+	}
+
+	return nil
 }
 
 // cosineSimilarity computes the cosine similarity between two vectors
