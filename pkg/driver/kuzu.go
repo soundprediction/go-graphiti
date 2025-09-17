@@ -707,15 +707,15 @@ func (k *KuzuDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error
 func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error) {
 	// Escape strings for safe query execution
 	escapedGroupID := fmt.Sprintf("'%s'", groupID)
-	startTime := start.Format(time.RFC3339)
-	endTime := end.Format(time.RFC3339)
+	startTime := fmt.Sprintf("TIMESTAMP('%s')", start.Format(time.RFC3339))
+	endTime := fmt.Sprintf("TIMESTAMP('%s')", end.Format(time.RFC3339))
 
 	// Query nodes created within the time range
 	query := fmt.Sprintf(`
 		MATCH (n:Node)
 		WHERE n.group_id = %s
-		  AND n.created_at >= '%s'
-		  AND n.created_at <= '%s'
+		  AND n.created_at >= %s
+		  AND n.created_at <= %s
 		RETURN n.*
 		ORDER BY n.created_at
 	`, escapedGroupID, startTime, endTime)
@@ -747,15 +747,15 @@ func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Ti
 func (k *KuzuDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error) {
 	// Escape strings for safe query execution
 	escapedGroupID := fmt.Sprintf("'%s'", groupID)
-	startTime := start.Format(time.RFC3339)
-	endTime := end.Format(time.RFC3339)
+	startTime := fmt.Sprintf("TIMESTAMP('%s')", start.Format(time.RFC3339))
+	endTime := fmt.Sprintf("TIMESTAMP('%s')", end.Format(time.RFC3339))
 
 	// Query edges created within the time range
 	query := fmt.Sprintf(`
 		MATCH (a:Node)-[e:Edge]->(b:Node)
 		WHERE e.group_id = %s
-		  AND e.created_at >= '%s'
-		  AND e.created_at <= '%s'
+		  AND e.created_at >= %s
+		  AND e.created_at <= %s
 		RETURN e.*, a.id AS source_id, b.id AS target_id
 		ORDER BY e.created_at
 	`, escapedGroupID, startTime, endTime)
@@ -1359,9 +1359,9 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) 
 		}
 	}
 
-	// Convert timestamps to string format
-	createdAt := node.CreatedAt.Format(time.RFC3339)
-	validFrom := node.ValidFrom.Format(time.RFC3339)
+	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
+	createdAt := fmt.Sprintf("TIMESTAMP('%s')", node.CreatedAt.Format(time.RFC3339))
+	validFrom := fmt.Sprintf("TIMESTAMP('%s')", node.ValidFrom.Format(time.RFC3339))
 
 	// Generate query based on table type
 	switch tableName {
@@ -1371,11 +1371,11 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) 
 				uuid: '%s',
 				name: '%s',
 				group_id: '%s',
-				created_at: '%s',
+				created_at: %s,
 				source: '%s',
 				source_description: '%s',
 				content: '%s',
-				valid_at: '%s',
+				valid_at: %s,
 				entity_edges: []
 			})
 		`, k.escapeString(node.ID),
@@ -1393,7 +1393,7 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) 
 				name: '%s',
 				group_id: '%s',
 				labels: [],
-				created_at: '%s',
+				created_at: %s,
 				name_embedding: [],
 				summary: '%s',
 				attributes: '%s'
@@ -1410,7 +1410,7 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) 
 				uuid: '%s',
 				name: '%s',
 				group_id: '%s',
-				created_at: '%s',
+				created_at: %s,
 				name_embedding: [],
 				summary: '%s'
 			})
@@ -1427,7 +1427,7 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) 
 				name: '%s',
 				group_id: '%s',
 				labels: [],
-				created_at: '%s',
+				created_at: %s,
 				name_embedding: [],
 				summary: '%s',
 				attributes: '%s'
@@ -1451,8 +1451,8 @@ func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node, tableName string) 
 		}
 	}
 
-	// Convert timestamps to string format
-	validFrom := node.ValidFrom.Format(time.RFC3339)
+	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
+	validFrom := fmt.Sprintf("TIMESTAMP('%s')", node.ValidFrom.Format(time.RFC3339))
 
 	// Generate update query based on table type
 	switch tableName {
@@ -1462,7 +1462,7 @@ func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node, tableName string) 
 			WHERE n.uuid = '%s' AND n.group_id = '%s'
 			SET n.name = '%s',
 				n.content = '%s',
-				n.valid_at = '%s'
+				n.valid_at = %s
 		`, k.escapeString(node.ID),
 			k.escapeString(node.GroupID),
 			k.escapeString(node.Name),
@@ -1506,9 +1506,21 @@ func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node, tableName string) 
 	}
 }
 
-// escapeString escapes single quotes in strings for Kuzu queries
+// escapeString escapes dangerous characters in strings for Kuzu queries
 func (k *KuzuDriver) escapeString(s string) string {
-	return strings.ReplaceAll(s, "'", "\\'")
+	// Escape single quotes
+	s = strings.ReplaceAll(s, "'", "\\'")
+	// Escape double quotes
+	s = strings.ReplaceAll(s, "\"", "\\\"")
+	// Escape backslashes
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	// Escape newlines
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	// Escape carriage returns
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	// Escape tabs
+	s = strings.ReplaceAll(s, "\t", "\\t")
+	return s
 }
 
 // prepareEdgeCreateQuery prepares a CREATE query for an edge using RelatesToNode_ pattern
@@ -1521,22 +1533,22 @@ func (k *KuzuDriver) prepareEdgeCreateQuery(edge *types.Edge) string {
 		}
 	}
 
-	// Convert timestamps to string format
-	createdAt := edge.CreatedAt.Format(time.RFC3339)
-	validFrom := edge.ValidFrom.Format(time.RFC3339)
+	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
+	createdAt := fmt.Sprintf("TIMESTAMP('%s')", edge.CreatedAt.Format(time.RFC3339))
+	validFrom := fmt.Sprintf("TIMESTAMP('%s')", edge.ValidFrom.Format(time.RFC3339))
 
 	var validToStr string
 	if edge.ValidTo != nil {
-		validToStr = edge.ValidTo.Format(time.RFC3339)
+		validToStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
 	} else {
-		validToStr = ""
+		validToStr = "NULL"
 	}
 
 	var invalidAtStr string
 	if edge.ValidTo != nil {
-		invalidAtStr = edge.ValidTo.Format(time.RFC3339)
+		invalidAtStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
 	} else {
-		invalidAtStr = ""
+		invalidAtStr = "NULL"
 	}
 
 	// Use the RelatesToNode_ pattern from Python implementation
@@ -1546,14 +1558,14 @@ func (k *KuzuDriver) prepareEdgeCreateQuery(edge *types.Edge) string {
 		CREATE (rel:RelatesToNode_ {
 			uuid: '%s',
 			group_id: '%s',
-			created_at: '%s',
+			created_at: %s,
 			name: '%s',
 			fact: '%s',
 			fact_embedding: [],
 			episodes: [],
-			expired_at: '%s',
-			valid_at: '%s',
-			invalid_at: '%s',
+			expired_at: %s,
+			valid_at: %s,
+			invalid_at: %s,
 			attributes: '%s'
 		})
 		CREATE (a)-[:RELATES_TO]->(rel)
@@ -1583,21 +1595,21 @@ func (k *KuzuDriver) prepareEdgeUpdateQuery(edge *types.Edge) string {
 		}
 	}
 
-	// Convert timestamps to string format
-	validFrom := edge.ValidFrom.Format(time.RFC3339)
+	// Convert timestamps to Kuzu TIMESTAMP format (without quotes)
+	validFrom := fmt.Sprintf("TIMESTAMP('%s')", edge.ValidFrom.Format(time.RFC3339))
 
 	var validToStr string
 	if edge.ValidTo != nil {
-		validToStr = edge.ValidTo.Format(time.RFC3339)
+		validToStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
 	} else {
-		validToStr = ""
+		validToStr = "NULL"
 	}
 
 	var invalidAtStr string
 	if edge.ValidTo != nil {
-		invalidAtStr = edge.ValidTo.Format(time.RFC3339)
+		invalidAtStr = fmt.Sprintf("TIMESTAMP('%s')", edge.ValidTo.Format(time.RFC3339))
 	} else {
-		invalidAtStr = ""
+		invalidAtStr = "NULL"
 	}
 
 	// Update using RelatesToNode_ pattern
@@ -1606,9 +1618,9 @@ func (k *KuzuDriver) prepareEdgeUpdateQuery(edge *types.Edge) string {
 		WHERE rel.uuid = '%s' AND rel.group_id = '%s'
 		SET rel.name = '%s',
 			rel.fact = '%s',
-			rel.expired_at = '%s',
-			rel.valid_at = '%s',
-			rel.invalid_at = '%s',
+			rel.expired_at = %s,
+			rel.valid_at = %s,
+			rel.invalid_at = %s,
 			rel.attributes = '%s'
 	`, k.escapeString(edge.ID),
 		k.escapeString(edge.GroupID),
