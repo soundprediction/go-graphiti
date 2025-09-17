@@ -14,28 +14,94 @@ import (
 
 // KuzuDriver implements the GraphDriver interface for Kuzu databases.
 // Kuzu is an embedded graph database management system built for query speed and scalability.
+// This implementation follows the schema pattern from the Python Graphiti Kuzu driver.
 type KuzuDriver struct {
 	database *kuzu.Database
 	conn     *kuzu.Connection
 	dbPath   string
 }
 
+// Schema queries for Kuzu database initialization
+// Following the Python implementation's schema design
+const SCHEMA_QUERIES = `
+    CREATE NODE TABLE IF NOT EXISTS Episodic (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        created_at TIMESTAMP,
+        source STRING,
+        source_description STRING,
+        content STRING,
+        valid_at TIMESTAMP,
+        entity_edges STRING[]
+    );
+    CREATE NODE TABLE IF NOT EXISTS Entity (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        labels STRING[],
+        created_at TIMESTAMP,
+        name_embedding FLOAT[],
+        summary STRING,
+        attributes STRING
+    );
+    CREATE NODE TABLE IF NOT EXISTS Community (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        created_at TIMESTAMP,
+        name_embedding FLOAT[],
+        summary STRING
+    );
+    CREATE NODE TABLE IF NOT EXISTS RelatesToNode_ (
+        uuid STRING PRIMARY KEY,
+        group_id STRING,
+        created_at TIMESTAMP,
+        name STRING,
+        fact STRING,
+        fact_embedding FLOAT[],
+        episodes STRING[],
+        expired_at TIMESTAMP,
+        valid_at TIMESTAMP,
+        invalid_at TIMESTAMP,
+        attributes STRING
+    );
+    CREATE REL TABLE IF NOT EXISTS RELATES_TO(
+        FROM Entity TO RelatesToNode_,
+        FROM RelatesToNode_ TO Entity
+    );
+    CREATE REL TABLE IF NOT EXISTS MENTIONS(
+        FROM Episodic TO Entity,
+        uuid STRING PRIMARY KEY,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+    CREATE REL TABLE IF NOT EXISTS HAS_MEMBER(
+        FROM Community TO Entity,
+        FROM Community TO Community,
+        uuid STRING,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+`
+
 // NewKuzuDriver creates a new Kuzu driver instance.
 // Kuzu is an embedded database, so it works with a local directory path.
+// Uses :memory: for in-memory database by default, matching Python implementation.
 //
 // Parameters:
-//   - dbPath: Path to the Kuzu database directory (will be created if it doesn't exist)
+//   - dbPath: Path to the Kuzu database directory (use ":memory:" for in-memory)
 //
 // Example:
 //
-//	driver, err := driver.NewKuzuDriver("./kuzu_db")
+//	driver, err := driver.NewKuzuDriver(":memory:")
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer driver.Close(ctx)
 func NewKuzuDriver(dbPath string) (*KuzuDriver, error) {
 	if dbPath == "" {
-		dbPath = "./kuzu_graphiti_db"
+		dbPath = ":memory:"
 	}
 
 	// Create the Kuzu database
@@ -57,8 +123,8 @@ func NewKuzuDriver(dbPath string) (*KuzuDriver, error) {
 		dbPath:   dbPath,
 	}
 
-	// Initialize the schema for nodes and edges
-	err = driver.createTables()
+	// Initialize the schema following Python implementation
+	err = driver.setupSchema()
 	if err != nil {
 		driver.Close(context.Background())
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
@@ -67,94 +133,95 @@ func NewKuzuDriver(dbPath string) (*KuzuDriver, error) {
 	return driver, nil
 }
 
-// createTables initializes the database schema for nodes and edges
-func (k *KuzuDriver) createTables() error {
-	// Create Node table
-	nodeQuery := `
-		CREATE NODE TABLE IF NOT EXISTS Node (
-			id STRING,
-			name STRING,
-			node_type STRING,
-			group_id STRING,
-			created_at TIMESTAMP,
-			updated_at TIMESTAMP,
-			entity_type STRING,
-			summary STRING,
-			episode_type STRING,
-			content STRING,
-			reference TIMESTAMP,
-			level INT64,
-			embedding FLOAT[],
-			metadata STRING,
-			valid_from TIMESTAMP,
-			valid_to TIMESTAMP,
-			source_ids STRING[],
-			PRIMARY KEY (id)
-		)`
-
-	_, err := k.conn.Query(nodeQuery)
+// setupSchema initializes the database schema following the Python implementation
+func (k *KuzuDriver) setupSchema() error {
+	_, err := k.conn.Query(SCHEMA_QUERIES)
 	if err != nil {
-		return fmt.Errorf("failed to create Node table: %w", err)
+		return fmt.Errorf("failed to create schema: %w", err)
 	}
-
-	// Create Edge table
-	edgeQuery := `
-		CREATE REL TABLE IF NOT EXISTS Edge (
-			FROM Node TO Node,
-			id STRING,
-			edge_type STRING,
-			group_id STRING,
-			created_at TIMESTAMP,
-			updated_at TIMESTAMP,
-			name STRING,
-			summary STRING,
-			strength DOUBLE,
-			embedding FLOAT[],
-			metadata STRING,
-			valid_from TIMESTAMP,
-			valid_to TIMESTAMP,
-			source_ids STRING[]
-		)`
-
-	_, err = k.conn.Query(edgeQuery)
-	if err != nil {
-		return fmt.Errorf("failed to create Edge table: %w", err)
-	}
-
 	return nil
 }
 
-// GetNode retrieves a node by ID.
-func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
-	// Escape strings for safe query execution
-	escapedNodeID := fmt.Sprintf("'%s'", nodeID)
-	escapedGroupID := fmt.Sprintf("'%s'", groupID)
-
-	query := fmt.Sprintf(`
-		MATCH (n:Node)
-		WHERE n.id = %s AND n.group_id = %s
-		RETURN n.*
-	`, escapedNodeID, escapedGroupID)
+// executeQuery executes a query with parameters, following Python implementation pattern
+func (k *KuzuDriver) executeQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
+	// Filter out unsupported parameters (matching Python implementation)
+	filteredParams := make(map[string]interface{})
+	for key, value := range params {
+		if value != nil && key != "database_" && key != "routing_" {
+			filteredParams[key] = value
+		}
+	}
 
 	result, err := k.conn.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query node: %w", err)
+		// Log error with truncated params for debugging (matching Python behavior)
+		truncatedParams := make(map[string]interface{})
+		for key, value := range filteredParams {
+			if arr, ok := value.([]interface{}); ok && len(arr) > 5 {
+				truncatedParams[key] = arr[:5]
+			} else {
+				truncatedParams[key] = value
+			}
+		}
+		return nil, fmt.Errorf("error executing Kuzu query: %w\nQuery: %s\nParams: %v", err, query, truncatedParams)
 	}
 	defer result.Close()
 
 	if !result.HasNext() {
-		return nil, fmt.Errorf("node not found")
+		return []map[string]interface{}{}, nil
 	}
 
-	row, err := result.Next()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get next row: %w", err)
+	var results []map[string]interface{}
+	for result.HasNext() {
+		row, err := result.Next()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get next row: %w", err)
+		}
+
+		// Convert to map - this is simplified, real implementation would need proper conversion
+		rowMap := make(map[string]interface{})
+		if values, err := row.GetAsSlice(); err == nil {
+			for i, value := range values {
+				rowMap[fmt.Sprintf("col_%d", i)] = value
+			}
+		}
+		results = append(results, rowMap)
 	}
 
-	return k.flatTupleToNode(row)
+	return results, nil
 }
 
-// UpsertNode creates or updates a node.
+// GetNode retrieves a node by ID from the appropriate table based on node type.
+func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
+	// Try to find node in each table type
+	tables := []string{"Entity", "Episodic", "Community", "RelatesToNode_"}
+
+	for _, table := range tables {
+		query := fmt.Sprintf(`
+			MATCH (n:%s)
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			RETURN n.*
+		`, table, strings.ReplaceAll(nodeID, "'", "\\'"), strings.ReplaceAll(groupID, "'", "\\'"))
+
+		result, err := k.conn.Query(query)
+		if err != nil {
+			continue
+		}
+		defer result.Close()
+
+		if result.HasNext() {
+			row, err := result.Next()
+			if err != nil {
+				continue
+			}
+			return k.flatTupleToNode(row, table)
+		}
+	}
+
+	return nil, fmt.Errorf("node not found")
+}
+
+// UpsertNode creates or updates a node in the appropriate table based on node type.
 func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	if node.CreatedAt.IsZero() {
 		node.CreatedAt = time.Now()
@@ -164,15 +231,16 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 		node.ValidFrom = node.CreatedAt
 	}
 
-	// Prepare the query with actual values
-	preparedCreateQuery := k.prepareNodeCreateQuery(node)
+	// Determine which table to use based on node type
+	tableName := k.getTableNameForNodeType(node.Type)
 
-	_, err := k.conn.Query(preparedCreateQuery)
+	// Try to create first
+	createQuery := k.prepareNodeCreateQuery(node, tableName)
+	_, err := k.conn.Query(createQuery)
 	if err != nil {
 		// If creation fails, try to update
-		preparedUpdateQuery := k.prepareNodeUpdateQuery(node)
-
-		_, updateErr := k.conn.Query(preparedUpdateQuery)
+		updateQuery := k.prepareNodeUpdateQuery(node, tableName)
+		_, updateErr := k.conn.Query(updateQuery)
 		if updateErr != nil {
 			return fmt.Errorf("failed to create or update node: create error: %w, update error: %w", err, updateErr)
 		}
@@ -181,34 +249,32 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	return nil
 }
 
-// DeleteNode removes a node and its edges.
+// DeleteNode removes a node and its relationships from all tables.
 func (k *KuzuDriver) DeleteNode(ctx context.Context, nodeID, groupID string) error {
-	// Escape strings for safe query execution
-	escapedNodeID := fmt.Sprintf("'%s'", nodeID)
-	escapedGroupID := fmt.Sprintf("'%s'", groupID)
+	escapedNodeID := strings.ReplaceAll(nodeID, "'", "\\'")
+	escapedGroupID := strings.ReplaceAll(groupID, "'", "\\'")
 
-	// Delete all edges connected to this node first
-	deleteEdgesQuery := fmt.Sprintf(`
-		MATCH (n:Node)-[r:Edge]-()
-		WHERE n.id = %s AND n.group_id = %s
-		DELETE r
-	`, escapedNodeID, escapedGroupID)
+	// Delete from all possible tables
+	tables := []string{"Entity", "Episodic", "Community", "RelatesToNode_"}
 
-	_, err := k.conn.Query(deleteEdgesQuery)
-	if err != nil {
-		return fmt.Errorf("failed to delete edges for node: %w", err)
-	}
+	for _, table := range tables {
+		// Delete relationships first
+		deleteRelsQuery := fmt.Sprintf(`
+			MATCH (n:%s)-[r]-()
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			DELETE r
+		`, table, escapedNodeID, escapedGroupID)
 
-	// Delete the node itself
-	deleteNodeQuery := fmt.Sprintf(`
-		MATCH (n:Node)
-		WHERE n.id = %s AND n.group_id = %s
-		DELETE n
-	`, escapedNodeID, escapedGroupID)
+		k.conn.Query(deleteRelsQuery) // Ignore errors for missing relationships
 
-	_, err = k.conn.Query(deleteNodeQuery)
-	if err != nil {
-		return fmt.Errorf("failed to delete node: %w", err)
+		// Delete the node
+		deleteNodeQuery := fmt.Sprintf(`
+			MATCH (n:%s)
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			DELETE n
+		`, table, escapedNodeID, escapedGroupID)
+
+		k.conn.Query(deleteNodeQuery) // Ignore errors for nodes not in this table
 	}
 
 	return nil
@@ -249,7 +315,7 @@ func (k *KuzuDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID str
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -260,16 +326,16 @@ func (k *KuzuDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID str
 	return nodes, nil
 }
 
-// GetEdge retrieves an edge by ID.
+// GetEdge retrieves an edge by ID using the RelatesToNode_ pattern.
 func (k *KuzuDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
-	// Escape strings for safe query execution
-	escapedEdgeID := fmt.Sprintf("'%s'", edgeID)
-	escapedGroupID := fmt.Sprintf("'%s'", groupID)
+	escapedEdgeID := k.escapeString(edgeID)
+	escapedGroupID := k.escapeString(groupID)
 
+	// Query using the RelatesToNode_ pattern from Python implementation
 	query := fmt.Sprintf(`
-		MATCH (a:Node)-[e:Edge]->(b:Node)
-		WHERE e.id = %s AND e.group_id = %s
-		RETURN e.*, a.id AS source_id, b.id AS target_id
+		MATCH (a:Entity)-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
+		WHERE rel.uuid = '%s' AND rel.group_id = '%s'
+		RETURN rel.*, a.uuid AS source_id, b.uuid AS target_id
 	`, escapedEdgeID, escapedGroupID)
 
 	result, err := k.conn.Query(query)
@@ -290,7 +356,7 @@ func (k *KuzuDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*type
 	return k.flatTupleToEdge(row)
 }
 
-// UpsertEdge creates or updates an edge.
+// UpsertEdge creates or updates an edge using the RelatesToNode_ pattern.
 func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 	if edge.CreatedAt.IsZero() {
 		edge.CreatedAt = time.Now()
@@ -300,7 +366,7 @@ func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 		edge.ValidFrom = edge.CreatedAt
 	}
 
-	// First ensure source and target nodes exist
+	// First ensure source and target nodes exist as Entity nodes
 	_, err := k.GetNode(ctx, edge.SourceID, edge.GroupID)
 	if err != nil {
 		return fmt.Errorf("source node %s not found: %w", edge.SourceID, err)
@@ -311,15 +377,13 @@ func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 		return fmt.Errorf("target node %s not found: %w", edge.TargetID, err)
 	}
 
-	// Try to create the edge first
-	preparedCreateQuery := k.prepareEdgeCreateQuery(edge)
-
-	_, err = k.conn.Query(preparedCreateQuery)
+	// Try to create the edge using RelatesToNode_ pattern
+	createQuery := k.prepareEdgeCreateQuery(edge)
+	_, err = k.conn.Query(createQuery)
 	if err != nil {
 		// If creation fails, try to update
-		preparedUpdateQuery := k.prepareEdgeUpdateQuery(edge)
-
-		_, updateErr := k.conn.Query(preparedUpdateQuery)
+		updateQuery := k.prepareEdgeUpdateQuery(edge)
+		_, updateErr := k.conn.Query(updateQuery)
 		if updateErr != nil {
 			return fmt.Errorf("failed to create or update edge: create error: %w, update error: %w", err, updateErr)
 		}
@@ -430,7 +494,7 @@ func (k *KuzuDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, m
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -481,7 +545,7 @@ func (k *KuzuDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID string
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -528,7 +592,7 @@ func (k *KuzuDriver) SearchNodesByEmbedding(ctx context.Context, embedding []flo
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -669,7 +733,7 @@ func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Ti
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -747,7 +811,7 @@ func (k *KuzuDriver) GetCommunities(ctx context.Context, groupID string, level i
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -914,7 +978,7 @@ func (k *KuzuDriver) SearchNodes(ctx context.Context, query, groupID string, opt
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert row to node: %w", err)
 		}
@@ -1013,7 +1077,7 @@ func (k *KuzuDriver) SearchNodesByVector(ctx context.Context, vector []float32, 
 			continue
 		}
 
-		node, err := k.flatTupleToNode(row)
+		node, err := k.flatTupleToNode(row, "Unknown")
 		if err != nil {
 			continue
 		}
@@ -1114,47 +1178,98 @@ func (k *KuzuDriver) Close(ctx context.Context) error {
 
 // Helper methods for data conversion
 
+// getTableNameForNodeType returns the appropriate table name for a node type
+func (k *KuzuDriver) getTableNameForNodeType(nodeType types.NodeType) string {
+	switch nodeType {
+	case types.EpisodicNodeType:
+		return "Episodic"
+	case types.EntityNodeType:
+		return "Entity"
+	case types.CommunityNodeType:
+		return "Community"
+	default:
+		return "Entity" // Default to Entity table
+	}
+}
+
 // flatTupleToNode converts a Kuzu FlatTuple to a Node struct
-func (k *KuzuDriver) flatTupleToNode(tuple *kuzu.FlatTuple) (*types.Node, error) {
+func (k *KuzuDriver) flatTupleToNode(tuple *kuzu.FlatTuple, tableName string) (*types.Node, error) {
 	node := &types.Node{}
 
-	// For now, return a basic implementation
-	// In a full implementation, you would extract values from the tuple
-	// based on the actual Kuzu API documentation
-
-	// This is a simplified implementation that assumes the tuple contains
-	// the node data in a structured format
+	// Extract values from the tuple based on table schema
 	values, err := tuple.GetAsSlice()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tuple values: %w", err)
 	}
-	if len(values) < 4 {
-		return nil, fmt.Errorf("insufficient data in tuple")
+
+	// Handle different table schemas
+	switch tableName {
+	case "Episodic":
+		node.Type = types.EpisodicNodeType
+		if len(values) > 0 && values[0] != nil {
+			node.ID = fmt.Sprintf("%v", values[0]) // uuid
+		}
+		if len(values) > 1 && values[1] != nil {
+			node.Name = fmt.Sprintf("%v", values[1]) // name
+		}
+		if len(values) > 2 && values[2] != nil {
+			node.GroupID = fmt.Sprintf("%v", values[2]) // group_id
+		}
+		if len(values) > 6 && values[6] != nil {
+			node.Content = fmt.Sprintf("%v", values[6]) // content
+		}
+	case "Entity":
+		node.Type = types.EntityNodeType
+		if len(values) > 0 && values[0] != nil {
+			node.ID = fmt.Sprintf("%v", values[0]) // uuid
+		}
+		if len(values) > 1 && values[1] != nil {
+			node.Name = fmt.Sprintf("%v", values[1]) // name
+		}
+		if len(values) > 2 && values[2] != nil {
+			node.GroupID = fmt.Sprintf("%v", values[2]) // group_id
+		}
+		if len(values) > 6 && values[6] != nil {
+			node.Summary = fmt.Sprintf("%v", values[6]) // summary
+		}
+	case "Community":
+		node.Type = types.CommunityNodeType
+		if len(values) > 0 && values[0] != nil {
+			node.ID = fmt.Sprintf("%v", values[0]) // uuid
+		}
+		if len(values) > 1 && values[1] != nil {
+			node.Name = fmt.Sprintf("%v", values[1]) // name
+		}
+		if len(values) > 2 && values[2] != nil {
+			node.GroupID = fmt.Sprintf("%v", values[2]) // group_id
+		}
+		if len(values) > 5 && values[5] != nil {
+			node.Summary = fmt.Sprintf("%v", values[5]) // summary
+		}
+	default:
+		// Default to Entity type
+		node.Type = types.EntityNodeType
+		if len(values) > 0 && values[0] != nil {
+			node.ID = fmt.Sprintf("%v", values[0])
+		}
+		if len(values) > 1 && values[1] != nil {
+			node.Name = fmt.Sprintf("%v", values[1])
+		}
+		if len(values) > 2 && values[2] != nil {
+			node.GroupID = fmt.Sprintf("%v", values[2])
+		}
 	}
 
-	// Extract basic required fields
-	if len(values) > 0 {
-		if id := values[0]; id != nil {
-			node.ID = fmt.Sprintf("%v", id)
-		}
-	}
-	if len(values) > 1 {
-		if name := values[1]; name != nil {
-			node.Name = fmt.Sprintf("%v", name)
-		}
-	}
-	if len(values) > 2 {
-		if nodeType := values[2]; nodeType != nil {
-			node.Type = types.NodeType(fmt.Sprintf("%v", nodeType))
-		}
-	}
-	if len(values) > 3 {
-		if groupID := values[3]; groupID != nil {
-			node.GroupID = fmt.Sprintf("%v", groupID)
+	// Parse timestamps from data if available
+	if len(values) > 4 && values[4] != nil {
+		if createdAtStr := fmt.Sprintf("%v", values[4]); createdAtStr != "" {
+			if parsedTime, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
+				node.CreatedAt = parsedTime
+			}
 		}
 	}
 
-	// Set timestamps to current time if not provided
+	// Set default timestamps if not provided
 	if node.CreatedAt.IsZero() {
 		node.CreatedAt = time.Now()
 	}
@@ -1234,8 +1349,8 @@ func (k *KuzuDriver) flatTupleToEdge(tuple *kuzu.FlatTuple) (*types.Edge, error)
 	return edge, nil
 }
 
-// prepareNodeCreateQuery prepares a CREATE query for a node
-func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node) string {
+// prepareNodeCreateQuery prepares a CREATE query for a node in the specified table
+func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node, tableName string) string {
 	// Convert metadata to JSON string
 	var metadataJSON string
 	if node.Metadata != nil {
@@ -1246,49 +1361,88 @@ func (k *KuzuDriver) prepareNodeCreateQuery(node *types.Node) string {
 
 	// Convert timestamps to string format
 	createdAt := node.CreatedAt.Format(time.RFC3339)
-	updatedAt := node.UpdatedAt.Format(time.RFC3339)
 	validFrom := node.ValidFrom.Format(time.RFC3339)
 
-	var validToStr string
-	if node.ValidTo != nil {
-		validToStr = node.ValidTo.Format(time.RFC3339)
+	// Generate query based on table type
+	switch tableName {
+	case "Episodic":
+		return fmt.Sprintf(`
+			CREATE (n:Episodic {
+				uuid: '%s',
+				name: '%s',
+				group_id: '%s',
+				created_at: '%s',
+				source: '%s',
+				source_description: '%s',
+				content: '%s',
+				valid_at: '%s',
+				entity_edges: []
+			})
+		`, k.escapeString(node.ID),
+			k.escapeString(node.Name),
+			k.escapeString(node.GroupID),
+			createdAt,
+			k.escapeString(node.Reference.Format(time.RFC3339)),
+			k.escapeString(""), // source_description from metadata if available
+			k.escapeString(node.Content),
+			validFrom)
+	case "Entity":
+		return fmt.Sprintf(`
+			CREATE (n:Entity {
+				uuid: '%s',
+				name: '%s',
+				group_id: '%s',
+				labels: [],
+				created_at: '%s',
+				name_embedding: [],
+				summary: '%s',
+				attributes: '%s'
+			})
+		`, k.escapeString(node.ID),
+			k.escapeString(node.Name),
+			k.escapeString(node.GroupID),
+			createdAt,
+			k.escapeString(node.Summary),
+			k.escapeString(metadataJSON))
+	case "Community":
+		return fmt.Sprintf(`
+			CREATE (n:Community {
+				uuid: '%s',
+				name: '%s',
+				group_id: '%s',
+				created_at: '%s',
+				name_embedding: [],
+				summary: '%s'
+			})
+		`, k.escapeString(node.ID),
+			k.escapeString(node.Name),
+			k.escapeString(node.GroupID),
+			createdAt,
+			k.escapeString(node.Summary))
+	default:
+		// Default to Entity
+		return fmt.Sprintf(`
+			CREATE (n:Entity {
+				uuid: '%s',
+				name: '%s',
+				group_id: '%s',
+				labels: [],
+				created_at: '%s',
+				name_embedding: [],
+				summary: '%s',
+				attributes: '%s'
+			})
+		`, k.escapeString(node.ID),
+			k.escapeString(node.Name),
+			k.escapeString(node.GroupID),
+			createdAt,
+			k.escapeString(node.Summary),
+			k.escapeString(metadataJSON))
 	}
-
-	return fmt.Sprintf(`
-		CREATE (n:Node {
-			id: '%s',
-			name: '%s',
-			node_type: '%s',
-			group_id: '%s',
-			created_at: '%s',
-			updated_at: '%s',
-			entity_type: '%s',
-			summary: '%s',
-			episode_type: '%s',
-			content: '%s',
-			level: %d,
-			metadata: '%s',
-			valid_from: '%s',
-			valid_to: '%s'
-		})
-	`, k.escapeString(node.ID),
-		k.escapeString(node.Name),
-		k.escapeString(string(node.Type)),
-		k.escapeString(node.GroupID),
-		createdAt,
-		updatedAt,
-		k.escapeString(node.EntityType),
-		k.escapeString(node.Summary),
-		k.escapeString(string(node.EpisodeType)),
-		k.escapeString(node.Content),
-		node.Level,
-		k.escapeString(metadataJSON),
-		validFrom,
-		validToStr)
 }
 
-// prepareNodeUpdateQuery prepares an UPDATE query for a node
-func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node) string {
+// prepareNodeUpdateQuery prepares an UPDATE query for a node in the specified table
+func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node, tableName string) string {
 	// Convert metadata to JSON string
 	var metadataJSON string
 	if node.Metadata != nil {
@@ -1298,49 +1452,66 @@ func (k *KuzuDriver) prepareNodeUpdateQuery(node *types.Node) string {
 	}
 
 	// Convert timestamps to string format
-	updatedAt := node.UpdatedAt.Format(time.RFC3339)
 	validFrom := node.ValidFrom.Format(time.RFC3339)
 
-	var validToStr string
-	if node.ValidTo != nil {
-		validToStr = node.ValidTo.Format(time.RFC3339)
+	// Generate update query based on table type
+	switch tableName {
+	case "Episodic":
+		return fmt.Sprintf(`
+			MATCH (n:Episodic)
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			SET n.name = '%s',
+				n.content = '%s',
+				n.valid_at = '%s'
+		`, k.escapeString(node.ID),
+			k.escapeString(node.GroupID),
+			k.escapeString(node.Name),
+			k.escapeString(node.Content),
+			validFrom)
+	case "Entity":
+		return fmt.Sprintf(`
+			MATCH (n:Entity)
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			SET n.name = '%s',
+				n.summary = '%s',
+				n.attributes = '%s'
+		`, k.escapeString(node.ID),
+			k.escapeString(node.GroupID),
+			k.escapeString(node.Name),
+			k.escapeString(node.Summary),
+			k.escapeString(metadataJSON))
+	case "Community":
+		return fmt.Sprintf(`
+			MATCH (n:Community)
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			SET n.name = '%s',
+				n.summary = '%s'
+		`, k.escapeString(node.ID),
+			k.escapeString(node.GroupID),
+			k.escapeString(node.Name),
+			k.escapeString(node.Summary))
+	default:
+		// Default to Entity
+		return fmt.Sprintf(`
+			MATCH (n:Entity)
+			WHERE n.uuid = '%s' AND n.group_id = '%s'
+			SET n.name = '%s',
+				n.summary = '%s',
+				n.attributes = '%s'
+		`, k.escapeString(node.ID),
+			k.escapeString(node.GroupID),
+			k.escapeString(node.Name),
+			k.escapeString(node.Summary),
+			k.escapeString(metadataJSON))
 	}
-
-	return fmt.Sprintf(`
-		MATCH (n:Node)
-		WHERE n.id = '%s' AND n.group_id = '%s'
-		SET n.name = '%s',
-			n.node_type = '%s',
-			n.updated_at = '%s',
-			n.entity_type = '%s',
-			n.summary = '%s',
-			n.episode_type = '%s',
-			n.content = '%s',
-			n.level = %d,
-			n.metadata = '%s',
-			n.valid_from = '%s',
-			n.valid_to = '%s'
-	`, k.escapeString(node.ID),
-		k.escapeString(node.GroupID),
-		k.escapeString(node.Name),
-		k.escapeString(string(node.Type)),
-		updatedAt,
-		k.escapeString(node.EntityType),
-		k.escapeString(node.Summary),
-		k.escapeString(string(node.EpisodeType)),
-		k.escapeString(node.Content),
-		node.Level,
-		k.escapeString(metadataJSON),
-		validFrom,
-		validToStr)
 }
 
-// escapeString escapes single quotes in strings for Cypher queries
+// escapeString escapes single quotes in strings for Kuzu queries
 func (k *KuzuDriver) escapeString(s string) string {
-	return fmt.Sprintf("%s", s)  // Basic implementation
+	return strings.ReplaceAll(s, "'", "\\'")
 }
 
-// prepareEdgeCreateQuery prepares a CREATE query for an edge
+// prepareEdgeCreateQuery prepares a CREATE query for an edge using RelatesToNode_ pattern
 func (k *KuzuDriver) prepareEdgeCreateQuery(edge *types.Edge) string {
 	// Convert metadata to JSON string
 	var metadataJSON string
@@ -1352,48 +1523,57 @@ func (k *KuzuDriver) prepareEdgeCreateQuery(edge *types.Edge) string {
 
 	// Convert timestamps to string format
 	createdAt := edge.CreatedAt.Format(time.RFC3339)
-	updatedAt := edge.UpdatedAt.Format(time.RFC3339)
 	validFrom := edge.ValidFrom.Format(time.RFC3339)
 
 	var validToStr string
 	if edge.ValidTo != nil {
 		validToStr = edge.ValidTo.Format(time.RFC3339)
+	} else {
+		validToStr = ""
 	}
 
+	var invalidAtStr string
+	if edge.ValidTo != nil {
+		invalidAtStr = edge.ValidTo.Format(time.RFC3339)
+	} else {
+		invalidAtStr = ""
+	}
+
+	// Use the RelatesToNode_ pattern from Python implementation
 	return fmt.Sprintf(`
-		MATCH (a:Node {id: '%s', group_id: '%s'})
-		MATCH (b:Node {id: '%s', group_id: '%s'})
-		CREATE (a)-[e:Edge {
-			id: '%s',
-			edge_type: '%s',
+		MATCH (a:Entity {uuid: '%s', group_id: '%s'})
+		MATCH (b:Entity {uuid: '%s', group_id: '%s'})
+		CREATE (rel:RelatesToNode_ {
+			uuid: '%s',
 			group_id: '%s',
 			created_at: '%s',
-			updated_at: '%s',
 			name: '%s',
-			summary: '%s',
-			strength: %f,
-			metadata: '%s',
-			valid_from: '%s',
-			valid_to: '%s'
-		}]->(b)
+			fact: '%s',
+			fact_embedding: [],
+			episodes: [],
+			expired_at: '%s',
+			valid_at: '%s',
+			invalid_at: '%s',
+			attributes: '%s'
+		})
+		CREATE (a)-[:RELATES_TO]->(rel)
+		CREATE (rel)-[:RELATES_TO]->(b)
 	`, k.escapeString(edge.SourceID),
 		k.escapeString(edge.GroupID),
 		k.escapeString(edge.TargetID),
 		k.escapeString(edge.GroupID),
 		k.escapeString(edge.ID),
-		k.escapeString(string(edge.Type)),
 		k.escapeString(edge.GroupID),
 		createdAt,
-		updatedAt,
 		k.escapeString(edge.Name),
-		k.escapeString(edge.Summary),
-		edge.Strength,
-		k.escapeString(metadataJSON),
-		validFrom,
-		validToStr)
+		k.escapeString(edge.Summary), // Use summary as fact
+		validToStr, // expired_at
+		validFrom, // valid_at
+		invalidAtStr, // invalid_at
+		k.escapeString(metadataJSON))
 }
 
-// prepareEdgeUpdateQuery prepares an UPDATE query for an edge
+// prepareEdgeUpdateQuery prepares an UPDATE query for an edge using RelatesToNode_ pattern
 func (k *KuzuDriver) prepareEdgeUpdateQuery(edge *types.Edge) string {
 	// Convert metadata to JSON string
 	var metadataJSON string
@@ -1404,35 +1584,40 @@ func (k *KuzuDriver) prepareEdgeUpdateQuery(edge *types.Edge) string {
 	}
 
 	// Convert timestamps to string format
-	updatedAt := edge.UpdatedAt.Format(time.RFC3339)
 	validFrom := edge.ValidFrom.Format(time.RFC3339)
 
 	var validToStr string
 	if edge.ValidTo != nil {
 		validToStr = edge.ValidTo.Format(time.RFC3339)
+	} else {
+		validToStr = ""
 	}
 
+	var invalidAtStr string
+	if edge.ValidTo != nil {
+		invalidAtStr = edge.ValidTo.Format(time.RFC3339)
+	} else {
+		invalidAtStr = ""
+	}
+
+	// Update using RelatesToNode_ pattern
 	return fmt.Sprintf(`
-		MATCH (a:Node)-[e:Edge]->(b:Node)
-		WHERE e.id = '%s' AND e.group_id = '%s'
-		SET e.edge_type = '%s',
-			e.updated_at = '%s',
-			e.name = '%s',
-			e.summary = '%s',
-			e.strength = %f,
-			e.metadata = '%s',
-			e.valid_from = '%s',
-			e.valid_to = '%s'
+		MATCH (rel:RelatesToNode_)
+		WHERE rel.uuid = '%s' AND rel.group_id = '%s'
+		SET rel.name = '%s',
+			rel.fact = '%s',
+			rel.expired_at = '%s',
+			rel.valid_at = '%s',
+			rel.invalid_at = '%s',
+			rel.attributes = '%s'
 	`, k.escapeString(edge.ID),
 		k.escapeString(edge.GroupID),
-		k.escapeString(string(edge.Type)),
-		updatedAt,
 		k.escapeString(edge.Name),
-		k.escapeString(edge.Summary),
-		edge.Strength,
-		k.escapeString(metadataJSON),
-		validFrom,
-		validToStr)
+		k.escapeString(edge.Summary), // Use summary as fact
+		validToStr, // expired_at
+		validFrom, // valid_at
+		invalidAtStr, // invalid_at
+		k.escapeString(metadataJSON))
 }
 
 // cosineSimilarity computes the cosine similarity between two vectors
