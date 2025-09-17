@@ -227,7 +227,7 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 
 	// Prepare context for the prompt
 	context := map[string]interface{}{
-		"episode_content":    episode.Content,
+		"episode_content":    strings.ReplaceAll(episode.Content, "'", "\\'"),
 		"previous_episodes":  previousEpisodes,
 		"entity_types":       entityTypesContext,
 		"custom_prompt":      "",
