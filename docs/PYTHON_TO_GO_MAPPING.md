@@ -22,16 +22,16 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status | Notes |
 |---------------|-----------|---------------|--------|--------|
-| [`Graphiti.__init__()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L169) | [`NewClient()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L88) | `graphiti.go` | ✅ Implemented | Go uses functional construction pattern |
-| [`Graphiti.close()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L368) | [`Client.Close()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1300) | `graphiti.go` | ✅ Implemented | |
-| [`Graphiti.build_indices_and_constraints()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L401) | [`Client.CreateIndices()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1296) | `graphiti.go` | ✅ Implemented | |
-| [`Graphiti.retrieve_episodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L440) | [`Client.GetEpisodes()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1253) | `graphiti.go` | ✅ Implemented | |
-| [`Graphiti.add_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L477) | [`Client.Add()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L115) | `graphiti.go` | ✅ Implemented | Go method accepts multiple episodes |
-| [`Graphiti.add_episode_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L650) | [`Client.Add()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L115) | `graphiti.go` | ✅ Implemented | Same as single episode in Go |
+| [`Graphiti.__init__()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L169) | [`NewClient()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L88) | `graphiti.go` | ✅ Implemented | Go uses functional construction pattern. Go is missing `cross_encoder`, `store_raw_episode_content`, `max_coroutines`, `ensure_ascii`. |
+| [`Graphiti.close()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L368) | [`Client.Close()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1300) | `graphiti.go` | ✅ Implemented | Go version takes a `context` argument. |
+| [`Graphiti.build_indices_and_constraints()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L401) | [`Client.CreateIndices()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1296) | `graphiti.go` | ✅ Implemented | Python version takes `delete_existing` argument. |
+| [`Graphiti.retrieve_episodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L440) | [`Client.GetEpisodes()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1253) | `graphiti.go` | ✅ Implemented | Go version is missing `reference_time` and `source` arguments. |
+| [`Graphiti.add_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L477) | [`Client.Add()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L115) | `graphiti.go` | ✅ Implemented | Go method accepts multiple episodes. Python version has more arguments like `update_communities`, `entity_types`, `excluded_entity_types`, `previous_episode_uuids`, `edge_types`, `edge_type_map`. |
+| [`Graphiti.add_episode_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L650) | [`Client.Add()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L115) | `graphiti.go` | ✅ Implemented | Same as single episode in Go. Python version has more arguments like `entity_types`, `excluded_entity_types`, `edge_types`, `edge_type_map`. |
 | [`Graphiti.build_communities()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L886) | [`Builder.BuildCommunities()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/community/community.go#L121) | `pkg/community/community.go` | ✅ Implemented | Community building with label propagation |
-| [`Graphiti.search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L920) | [`Client.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1181) | `graphiti.go` | ✅ Implemented | |
+| [`Graphiti.search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L920) | [`Client.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1181) | `graphiti.go` | ✅ Implemented | Go version is missing `center_node_uuid` argument. |
 | [`Graphiti._search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L971) | `Client.Search()` internal | `graphiti.go` | ✅ Implemented | Merged into main Search method |
-| [`Graphiti.search_()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L980) | [`searcher.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented | Direct searcher access |
+| [`Graphiti.search_()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L980) | [`searcher.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented | Go version is missing `center_node_uuid` and `bfs_origin_node_uuids` arguments. |
 | [`Graphiti.get_nodes_and_edges_by_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1000) | [`Client.GetNode()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1248) / [`Client.GetEdge()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1252) | `graphiti.go` | ⚠️ Partial | No bulk episode-based retrieval |
 | [`Graphiti.add_triplet()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1012) | `Client.addTriplet()` | `graphiti.go` | ❌ Missing | Direct triplet addition not implemented |
 | [`Graphiti.remove_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1061) | `Client.removeEpisode()` | `graphiti.go` | ❌ Missing | Episode removal not implemented |
@@ -84,21 +84,21 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `Searcher` class | [`Searcher`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L118) struct | `pkg/search/search.go` | ✅ Implemented |
-| [`HybridSearch()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search.py#L70) | [`HybridSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented |
-| Search methods (cosine_similarity, bm25, bfs) | [`SearchMethod`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L15) constants | `pkg/search/search.go` | ✅ Implemented |
+| `Searcher` class | [`Searcher`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L118) struct | `pkg/search/search.go` | ✅ Implemented | Python version is a collection of methods, while the go version is a struct. |
+| [`HybridSearch()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search.py#L70) | [`HybridSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented | Go version is missing `center_node_uuid`, `bfs_origin_node_uuids`, and `query_vector` arguments. |
+| Search methods (cosine_similarity, bm25, bfs) | [`SearchMethod`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L15) constants | `pkg/search/search.go` | ✅ Implemented | |
 | Reranker types | [`RerankerType`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L22) constants | `pkg/search/search.go` | ✅ Implemented |
 
 ### search/search_config.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| [`SearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L130) class | [`SearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L35) struct | `pkg/search/search.go` | ✅ Implemented |
-| [`NodeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L108) | [`NodeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L42) struct | `pkg/search/search.go` | ✅ Implemented |
-| [`EdgeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L99) | [`EdgeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L50) struct | `pkg/search/search.go` | ✅ Implemented |
-| [`EpisodeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L117) | [`EpisodeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L58) struct | `pkg/search/search.go` | ✅ Implemented |
-| [`CommunitySearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L124) | [`CommunitySearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L64) struct | `pkg/search/search.go` | ✅ Implemented |
-| [`SearchResults`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L137) | [`HybridSearchResult`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L95) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`SearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L130) class | [`SearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L35) struct | `pkg/search/search.go` | ✅ Implemented | Go version is missing `edge_config`, `node_config`, `episode_config`, `community_config`, and `reranker_min_score`. |
+| [`NodeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L108) | [`NodeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L42) struct | `pkg/search/search.go` | ✅ Implemented | Go version is missing `mmr_lambda` and `bfs_max_depth`. |
+| [`EdgeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L99) | [`EdgeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L50) struct | `pkg/search/search.go` | ✅ Implemented | Go version is missing `mmr_lambda` and `bfs_max_depth`. |
+| [`EpisodeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L117) | [`EpisodeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L58) struct | `pkg/search/search.go` | ✅ Implemented | Go version is missing `sim_min_score`, `mmr_lambda`, and `bfs_max_depth`. |
+| [`CommunitySearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L124) | [`CommunitySearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L64) struct | `pkg/search/search.go` | ✅ Implemented | Go version is missing `sim_min_score`, `mmr_lambda`, and `bfs_max_depth`. |
+| [`SearchResults`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L137) | [`HybridSearchResult`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L95) struct | `pkg/search/search.go` | ✅ Implemented | Go version is missing `episodes`, `episode_reranker_scores`, `communities`, and `community_reranker_scores`. |
 
 ### search/search_config_recipes.py
 
@@ -154,8 +154,8 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| [`GraphDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/driver.py#L63) interface | [`GraphDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/driver.go#L12) interface | `pkg/driver/driver.go` | ✅ Implemented |
-| Database operations (GetNode, UpsertNode, etc.) | Same method names | `pkg/driver/driver.go` | ✅ Implemented |
+| [`GraphDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/driver.py#L63) interface | [`GraphDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/driver.go#L12) interface | `pkg/driver/driver.go` | ✅ Implemented | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. | Go version has many more methods. |
+| Database operations (GetNode, UpsertNode, etc.) | Same method names | `pkg/driver/driver.go` | ✅ Implemented | |
 
 ### driver/neo4j.py
 
@@ -271,8 +271,8 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| [`LLMConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L21) | [`llm.Config`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/client.go#L65) | `pkg/llm/config.go` | ✅ Implemented |
-| [`ModelSize`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L15) enum | `ModelSize` constants | `pkg/llm/config.go` | ✅ Implemented |
+| [`LLMConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L21) | [`llm.Config`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/client.go#L65) | `pkg/llm/config.go` | ⚠️ Partial | Go version is missing `api_key` and `small_model`. It has `TopP` and `Stop` which are not in the python version. |
+| [`ModelSize`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L15) enum | `ModelSize` constants | `pkg/llm/config.go` | ❌ Missing | |
 
 ## Embedder Client Interface
 
@@ -307,8 +307,8 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| [`EmbedderConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/embedder/client.py#L17) | [`embedder.Config`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/client.go#L22) | `pkg/embedder/client.go` | ✅ Implemented |
-| `EMBEDDING_DIM` constant | `DefaultDimensions` | `pkg/embedder/client.go` | ✅ Implemented |
+| [`EmbedderConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/embedder/client.py#L17) | [`embedder.Config`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/client.go#L22) | `pkg/embedder/client.go` | ⚠️ Partial | Go version is missing `embedding_dim`. It has `Model`, `BatchSize`, `BaseURL`, `Headers` which are not in the python version. |
+| `EMBEDDING_DIM` constant | `Dimensions` | `pkg/embedder/client.go` | ✅ Implemented | In go, this is a field in the `Config` struct. |
 
 ## Cross Encoder Interface
 
