@@ -28,7 +28,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | `Graphiti.retrieve_episodes()` | `Client.GetEpisodes()` | `graphiti.go` | ✅ Implemented | |
 | `Graphiti.add_episode()` | `Client.Add()` | `graphiti.go` | ✅ Implemented | Go method accepts multiple episodes |
 | `Graphiti.add_episode_bulk()` | `Client.Add()` | `graphiti.go` | ✅ Implemented | Same as single episode in Go |
-| `Graphiti.build_communities()` | `CommunityBuilder.BuildCommunities()` | `pkg/community/` | ❌ Missing | Community building not yet implemented |
+| `Graphiti.build_communities()` | `Builder.BuildCommunities()` | `pkg/community/community.go` | ✅ Implemented | Community building with label propagation |
 | `Graphiti.search()` | `Client.Search()` | `graphiti.go` | ✅ Implemented | |
 | `Graphiti._search()` | `Client.Search()` internal | `graphiti.go` | ✅ Implemented | Merged into main Search method |
 | `Graphiti.search_()` | `searcher.HybridSearch()` | `pkg/search/search.go` | ✅ Implemented | Direct searcher access |
@@ -40,9 +40,17 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| `AddEpisodeResults` | `EpisodeProcessingResult` | `pkg/types/types.go` | ❌ Missing |
-| `AddBulkEpisodeResults` | `BulkEpisodeResults` | `pkg/types/types.go` | ❌ Missing |
-| `AddTripletResults` | `TripletResults` | `pkg/types/types.go` | ❌ Missing |
+| `AddEpisodeResults` | `AddEpisodeResults` | `pkg/types/types.go` | ✅ Implemented |
+| `AddBulkEpisodeResults` | `AddBulkEpisodeResults` | `pkg/types/types.go` | ✅ Implemented |
+| `AddTripletResults` | `AddTripletResults` | `pkg/types/types.go` | ✅ Implemented |
+
+### Additional Go Result Types
+
+| Go Type | Description | File Location |
+|---------|-------------|---------------|
+| `EpisodeProcessingResult` | Internal episode processing result | `pkg/types/types.go` |
+| `BulkEpisodeResults` | Bulk episode processing statistics | `pkg/types/types.go` |
+| `TripletResults` | Enhanced triplet operation result | `pkg/types/types.go` |
 
 ## Core Graph Queries
 
@@ -259,68 +267,231 @@ This document tracks the mapping between the original Python Graphiti methods an
 | `BGERerankerClient` | N/A | N/A | ❌ Missing |
 | `GeminiRerankerClient` | N/A | N/A | ❌ Missing |
 
+## Community Operations
+
+### utils/maintenance/community_operations.py
+
+| Python Function | Go Method | File Location | Status | Notes |
+|-----------------|-----------|---------------|--------|--------|
+| `get_community_clusters()` | `Builder.GetCommunityClusters()` | `pkg/community/community.go` | ✅ Implemented | |
+| `label_propagation()` | `Builder.labelPropagation()` | `pkg/community/label_propagation.go` | ✅ Implemented | |
+| `build_community()` | `Builder.buildCommunity()` | `pkg/community/community.go` | ✅ Implemented | |
+| `build_communities()` | `Builder.BuildCommunities()` | `pkg/community/community.go` | ✅ Implemented | |
+| `remove_communities()` | `Builder.RemoveCommunities()` | `pkg/community/community.go` | ✅ Implemented | |
+| `determine_entity_community()` | `Builder.DetermineEntityCommunity()` | `pkg/community/update.go` | ✅ Implemented | |
+| `update_community()` | `Builder.UpdateCommunity()` | `pkg/community/update.go` | ✅ Implemented | |
+| `summarize_pair()` | `Builder.summarizePair()` | `pkg/community/community.go` | ✅ Implemented | |
+| `generate_summary_description()` | `Builder.generateCommunityName()` | `pkg/community/community.go` | ✅ Implemented | |
+
+### Community Types and Models
+
+| Python Type | Go Type | File Location | Status |
+|-------------|---------|---------------|--------|
+| `Neighbor` class | `Neighbor` struct | `pkg/community/community.go` | ✅ Implemented |
+| `BuildCommunitiesResult` | `BuildCommunitiesResult` struct | `pkg/community/community.go` | ✅ Implemented |
+| `DetermineEntityCommunityResult` | `DetermineEntityCommunityResult` struct | `pkg/community/update.go` | ✅ Implemented |
+| `UpdateCommunityResult` | `UpdateCommunityResult` struct | `pkg/community/update.go` | ✅ Implemented |
+
+### Additional Go Community Functions
+
+| Go Method | Description | File Location |
+|-----------|-------------|---------------|
+| `NewBuilder()` | Creates new community builder | `pkg/community/community.go` |
+| `buildProjection()` | Builds neighbor projection for clustering | `pkg/community/label_propagation.go` |
+| `getNodeNeighbors()` | Gets node neighbors with edge counts | `pkg/community/label_propagation.go` |
+| `getAllGroupIDs()` | Gets all distinct group IDs | `pkg/community/label_propagation.go` |
+| `getEntityNodesByGroup()` | Gets entity nodes by group | `pkg/community/label_propagation.go` |
+| `hierarchicalSummarize()` | Performs hierarchical summarization | `pkg/community/community.go` |
+| `generateCommunityEmbedding()` | Generates embeddings for communities | `pkg/community/community.go` |
+| `buildCommunityEdges()` | Creates HAS_MEMBER edges | `pkg/community/community.go` |
+
 ## Prompts and Models
 
 ### prompts/models.py
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| `Message` class | `llm.Message` struct | `pkg/llm/client.go` | ✅ Implemented |
-| `Role` enum | `llm.Role` type | `pkg/llm/client.go` | ✅ Implemented |
+| `Message` class | `Message` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `PromptFunction` type | `PromptFunction` type | `pkg/prompts/types.go` | ✅ Implemented |
+| `ExtractedEntity` | `ExtractedEntity` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `ExtractedEntities` | `ExtractedEntities` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EntityClassificationTriple` | `EntityClassificationTriple` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EntitySummary` | `EntitySummary` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `Edge` | `Edge` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `ExtractedEdges` | `ExtractedEdges` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `NodeDuplicate` | `NodeDuplicate` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EdgeDuplicate` | `EdgeDuplicate` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `InvalidatedEdges` | `InvalidatedEdges` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EdgeDates` | `EdgeDates` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `Summary` | `Summary` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `SummaryDescription` | `SummaryDescription` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `QueryExpansion` | `QueryExpansion` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `QAResponse` | `QAResponse` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EvalResponse` | `EvalResponse` struct | `pkg/prompts/models.go` | ✅ Implemented |
 
 ### Prompt Templates
 
 | Python Module | Go Implementation | File Location | Status | Notes |
 |---------------|-------------------|---------------|--------|--------|
-| `prompts/extract_nodes.py` | `prompts.ExtractEntitiesPrompt` | `pkg/prompts/` | ⚠️ Partial | Basic extraction implemented |
-| `prompts/extract_edges.py` | `prompts.ExtractRelationshipsPrompt` | `pkg/prompts/` | ⚠️ Partial | Basic extraction implemented |
-| `prompts/dedupe_nodes.py` | `prompts.DeduplicateNodesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/dedupe_edges.py` | `prompts.DeduplicateEdgesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/summarize_nodes.py` | `prompts.SummarizeNodesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/invalidate_edges.py` | `prompts.InvalidateEdgesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/extract_edge_dates.py` | `prompts.ExtractTemporalInfoPrompt` | `pkg/prompts/` | ❌ Missing | |
+| `prompts/extract_nodes.py` | `ExtractNodesPrompt` interface | `pkg/prompts/extract_nodes.go` | ✅ Implemented | All 7 functions implemented |
+| `prompts/extract_edges.py` | `ExtractEdgesPrompt` interface | `pkg/prompts/extract_edges.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/dedupe_nodes.py` | `DedupeNodesPrompt` interface | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/dedupe_edges.py` | `DedupeEdgesPrompt` interface | `pkg/prompts/dedupe_edges.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/summarize_nodes.py` | `SummarizeNodesPrompt` interface | `pkg/prompts/summarize_nodes.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/invalidate_edges.py` | `InvalidateEdgesPrompt` interface | `pkg/prompts/invalidate_edges.go` | ✅ Implemented | Both v1 and v2 functions |
+| `prompts/extract_edge_dates.py` | `ExtractEdgeDatesPrompt` interface | `pkg/prompts/extract_edge_dates.go` | ✅ Implemented | v1 function implemented |
+| `prompts/eval.py` | `EvalPrompt` interface | `pkg/prompts/eval.go` | ✅ Implemented | All 4 functions implemented |
+
+### Extract Nodes Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `extract_message()` | `ExtractMessage()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_json()` | `ExtractJSON()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_text()` | `ExtractText()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `reflexion()` | `Reflexion()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `classify_nodes()` | `ClassifyNodes()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_attributes()` | `ExtractAttributes()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_summary()` | `ExtractSummary()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+
+### Extract Edges Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `edge()` | `Edge()` | `pkg/prompts/extract_edges.go` | ✅ Implemented |
+| `reflexion()` | `Reflexion()` | `pkg/prompts/extract_edges.go` | ✅ Implemented |
+| `extract_attributes()` | `ExtractAttributes()` | `pkg/prompts/extract_edges.go` | ✅ Implemented |
+
+### Dedupe Nodes Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `node()` | `Node()` | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented |
+| `node_list()` | `NodeList()` | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented |
+| `nodes()` | `Nodes()` | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented |
+
+### Dedupe Edges Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `edge()` | `Edge()` | `pkg/prompts/dedupe_edges.go` | ✅ Implemented |
+| `edge_list()` | `EdgeList()` | `pkg/prompts/dedupe_edges.go` | ✅ Implemented |
+| `resolve_edge()` | `ResolveEdge()` | `pkg/prompts/dedupe_edges.go` | ✅ Implemented |
+
+### Summarize Nodes Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `summarize_pair()` | `SummarizePair()` | `pkg/prompts/summarize_nodes.go` | ✅ Implemented |
+| `summarize_context()` | `SummarizeContext()` | `pkg/prompts/summarize_nodes.go` | ✅ Implemented |
+| `summary_description()` | `SummaryDescription()` | `pkg/prompts/summarize_nodes.go` | ✅ Implemented |
+
+### Invalidate Edges Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `v1()` | `V1()` | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
+| `v2()` | `V2()` | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
+
+### Extract Edge Dates Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `v1()` | `V1()` | `pkg/prompts/extract_edge_dates.go` | ✅ Implemented |
+
+### Eval Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `qa_prompt()` | `QAPrompt()` | `pkg/prompts/eval.go` | ✅ Implemented |
+| `eval_prompt()` | `EvalPrompt()` | `pkg/prompts/eval.go` | ✅ Implemented |
+| `query_expansion()` | `QueryExpansion()` | `pkg/prompts/eval.go` | ✅ Implemented |
+| `eval_add_episode_results()` | `EvalAddEpisodeResults()` | `pkg/prompts/eval.go` | ✅ Implemented |
+
+### Prompt Library
+
+| Python Component | Go Component | File Location | Status |
+|------------------|--------------|---------------|--------|
+| `PromptLibrary` interface | `Library` interface | `pkg/prompts/library.go` | ✅ Implemented |
+| `PromptLibraryImpl` | `LibraryImpl` struct | `pkg/prompts/library.go` | ✅ Implemented |
+| `prompt_library` instance | `NewLibrary()` function | `pkg/prompts/library.go` | ✅ Implemented |
 
 ### Prompt Helpers
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
-| `to_prompt_json()` | `ToPromptJSON()` | `pkg/search/helpers.go` | ✅ Implemented |
+| `to_prompt_json()` | `ToPromptJSON()` | `pkg/prompts/types.go` | ✅ Implemented |
+| `DO_NOT_ESCAPE_UNICODE` | `DoNotEscapeUnicode` const | `pkg/prompts/models.go` | ✅ Implemented |
 
 ## Utilities and Helpers
 
-### utils/helpers.py
+### helpers.py (graphiti_core/)
 
 | Python Function | Go Function | File Location | Status | Notes |
 |-----------------|-------------|---------------|--------|--------|
-| `get_default_group_id()` | `GetDefaultGroupID()` | `pkg/utils/` | ❌ Missing | |
-| `semaphore_gather()` | `ConcurrentExecute()` | `pkg/utils/` | ❌ Missing | |
-| `validate_excluded_entity_types()` | `ValidateEntityTypes()` | `pkg/utils/` | ❌ Missing | |
-| `validate_group_id()` | `ValidateGroupID()` | `pkg/utils/` | ❌ Missing | |
-| `lucene_sanitize()` | `EscapeQueryString()` | `pkg/driver/graph_queries.go` | ✅ Implemented | |
-| `normalize_l2()` | `NormalizeVector()` | `pkg/search/` | ❌ Missing | |
+| `get_default_group_id()` | `GetDefaultGroupID()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `semaphore_gather()` | `SemaphoreGather()` | `pkg/utils/concurrent.go` | ✅ Implemented | |
+| `validate_excluded_entity_types()` | `ValidateExcludedEntityTypes()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `validate_group_id()` | `ValidateGroupID()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `lucene_sanitize()` | `LuceneSanitize()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `normalize_l2()` | `NormalizeL2()` / `NormalizeL2Float32()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `parse_db_date()` | `ParseDBDate()` | `pkg/utils/helpers.go` | ✅ Implemented | |
 
 ### utils/bulk_utils.py
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
 | `add_nodes_and_edges_bulk()` | `Client.Add()` | `graphiti.go` | ⚠️ Partial |
-| `dedupe_edges_bulk()` | `DeduplicateEdges()` | `pkg/utils/` | ❌ Missing |
-| `dedupe_nodes_bulk()` | `DeduplicateNodes()` | `pkg/utils/` | ❌ Missing |
+| `dedupe_edges_bulk()` | Helper functions | `pkg/utils/bulk.go` | ✅ Implemented |
+| `dedupe_nodes_bulk()` | Helper functions | `pkg/utils/bulk.go` | ✅ Implemented |
 | `extract_nodes_and_edges_bulk()` | Embedded in `Client.Add()` | `graphiti.go` | ⚠️ Partial |
-| `resolve_edge_pointers()` | `ResolveEdgeReferences()` | `pkg/utils/` | ❌ Missing |
+| `resolve_edge_pointers()` | `ResolveEdgePointers()` | `pkg/utils/bulk.go` | ✅ Implemented |
 | `retrieve_previous_episodes_bulk()` | `GetEpisodes()` | `graphiti.go` | ⚠️ Partial |
+| `compress_uuid_map()` | `CompressUUIDMap()` | `pkg/utils/bulk.go` | ✅ Implemented |
+| `UnionFind` class | `UnionFind` struct | `pkg/utils/bulk.go` | ✅ Implemented |
 
 ### utils/datetime_utils.py
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
-| `utc_now()` | `time.Now().UTC()` | Standard library | ✅ Implemented |
+| `utc_now()` | `UTCNow()` | `pkg/utils/datetime.go` | ✅ Implemented |
+| `ensure_utc()` | `EnsureUTC()` | `pkg/utils/datetime.go` | ✅ Implemented |
+| `convert_datetimes_to_strings()` | `ConvertDatetimesToStrings()` | `pkg/utils/datetime.go` | ✅ Implemented |
+
+### utils/ontology_utils/entity_types_utils.py
+
+| Python Function | Go Function | File Location | Status |
+|-----------------|-------------|---------------|--------|
+| `validate_entity_types()` | `ValidateEntityTypes()` | `pkg/utils/validation.go` | ✅ Implemented |
+
+### Additional Go Utility Functions
+
+| Go Function | Description | File Location |
+|-------------|-------------|---------------|
+| `GetUseParallelRuntime()` | Gets parallel runtime setting from env | `pkg/utils/helpers.go` |
+| `GetSemaphoreLimit()` | Gets semaphore limit from env | `pkg/utils/helpers.go` |
+| `GetMaxReflexionIterations()` | Gets max reflexion iterations from env | `pkg/utils/helpers.go` |
+| `NewConcurrentExecutor()` | Creates concurrent executor with semaphore | `pkg/utils/concurrent.go` |
+| `ExecuteWithResults()` | Concurrent execution with results | `pkg/utils/concurrent.go` |
+| `NewWorkerPool()` | Creates worker pool for processing | `pkg/utils/concurrent.go` |
+| `NewBatchProcessor()` | Creates batch processor | `pkg/utils/bulk.go` |
+| `HasWordOverlap()` | Checks word overlap for deduplication | `pkg/utils/bulk.go` |
+| `CalculateCosineSimilarity()` | Computes cosine similarity | `pkg/utils/bulk.go` |
+| `FindSimilarNodes()` / `FindSimilarEdges()` | Find duplicate candidates | `pkg/utils/bulk.go` |
+| `ChunkSlice()` | Splits slices into chunks | `pkg/utils/bulk.go` |
+| `RemoveDuplicateStrings()` | Removes duplicates from string slice | `pkg/utils/bulk.go` |
+| `ValidateUUID()` | Validates UUID format | `pkg/utils/validation.go` |
+| `ValidateRequired()` | Validates required fields | `pkg/utils/validation.go` |
+| `ValidateRange()` | Validates numeric ranges | `pkg/utils/validation.go` |
+| `ValidateEmbeddingDimensions()` | Validates embedding consistency | `pkg/utils/validation.go` |
+| `FormatTimeForDB()` / `ParseTimeFromDB()` | Database time formatting | `pkg/utils/datetime.go` |
+| `TimeToMilliseconds()` / `MillisecondsToTime()` | Time conversion utilities | `pkg/utils/datetime.go` |
 
 ### utils/maintenance/
 
 | Python Module | Go Implementation | File Location | Status |
 |---------------|-------------------|---------------|--------|
-| `community_operations.py` | `pkg/community/` | Not implemented | ❌ Missing |
+| `community_operations.py` | `pkg/community/` | Multiple files | ✅ Implemented |
 | `edge_operations.py` | Embedded in main client | `graphiti.go` | ⚠️ Partial |
 | `node_operations.py` | Embedded in main client | `graphiti.go` | ⚠️ Partial |
 | `temporal_operations.py` | `pkg/temporal/` | Not implemented | ❌ Missing |
@@ -385,7 +556,7 @@ When adding new Python-to-Go mappings:
 
 | Category | Total Methods | ✅ Implemented | ⚠️ Partial | ❌ Missing | Coverage |
 |----------|---------------|----------------|------------|------------|----------|
-| Core Graphiti Class | 12 | 6 | 2 | 4 | 67% |
+| Core Graphiti Class | 12 | 7 | 2 | 3 | 75% |
 | Graph Queries | 8 | 8 | 0 | 0 | 100% |
 | Search Functionality | 25+ | 20+ | 3 | 2 | 85% |
 | Driver Interface | 25+ | 25+ | 0 | 0 | 100% |
@@ -393,15 +564,15 @@ When adding new Python-to-Go mappings:
 | LLM Clients | 8 | 4 | 0 | 4 | 50% |
 | Embedder Clients | 6 | 3 | 0 | 3 | 50% |
 | Cross Encoder | 3 | 0 | 0 | 3 | 0% |
-| Prompts | 8 | 1 | 2 | 5 | 25% |
-| Utilities | 20+ | 3 | 8 | 10+ | 30% |
+| Prompts | 29 | 29 | 0 | 0 | 100% |
+| Utilities | 25+ | 20+ | 3 | 2 | 85% |
 | Telemetry | 2 | 0 | 0 | 2 | 0% |
 
 ### Key Missing Components
 
-1. **Community Operations** - Community building and management not implemented
+1. ~~**Community Operations** - Community building and management not implemented~~ ✅ **Completed**
 2. **Cross Encoder Support** - Reranking with cross encoders missing
-3. **Advanced Prompt Templates** - Most prompt templates need implementation
+3. ~~**Advanced Prompt Templates** - Most prompt templates need implementation~~ ✅ **Completed**
 4. **Bulk Utilities** - Deduplication and bulk operations partially implemented
 5. **Telemetry** - Event tracking and metrics collection missing
 6. **Multiple LLM Providers** - Only OpenAI client implemented
@@ -414,6 +585,9 @@ When adding new Python-to-Go mappings:
 3. **Basic Graph Operations** - Node/edge CRUD operations complete
 4. **Query Building** - Database-agnostic query construction implemented
 5. **Search Configuration** - Comprehensive search configs and recipes
+6. **Community Operations** - Label propagation clustering and community building
+7. **Prompt Templates** - Complete prompt library with all Python functions ported
+8. **Utility Functions** - Comprehensive helper functions, datetime utils, validation, and bulk operations
 
 ## Last Updated
 
