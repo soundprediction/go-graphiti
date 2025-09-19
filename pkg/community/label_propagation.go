@@ -158,13 +158,17 @@ func (b *Builder) getNodeNeighborsKuzu(ctx context.Context, kuzuDriver *driver.K
 		"group_id": groupID,
 	}
 
-	records, err := kuzuDriver.ExecuteQuery(query, params)
+	records, _, _, err := kuzuDriver.ExecuteQuery(query, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
 	}
 
 	var neighbors []Neighbor
-	for _, record := range records {
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+	for _, record := range recordSlice {
 		if uuid, ok := record["uuid"].(string); ok {
 			if count, ok := record["count"].(int64); ok {
 				neighbors = append(neighbors, Neighbor{
@@ -195,17 +199,22 @@ func (b *Builder) getAllGroupIDsKuzu(ctx context.Context, kuzuDriver *driver.Kuz
 		RETURN collect(DISTINCT n.group_id) AS group_ids
 	`
 
-	records, err := kuzuDriver.ExecuteQuery(query, nil)
+	records, _, _, err := kuzuDriver.ExecuteQuery(query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
 	}
 
-	if len(records) == 0 {
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+
+	if len(recordSlice) == 0 {
 		return []string{}, nil
 	}
 
 	// Extract group IDs from the result
-	if groupIDsInterface, ok := records[0]["group_ids"]; ok {
+	if groupIDsInterface, ok := recordSlice[0]["group_ids"]; ok {
 		if groupIDs, ok := groupIDsInterface.([]interface{}); ok {
 			var result []string
 			for _, gid := range groupIDs {
@@ -240,13 +249,17 @@ func (b *Builder) getEntityNodesByGroupKuzu(ctx context.Context, kuzuDriver *dri
 		"group_id": groupID,
 	}
 
-	records, err := kuzuDriver.ExecuteQuery(query, params)
+	records, _, _, err := kuzuDriver.ExecuteQuery(query, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
 	}
 
 	var nodes []*types.Node
-	for _, record := range records {
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+	for _, record := range recordSlice {
 		node := &types.Node{
 			Type:    types.EntityNodeType,
 			GroupID: groupID,

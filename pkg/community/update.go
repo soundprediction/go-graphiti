@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -139,7 +140,7 @@ func (b *Builder) getExistingCommunity(ctx context.Context, entityUUID string) (
 }
 
 // getExistingCommunityKuzu gets existing community for Kuzu database
-func (b *Builder) getExistingCommunityKuzu(ctx context.Context, kuzuDriver interface{}, entityUUID string) (*types.Node, error) {
+func (b *Builder) getExistingCommunityKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver, entityUUID string) (*types.Node, error) {
 	query := `
 		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
 		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary,

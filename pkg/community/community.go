@@ -356,7 +356,7 @@ func (b *Builder) RemoveCommunities(ctx context.Context) error {
 	// Execute based on driver type
 	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
 		// For Kuzu, use the executeQuery method
-		_, err := kuzuDriver.ExecuteQuery(query, nil)
+		_, _, _, err := kuzuDriver.ExecuteQuery(query, nil)
 		return err
 	}
 

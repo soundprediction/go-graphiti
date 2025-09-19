@@ -218,7 +218,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 
 	switch cfg.Database.Driver {
 	case "kuzu":
-		graphDriver, err = driver.NewKuzuDriver(cfg.Database.URI)
+		graphDriver, err = driver.NewKuzuDriver(cfg.Database.URI, 16)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
 		}

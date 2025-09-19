@@ -350,7 +350,7 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 
 	switch config.DatabaseDriver {
 	case "kuzu":
-		graphDriver, err = driver.NewKuzuDriver(config.DatabaseURI)
+		graphDriver, err = driver.NewKuzuDriver(config.DatabaseURI, 16)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
 		}
