@@ -164,13 +164,18 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`Neo4jDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L28) class | [`Neo4jDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/neo4j.go#L19) struct | `pkg/driver/neo4j.go` | ✅ Implemented |
 | All GraphDriver interface methods | Same method names | `pkg/driver/neo4j.go` | ✅ Implemented |
 
-### driver/kuzu.py
+### driver/falkordb_driver.py
 
-| Python Method | Go Method | File Location | Status |
-|---------------|-----------|---------------|--------|
-| [`KuzuDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/kuzu_driver.py#L91) class | [`KuzuDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L16) struct | `pkg/driver/kuzu.go` | ✅ Implemented |
-| All GraphDriver interface methods | Same method names | `pkg/driver/kuzu.go` | ✅ Implemented |
-| [`setupSchema()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/kuzu_driver.py#L140) | [`setupSchema()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L158) method | `pkg/driver/kuzu.go` | ✅ Implemented |
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `FalkorDBDriver` | N/A | N/A | ❌ Missing |
+
+### driver/neptune_driver.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `NeptuneDriver` | N/A | N/A | ❌ Missing |
+
 
 ## Node and Edge Types
 
@@ -187,14 +192,26 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`EpisodicEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L141) | `types.Edge` with `Type: EpisodicEdgeType` | `pkg/types/types.go` | ✅ Implemented | |
 | [`CommunityEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L517) | `types.Edge` with `Type: CommunityEdgeType` | `pkg/types/types.go` | ✅ Implemented | |
 
-### Node and Edge Functions
+### models/edges/edge_db_queries.py
 
-| Python Function | Go Function | File Location | Status |
-|-----------------|-------------|---------------|--------|
-| [`create_entity_node_embeddings()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L853) | `EmbedNodeContent()` | `pkg/embedder/` | ⚠️ Partial |
-| [`create_entity_edge_embeddings()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L663) | `EmbedEdgeContent()` | `pkg/embedder/` | ⚠️ Partial |
-| [`get_entity_node_from_record()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L808) | `NodeFromDBRecord()` | `pkg/driver/` | ✅ Implemented |
-| [`get_entity_edge_from_record()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L608) | `EdgeFromDBRecord()` | `pkg/driver/` | ✅ Implemented |
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `get_entity_edge_return_query` | N/A | N/A | ❌ Missing |
+| `get_entity_edge_save_bulk_query` | N/A | N/A | ❌ Missing |
+| `get_entity_edge_save_query` | N/A | N/A | ❌ Missing |
+| `get_community_edge_save_query` | N/A | N/A | ❌ Missing |
+
+### models/nodes/node_db_queries.py
+
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `get_entity_node_return_query` | N/A | N/A | ❌ Missing |
+| `get_entity_node_save_bulk_query` | N/A | N/A | ❌ Missing |
+| `get_entity_node_save_query` | N/A | N/A | ❌ Missing |
+| `get_community_node_save_query` | N/A | N/A | ❌ Missing |
+| `get_episode_node_save_bulk_query` | N/A | N/A | ❌ Missing |
+| `get_episode_node_save_query` | N/A | N/A | ❌ Missing |
+
 
 ## LLM Client Interface
 
@@ -207,15 +224,48 @@ This document tracks the mapping between the original Python Graphiti methods an
 | `LLMClient.generate_batch()` | `Client.ChatBatch()` | `pkg/llm/` | ❌ Missing | Batch operations not implemented |
 | [`LLMClient.generate_with_schema()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/client.py#L165) | [`Client.ChatWithStructuredOutput()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/client.go#L13) | `pkg/llm/client.go` | ✅ Implemented | |
 
-### LLM Client Implementations
+### llm_client/anthropic_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| [`OpenAIClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/openai_client.py#L25) | [`openai.Client`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/openai.go#L12) | `pkg/llm/openai/` | ✅ Implemented |
-| `AnthropicClient` | `anthropic.Client` | `pkg/llm/anthropic/` | ❌ Missing |
-| `GeminiClient` | `gemini.Client` | `pkg/llm/gemini/` | ❌ Missing |
-| `GroqClient` | `groq.Client` | `pkg/llm/groq/` | ❌ Missing |
-| `AzureOpenAIClient` | `azure.Client` | `pkg/llm/azure/` | ❌ Missing |
+| `AnthropicClient` | N/A | N/A | ❌ Missing |
+
+### llm_client/azure_openai_client.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `AzureOpenAIClient` | N/A | N/A | ❌ Missing |
+
+### llm_client/gemini_client.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `GeminiClient` | N/A | N/A | ❌ Missing |
+
+### llm_client/groq_client.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `GroqClient` | N/A | N/A | ❌ Missing |
+
+### llm_client/openai_base_client.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `BaseOpenAIClient` | N/A | N/A | ❌ Missing |
+
+### llm_client/openai_generic_client.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `OpenAIGenericClient` | N/A | N/A | ❌ Missing |
+
+### llm_client/utils.py
+
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `get_token_count` | N/A | N/A | ❌ Missing |
+
 
 ### LLM Configuration
 
@@ -234,14 +284,24 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`EmbedderClient.create()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/embedder/client.py#L24) | [`Client.EmbedSingle()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/client.go#L13) | `pkg/embedder/client.go` | ✅ Implemented | |
 | [`EmbedderClient.create_batch()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/embedder/client.py#L29) | [`Client.Embed()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/client.go#L10) | `pkg/embedder/client.go` | ✅ Implemented | |
 
-### Embedder Implementations
+### embedder/azure_openai.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| [`OpenAIEmbedder`](https://github.com/getzep/graphiti/blob/main/graphiti_core/embedder/openai.py#L31) | [`openai.EmbedderClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/openai.go#L12) | `pkg/embedder/openai/` | ✅ Implemented |
-| `VoyageEmbedder` | `voyage.Client` | `pkg/embedder/voyage/` | ❌ Missing |
-| `GeminiEmbedder` | `gemini.Client` | `pkg/embedder/gemini/` | ❌ Missing |
-| `AzureOpenAIEmbedder` | `azure.Client` | `pkg/embedder/azure/` | ❌ Missing |
+| `AzureOpenAIEmbedder` | N/A | N/A | ❌ Missing |
+
+### embedder/gemini.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `GeminiEmbedder` | N/A | N/A | ❌ Missing |
+
+### embedder/voyage.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `VoyageEmbedder` | N/A | N/A | ❌ Missing |
+
 
 ### Embedder Configuration
 
@@ -259,13 +319,18 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`CrossEncoderClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/client.py#L18) abstract class | [`crossencoder.Client`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/client.go#L13) interface | `pkg/crossencoder/` | ❌ Missing | Cross encoder not implemented |
 | [`CrossEncoderClient.rerank()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/client.py#L25) | [`Client.Rerank()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/reranker.go#L203) | `pkg/crossencoder/` | ❌ Missing | |
 
-### Cross Encoder Implementations
+### cross_encoder/bge_reranker_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| [`OpenAIRerankerClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/openai_reranker_client.py#L21) | N/A | N/A | ❌ Missing |
-| [`BGERerankerClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/bge_reranker_client.py#L21) | N/A | N/A | ❌ Missing |
-| [`GeminiRerankerClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/gemini_reranker_client.py#L29) | N/A | N/A | ❌ Missing |
+| `BGERerankerClient` | N/A | N/A | ❌ Missing |
+
+### cross_encoder/gemini_reranker_client.py
+
+| Python Class | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `GeminiRerankerClient` | N/A | N/A | ❌ Missing |
+
 
 ## Community Operations
 
@@ -435,7 +500,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`validate_group_id()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/helpers.py#L132) | [`ValidateGroupID()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L228) | `pkg/utils/helpers.go` | ✅ Implemented | |
 | [`lucene_sanitize()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/helpers.py#L61) | [`LuceneSanitize()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L118) | `pkg/utils/helpers.go` | ✅ Implemented | |
 | [`normalize_l2()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/helpers.py#L109) | [`NormalizeL2()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L154) / `NormalizeL2Float32()` | `pkg/utils/helpers.go` | ✅ Implemented | |
-| [`parse_db_date()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/helpers.py#L38) | [`ParseDBDate()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L78) | `pkg/utils/helpers.go` | ✅ Implemented | |
+| [`parse_db_date()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/helpers.py#L38) | [`ParseDBDate()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L78) | `pkg/utils/helpers.go` | ✅ Implemented |
 
 ### utils/bulk_utils.py
 
@@ -466,8 +531,8 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 ### Additional Go Utility Functions
 
-| Go Function | Description | File Location |
-|-------------|-------------|---------------|
+| Go Method | Description | File Location |
+|-----------|-------------|---------------|
 | [`GetUseParallelRuntime()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L33) | Gets parallel runtime setting from env | `pkg/utils/helpers.go` |
 | [`GetSemaphoreLimit()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L43) | Gets semaphore limit from env | `pkg/utils/helpers.go` |
 | [`GetMaxReflexionIterations()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/helpers.go#L54) | Gets max reflexion iterations from env | `pkg/utils/helpers.go` |
@@ -487,15 +552,43 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`FormatTimeForDB()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/datetime.go#L90) / [`ParseTimeFromDB()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/datetime.go#L95) | Database time formatting | `pkg/utils/datetime.go` |
 | [`TimeToMilliseconds()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/datetime.go#L100) / [`MillisecondsToTime()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/datetime.go#L105) | Time conversion utilities | `pkg/utils/datetime.go` |
 
-### utils/maintenance/
+### utils/maintenance/edge_operations.py
 
-| Python Module | Go Implementation | File Location | Status |
-|---------------|-------------------|---------------|--------|
-| `community_operations.py` | `pkg/community/` | Multiple files | ✅ Implemented |
-| `edge_operations.py` | Embedded in main client | `graphiti.go` | ⚠️ Partial |
-| `node_operations.py` | Embedded in main client | `graphiti.go` | ⚠️ Partial |
-| `temporal_operations.py` | `pkg/temporal/` | Not implemented | ❌ Missing |
-| `graph_data_operations.py` | Various locations | Multiple files | ⚠️ Partial |
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `extract_edges` | N/A | N/A | ❌ Missing |
+| `resolve_extracted_edge` | N/A | N/A | ❌ Missing |
+| `resolve_extracted_edges` | N/A | N/A | ❌ Missing |
+| `build_episodic_edges` | N/A | N/A | ❌ Missing |
+| `build_duplicate_of_edges` | N/A | N/A | ❌ Missing |
+
+### utils/maintenance/graph_data_operations.py
+
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `build_indices_and_constraints` | N/A | N/A | ❌ Missing |
+| `retrieve_episodes` | N/A | N/A | ❌ Missing |
+
+### utils/maintenance/node_operations.py
+
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `extract_nodes` | N/A | N/A | ❌ Missing |
+| `resolve_extracted_nodes` | N/A | N/A | ❌ Missing |
+| `extract_attributes_from_nodes` | N/A | N/A | ❌ Missing |
+
+### utils/maintenance/temporal_operations.py
+
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `extract_and_save_edge_dates` | N/A | N/A | ❌ Missing |
+
+### utils/maintenance/utils.py
+
+| Python Function | Go Implementation | File Location | Status |
+|--------------|-------------------|---------------|--------|
+| `get_entities_and_edges` | N/A | N/A | ❌ Missing |
+
 
 ### Additional Go Helper Functions
 
