@@ -425,33 +425,67 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 ## Utilities and Helpers
 
-### utils/helpers.py
+### helpers.py (graphiti_core/)
 
 | Python Function | Go Function | File Location | Status | Notes |
 |-----------------|-------------|---------------|--------|--------|
-| `get_default_group_id()` | `GetDefaultGroupID()` | `pkg/utils/` | ❌ Missing | |
-| `semaphore_gather()` | `ConcurrentExecute()` | `pkg/utils/` | ❌ Missing | |
-| `validate_excluded_entity_types()` | `ValidateEntityTypes()` | `pkg/utils/` | ❌ Missing | |
-| `validate_group_id()` | `ValidateGroupID()` | `pkg/utils/` | ❌ Missing | |
-| `lucene_sanitize()` | `EscapeQueryString()` | `pkg/driver/graph_queries.go` | ✅ Implemented | |
-| `normalize_l2()` | `NormalizeVector()` | `pkg/search/` | ❌ Missing | |
+| `get_default_group_id()` | `GetDefaultGroupID()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `semaphore_gather()` | `SemaphoreGather()` | `pkg/utils/concurrent.go` | ✅ Implemented | |
+| `validate_excluded_entity_types()` | `ValidateExcludedEntityTypes()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `validate_group_id()` | `ValidateGroupID()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `lucene_sanitize()` | `LuceneSanitize()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `normalize_l2()` | `NormalizeL2()` / `NormalizeL2Float32()` | `pkg/utils/helpers.go` | ✅ Implemented | |
+| `parse_db_date()` | `ParseDBDate()` | `pkg/utils/helpers.go` | ✅ Implemented | |
 
 ### utils/bulk_utils.py
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
 | `add_nodes_and_edges_bulk()` | `Client.Add()` | `graphiti.go` | ⚠️ Partial |
-| `dedupe_edges_bulk()` | `DeduplicateEdges()` | `pkg/utils/` | ❌ Missing |
-| `dedupe_nodes_bulk()` | `DeduplicateNodes()` | `pkg/utils/` | ❌ Missing |
+| `dedupe_edges_bulk()` | Helper functions | `pkg/utils/bulk.go` | ✅ Implemented |
+| `dedupe_nodes_bulk()` | Helper functions | `pkg/utils/bulk.go` | ✅ Implemented |
 | `extract_nodes_and_edges_bulk()` | Embedded in `Client.Add()` | `graphiti.go` | ⚠️ Partial |
-| `resolve_edge_pointers()` | `ResolveEdgeReferences()` | `pkg/utils/` | ❌ Missing |
+| `resolve_edge_pointers()` | `ResolveEdgePointers()` | `pkg/utils/bulk.go` | ✅ Implemented |
 | `retrieve_previous_episodes_bulk()` | `GetEpisodes()` | `graphiti.go` | ⚠️ Partial |
+| `compress_uuid_map()` | `CompressUUIDMap()` | `pkg/utils/bulk.go` | ✅ Implemented |
+| `UnionFind` class | `UnionFind` struct | `pkg/utils/bulk.go` | ✅ Implemented |
 
 ### utils/datetime_utils.py
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
-| `utc_now()` | `time.Now().UTC()` | Standard library | ✅ Implemented |
+| `utc_now()` | `UTCNow()` | `pkg/utils/datetime.go` | ✅ Implemented |
+| `ensure_utc()` | `EnsureUTC()` | `pkg/utils/datetime.go` | ✅ Implemented |
+| `convert_datetimes_to_strings()` | `ConvertDatetimesToStrings()` | `pkg/utils/datetime.go` | ✅ Implemented |
+
+### utils/ontology_utils/entity_types_utils.py
+
+| Python Function | Go Function | File Location | Status |
+|-----------------|-------------|---------------|--------|
+| `validate_entity_types()` | `ValidateEntityTypes()` | `pkg/utils/validation.go` | ✅ Implemented |
+
+### Additional Go Utility Functions
+
+| Go Function | Description | File Location |
+|-------------|-------------|---------------|
+| `GetUseParallelRuntime()` | Gets parallel runtime setting from env | `pkg/utils/helpers.go` |
+| `GetSemaphoreLimit()` | Gets semaphore limit from env | `pkg/utils/helpers.go` |
+| `GetMaxReflexionIterations()` | Gets max reflexion iterations from env | `pkg/utils/helpers.go` |
+| `NewConcurrentExecutor()` | Creates concurrent executor with semaphore | `pkg/utils/concurrent.go` |
+| `ExecuteWithResults()` | Concurrent execution with results | `pkg/utils/concurrent.go` |
+| `NewWorkerPool()` | Creates worker pool for processing | `pkg/utils/concurrent.go` |
+| `NewBatchProcessor()` | Creates batch processor | `pkg/utils/bulk.go` |
+| `HasWordOverlap()` | Checks word overlap for deduplication | `pkg/utils/bulk.go` |
+| `CalculateCosineSimilarity()` | Computes cosine similarity | `pkg/utils/bulk.go` |
+| `FindSimilarNodes()` / `FindSimilarEdges()` | Find duplicate candidates | `pkg/utils/bulk.go` |
+| `ChunkSlice()` | Splits slices into chunks | `pkg/utils/bulk.go` |
+| `RemoveDuplicateStrings()` | Removes duplicates from string slice | `pkg/utils/bulk.go` |
+| `ValidateUUID()` | Validates UUID format | `pkg/utils/validation.go` |
+| `ValidateRequired()` | Validates required fields | `pkg/utils/validation.go` |
+| `ValidateRange()` | Validates numeric ranges | `pkg/utils/validation.go` |
+| `ValidateEmbeddingDimensions()` | Validates embedding consistency | `pkg/utils/validation.go` |
+| `FormatTimeForDB()` / `ParseTimeFromDB()` | Database time formatting | `pkg/utils/datetime.go` |
+| `TimeToMilliseconds()` / `MillisecondsToTime()` | Time conversion utilities | `pkg/utils/datetime.go` |
 
 ### utils/maintenance/
 
@@ -531,7 +565,7 @@ When adding new Python-to-Go mappings:
 | Embedder Clients | 6 | 3 | 0 | 3 | 50% |
 | Cross Encoder | 3 | 0 | 0 | 3 | 0% |
 | Prompts | 29 | 29 | 0 | 0 | 100% |
-| Utilities | 20+ | 3 | 8 | 10+ | 30% |
+| Utilities | 25+ | 20+ | 3 | 2 | 85% |
 | Telemetry | 2 | 0 | 0 | 2 | 0% |
 
 ### Key Missing Components
@@ -553,6 +587,7 @@ When adding new Python-to-Go mappings:
 5. **Search Configuration** - Comprehensive search configs and recipes
 6. **Community Operations** - Label propagation clustering and community building
 7. **Prompt Templates** - Complete prompt library with all Python functions ported
+8. **Utility Functions** - Comprehensive helper functions, datetime utils, validation, and bulk operations
 
 ## Last Updated
 
