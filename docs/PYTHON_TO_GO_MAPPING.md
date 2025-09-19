@@ -311,26 +311,117 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| `Message` class | `llm.Message` struct | `pkg/llm/client.go` | ✅ Implemented |
-| `Role` enum | `llm.Role` type | `pkg/llm/client.go` | ✅ Implemented |
+| `Message` class | `Message` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `PromptFunction` type | `PromptFunction` type | `pkg/prompts/types.go` | ✅ Implemented |
+| `ExtractedEntity` | `ExtractedEntity` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `ExtractedEntities` | `ExtractedEntities` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EntityClassificationTriple` | `EntityClassificationTriple` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EntitySummary` | `EntitySummary` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `Edge` | `Edge` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `ExtractedEdges` | `ExtractedEdges` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `NodeDuplicate` | `NodeDuplicate` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EdgeDuplicate` | `EdgeDuplicate` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `InvalidatedEdges` | `InvalidatedEdges` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EdgeDates` | `EdgeDates` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `Summary` | `Summary` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `SummaryDescription` | `SummaryDescription` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `QueryExpansion` | `QueryExpansion` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `QAResponse` | `QAResponse` struct | `pkg/prompts/models.go` | ✅ Implemented |
+| `EvalResponse` | `EvalResponse` struct | `pkg/prompts/models.go` | ✅ Implemented |
 
 ### Prompt Templates
 
 | Python Module | Go Implementation | File Location | Status | Notes |
 |---------------|-------------------|---------------|--------|--------|
-| `prompts/extract_nodes.py` | `prompts.ExtractEntitiesPrompt` | `pkg/prompts/` | ⚠️ Partial | Basic extraction implemented |
-| `prompts/extract_edges.py` | `prompts.ExtractRelationshipsPrompt` | `pkg/prompts/` | ⚠️ Partial | Basic extraction implemented |
-| `prompts/dedupe_nodes.py` | `prompts.DeduplicateNodesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/dedupe_edges.py` | `prompts.DeduplicateEdgesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/summarize_nodes.py` | `prompts.SummarizeNodesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/invalidate_edges.py` | `prompts.InvalidateEdgesPrompt` | `pkg/prompts/` | ❌ Missing | |
-| `prompts/extract_edge_dates.py` | `prompts.ExtractTemporalInfoPrompt` | `pkg/prompts/` | ❌ Missing | |
+| `prompts/extract_nodes.py` | `ExtractNodesPrompt` interface | `pkg/prompts/extract_nodes.go` | ✅ Implemented | All 7 functions implemented |
+| `prompts/extract_edges.py` | `ExtractEdgesPrompt` interface | `pkg/prompts/extract_edges.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/dedupe_nodes.py` | `DedupeNodesPrompt` interface | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/dedupe_edges.py` | `DedupeEdgesPrompt` interface | `pkg/prompts/dedupe_edges.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/summarize_nodes.py` | `SummarizeNodesPrompt` interface | `pkg/prompts/summarize_nodes.go` | ✅ Implemented | All 3 functions implemented |
+| `prompts/invalidate_edges.py` | `InvalidateEdgesPrompt` interface | `pkg/prompts/invalidate_edges.go` | ✅ Implemented | Both v1 and v2 functions |
+| `prompts/extract_edge_dates.py` | `ExtractEdgeDatesPrompt` interface | `pkg/prompts/extract_edge_dates.go` | ✅ Implemented | v1 function implemented |
+| `prompts/eval.py` | `EvalPrompt` interface | `pkg/prompts/eval.go` | ✅ Implemented | All 4 functions implemented |
+
+### Extract Nodes Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `extract_message()` | `ExtractMessage()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_json()` | `ExtractJSON()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_text()` | `ExtractText()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `reflexion()` | `Reflexion()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `classify_nodes()` | `ClassifyNodes()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_attributes()` | `ExtractAttributes()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+| `extract_summary()` | `ExtractSummary()` | `pkg/prompts/extract_nodes.go` | ✅ Implemented |
+
+### Extract Edges Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `edge()` | `Edge()` | `pkg/prompts/extract_edges.go` | ✅ Implemented |
+| `reflexion()` | `Reflexion()` | `pkg/prompts/extract_edges.go` | ✅ Implemented |
+| `extract_attributes()` | `ExtractAttributes()` | `pkg/prompts/extract_edges.go` | ✅ Implemented |
+
+### Dedupe Nodes Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `node()` | `Node()` | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented |
+| `node_list()` | `NodeList()` | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented |
+| `nodes()` | `Nodes()` | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented |
+
+### Dedupe Edges Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `edge()` | `Edge()` | `pkg/prompts/dedupe_edges.go` | ✅ Implemented |
+| `edge_list()` | `EdgeList()` | `pkg/prompts/dedupe_edges.go` | ✅ Implemented |
+| `resolve_edge()` | `ResolveEdge()` | `pkg/prompts/dedupe_edges.go` | ✅ Implemented |
+
+### Summarize Nodes Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `summarize_pair()` | `SummarizePair()` | `pkg/prompts/summarize_nodes.go` | ✅ Implemented |
+| `summarize_context()` | `SummarizeContext()` | `pkg/prompts/summarize_nodes.go` | ✅ Implemented |
+| `summary_description()` | `SummaryDescription()` | `pkg/prompts/summarize_nodes.go` | ✅ Implemented |
+
+### Invalidate Edges Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `v1()` | `V1()` | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
+| `v2()` | `V2()` | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
+
+### Extract Edge Dates Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `v1()` | `V1()` | `pkg/prompts/extract_edge_dates.go` | ✅ Implemented |
+
+### Eval Functions
+
+| Python Function | Go Method | File Location | Status |
+|-----------------|-----------|---------------|--------|
+| `qa_prompt()` | `QAPrompt()` | `pkg/prompts/eval.go` | ✅ Implemented |
+| `eval_prompt()` | `EvalPrompt()` | `pkg/prompts/eval.go` | ✅ Implemented |
+| `query_expansion()` | `QueryExpansion()` | `pkg/prompts/eval.go` | ✅ Implemented |
+| `eval_add_episode_results()` | `EvalAddEpisodeResults()` | `pkg/prompts/eval.go` | ✅ Implemented |
+
+### Prompt Library
+
+| Python Component | Go Component | File Location | Status |
+|------------------|--------------|---------------|--------|
+| `PromptLibrary` interface | `Library` interface | `pkg/prompts/library.go` | ✅ Implemented |
+| `PromptLibraryImpl` | `LibraryImpl` struct | `pkg/prompts/library.go` | ✅ Implemented |
+| `prompt_library` instance | `NewLibrary()` function | `pkg/prompts/library.go` | ✅ Implemented |
 
 ### Prompt Helpers
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
-| `to_prompt_json()` | `ToPromptJSON()` | `pkg/search/helpers.go` | ✅ Implemented |
+| `to_prompt_json()` | `ToPromptJSON()` | `pkg/prompts/types.go` | ✅ Implemented |
+| `DO_NOT_ESCAPE_UNICODE` | `DoNotEscapeUnicode` const | `pkg/prompts/models.go` | ✅ Implemented |
 
 ## Utilities and Helpers
 
@@ -439,7 +530,7 @@ When adding new Python-to-Go mappings:
 | LLM Clients | 8 | 4 | 0 | 4 | 50% |
 | Embedder Clients | 6 | 3 | 0 | 3 | 50% |
 | Cross Encoder | 3 | 0 | 0 | 3 | 0% |
-| Prompts | 8 | 1 | 2 | 5 | 25% |
+| Prompts | 29 | 29 | 0 | 0 | 100% |
 | Utilities | 20+ | 3 | 8 | 10+ | 30% |
 | Telemetry | 2 | 0 | 0 | 2 | 0% |
 
@@ -447,7 +538,7 @@ When adding new Python-to-Go mappings:
 
 1. ~~**Community Operations** - Community building and management not implemented~~ ✅ **Completed**
 2. **Cross Encoder Support** - Reranking with cross encoders missing
-3. **Advanced Prompt Templates** - Most prompt templates need implementation
+3. ~~**Advanced Prompt Templates** - Most prompt templates need implementation~~ ✅ **Completed**
 4. **Bulk Utilities** - Deduplication and bulk operations partially implemented
 5. **Telemetry** - Event tracking and metrics collection missing
 6. **Multiple LLM Providers** - Only OpenAI client implemented
@@ -461,6 +552,7 @@ When adding new Python-to-Go mappings:
 4. **Query Building** - Database-agnostic query construction implemented
 5. **Search Configuration** - Comprehensive search configs and recipes
 6. **Community Operations** - Label propagation clustering and community building
+7. **Prompt Templates** - Complete prompt library with all Python functions ported
 
 ## Last Updated
 
