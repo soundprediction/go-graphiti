@@ -84,69 +84,69 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `Searcher` class | `Searcher` struct | `pkg/search/search.go` | ✅ Implemented |
-| `HybridSearch()` | `HybridSearch()` | `pkg/search/search.go` | ✅ Implemented |
-| Search methods (cosine_similarity, bm25, bfs) | `SearchMethod` constants | `pkg/search/search.go` | ✅ Implemented |
-| Reranker types | `RerankerType` constants | `pkg/search/search.go` | ✅ Implemented |
+| `Searcher` class | [`Searcher`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L118) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`HybridSearch()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search.py#L70) | [`HybridSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented |
+| Search methods (cosine_similarity, bm25, bfs) | [`SearchMethod`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L15) constants | `pkg/search/search.go` | ✅ Implemented |
+| Reranker types | [`RerankerType`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L22) constants | `pkg/search/search.go` | ✅ Implemented |
 
 ### search/search_config.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `SearchConfig` class | `SearchConfig` struct | `pkg/search/search.go` | ✅ Implemented |
-| `NodeSearchConfig` | `NodeSearchConfig` struct | `pkg/search/search.go` | ✅ Implemented |
-| `EdgeSearchConfig` | `EdgeSearchConfig` struct | `pkg/search/search.go` | ✅ Implemented |
-| `EpisodeSearchConfig` | `EpisodeSearchConfig` struct | `pkg/search/search.go` | ✅ Implemented |
-| `CommunitySearchConfig` | `CommunitySearchConfig` struct | `pkg/search/search.go` | ✅ Implemented |
-| `SearchResults` | `HybridSearchResult` struct | `pkg/search/search.go` | ✅ Implemented |
+| [`SearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L130) class | [`SearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L35) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`NodeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L108) | [`NodeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L42) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`EdgeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L99) | [`EdgeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L50) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`EpisodeSearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L117) | [`EpisodeSearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L58) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`CommunitySearchConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L124) | [`CommunitySearchConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L64) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`SearchResults`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config.py#L137) | [`HybridSearchResult`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L95) struct | `pkg/search/search.go` | ✅ Implemented |
 
 ### search/search_config_recipes.py
 
 | Python Configuration | Go Configuration | File Location | Status |
 |----------------------|------------------|---------------|--------|
-| `COMBINED_HYBRID_SEARCH_RRF` | `CombinedHybridSearchRRF` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `COMBINED_HYBRID_SEARCH_MMR` | `CombinedHybridSearchMMR` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `COMBINED_HYBRID_SEARCH_CROSS_ENCODER` | `CombinedHybridSearchCrossEncoder` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `EDGE_HYBRID_SEARCH_RRF` | `EdgeHybridSearchRRF` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `EDGE_HYBRID_SEARCH_MMR` | `EdgeHybridSearchMMR` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `EDGE_HYBRID_SEARCH_NODE_DISTANCE` | `EdgeHybridSearchNodeDistance` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `EDGE_HYBRID_SEARCH_EPISODE_MENTIONS` | `EdgeHybridSearchEpisodeMentions` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `EDGE_HYBRID_SEARCH_CROSS_ENCODER` | `EdgeHybridSearchCrossEncoder` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `NODE_HYBRID_SEARCH_RRF` | `NodeHybridSearchRRF` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `NODE_HYBRID_SEARCH_MMR` | `NodeHybridSearchMMR` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `NODE_HYBRID_SEARCH_NODE_DISTANCE` | `NodeHybridSearchNodeDistance` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `NODE_HYBRID_SEARCH_EPISODE_MENTIONS` | `NodeHybridSearchEpisodeMentions` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `NODE_HYBRID_SEARCH_CROSS_ENCODER` | `NodeHybridSearchCrossEncoder` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `COMMUNITY_HYBRID_SEARCH_RRF` | `CommunityHybridSearchRRF` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `COMMUNITY_HYBRID_SEARCH_MMR` | `CommunityHybridSearchMMR` | `pkg/search/config_recipes.go` | ✅ Implemented |
-| `COMMUNITY_HYBRID_SEARCH_CROSS_ENCODER` | `CommunityHybridSearchCrossEncoder` | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`COMBINED_HYBRID_SEARCH_RRF`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L27) | [`CombinedHybridSearchRRF`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L3) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`COMBINED_HYBRID_SEARCH_MMR`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L50) | [`CombinedHybridSearchMMR`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L25) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`COMBINED_HYBRID_SEARCH_CROSS_ENCODER`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L74) | [`CombinedHybridSearchCrossEncoder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L50) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`EDGE_HYBRID_SEARCH_RRF`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L102) | [`EdgeHybridSearchRRF`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L72) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`EDGE_HYBRID_SEARCH_MMR`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L109) | [`EdgeHybridSearchMMR`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L79) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`EDGE_HYBRID_SEARCH_NODE_DISTANCE`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L116) | [`EdgeHybridSearchNodeDistance`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L86) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`EDGE_HYBRID_SEARCH_EPISODE_MENTIONS`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L123) | [`EdgeHybridSearchEpisodeMentions`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L93) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`EDGE_HYBRID_SEARCH_CROSS_ENCODER`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L130) | [`EdgeHybridSearchCrossEncoder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L100) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`NODE_HYBRID_SEARCH_RRF`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L141) | [`NodeHybridSearchRRF`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L108) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`NODE_HYBRID_SEARCH_MMR`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L148) | [`NodeHybridSearchMMR`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L115) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`NODE_HYBRID_SEARCH_NODE_DISTANCE`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L155) | [`NodeHybridSearchNodeDistance`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L122) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`NODE_HYBRID_SEARCH_EPISODE_MENTIONS`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L162) | [`NodeHybridSearchEpisodeMentions`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L129) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`NODE_HYBRID_SEARCH_CROSS_ENCODER`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L169) | [`NodeHybridSearchCrossEncoder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L136) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`COMMUNITY_HYBRID_SEARCH_RRF`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L180) | [`CommunityHybridSearchRRF`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L144) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`COMMUNITY_HYBRID_SEARCH_MMR`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L187) | [`CommunityHybridSearchMMR`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L151) | `pkg/search/config_recipes.go` | ✅ Implemented |
+| [`COMMUNITY_HYBRID_SEARCH_CROSS_ENCODER`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_config_recipes.py#L194) | [`CommunityHybridSearchCrossEncoder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/config_recipes.go#L158) | `pkg/search/config_recipes.go` | ✅ Implemented |
 
 ### search/search_filters.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `SearchFilters` class | `SearchFilters` struct | `pkg/search/search.go` | ✅ Implemented |
-| `ComparisonOperator` enum | `ComparisonOperator` type | `pkg/search/filters.go` | ✅ Implemented |
-| `DateFilter` class | `DateFilter` struct | `pkg/search/filters.go` | ✅ Implemented |
-| `node_search_filter_query_constructor()` | `NodeSearchFilterQueryConstructor()` | `pkg/search/filters.go` | ✅ Implemented |
-| `edge_search_filter_query_constructor()` | `EdgeSearchFilterQueryConstructor()` | `pkg/search/filters.go` | ✅ Implemented |
-| `date_filter_query_constructor()` | `constructDateFilterQuery()` | `pkg/search/filters.go` | ✅ Implemented |
+| [`SearchFilters`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_filters.py#L40) class | [`SearchFilters`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L70) struct | `pkg/search/search.go` | ✅ Implemented |
+| [`ComparisonOperator`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_filters.py#L19) enum | [`ComparisonOperator`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/filters.go#L11) type | `pkg/search/filters.go` | ✅ Implemented |
+| [`DateFilter`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_filters.py#L33) class | [`DateFilter`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/filters.go#L25) struct | `pkg/search/filters.go` | ✅ Implemented |
+| [`node_search_filter_query_constructor()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_filters.py#L54) | [`NodeSearchFilterQueryConstructor()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/filters.go#L64) | `pkg/search/filters.go` | ✅ Implemented |
+| [`edge_search_filter_query_constructor()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_filters.py#L95) | [`EdgeSearchFilterQueryConstructor()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/filters.go#L110) | `pkg/search/filters.go` | ✅ Implemented |
+| [`date_filter_query_constructor()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_filters.py#L75) | [`constructDateFilterQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/filters.go#L211) | `pkg/search/filters.go` | ✅ Implemented |
 
 ### search/search_helpers.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `format_edge_date_range(edge)` | `FormatEdgeDateRange(edge *types.Edge)` | `pkg/search/helpers.go` | ✅ Implemented |
-| `search_results_to_context_string()` | `SearchResultsToContextString()` | `pkg/search/helpers.go` | ✅ Implemented |
+| [`format_edge_date_range(edge)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_helpers.py#L21) | [`FormatEdgeDateRange(edge *types.Edge)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/helpers.go#L12) | `pkg/search/helpers.go` | ✅ Implemented |
+| [`search_results_to_context_string()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_helpers.py#L26) | [`SearchResultsToContextString()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/helpers.go#L27) | `pkg/search/helpers.go` | ✅ Implemented |
 
 ### search/search_utils.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
 | Various search utility functions | `SearchUtilities` struct methods | `pkg/search/search_utils.go` | ✅ Implemented |
-| Cosine similarity calculation | `CalculateCosineSimilarity()` | `pkg/search/search_utils.go` | ✅ Implemented |
-| RRF reranking | `RRF()` | `pkg/search/rerankers.go` | ✅ Implemented |
-| MMR reranking | `MMR()` | `pkg/search/rerankers.go` | ✅ Implemented |
+| [`Cosine similarity calculation`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L61) | [`CalculateCosineSimilarity()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L40) | `pkg/search/search_utils.go` | ✅ Implemented |
+| [`RRF reranking`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1433) | [`RRF()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L25) | `pkg/search/rerankers.go` | ✅ Implemented |
+| [`MMR reranking`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1501) | [`MMR()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L231) | `pkg/search/rerankers.go` | ✅ Implemented |
 
 ## Driver Interface
 
@@ -154,23 +154,23 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `GraphDriver` interface | `GraphDriver` interface | `pkg/driver/driver.go` | ✅ Implemented |
+| [`GraphDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/driver.py#L63) interface | [`GraphDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/driver.go#L12) interface | `pkg/driver/driver.go` | ✅ Implemented |
 | Database operations (GetNode, UpsertNode, etc.) | Same method names | `pkg/driver/driver.go` | ✅ Implemented |
 
 ### driver/neo4j.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `Neo4jDriver` class | `Neo4jDriver` struct | `pkg/driver/neo4j.go` | ✅ Implemented |
+| [`Neo4jDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L28) class | [`Neo4jDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/neo4j.go#L19) struct | `pkg/driver/neo4j.go` | ✅ Implemented |
 | All GraphDriver interface methods | Same method names | `pkg/driver/neo4j.go` | ✅ Implemented |
 
 ### driver/kuzu.py
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `KuzuDriver` class | `KuzuDriver` struct | `pkg/driver/kuzu.go` | ✅ Implemented |
+| [`KuzuDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/kuzu_driver.py#L91) class | [`KuzuDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L16) struct | `pkg/driver/kuzu.go` | ✅ Implemented |
 | All GraphDriver interface methods | Same method names | `pkg/driver/kuzu.go` | ✅ Implemented |
-| Schema setup | `setupSchema()` method | `pkg/driver/kuzu.go` | ✅ Implemented |
+| [`setupSchema()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/kuzu_driver.py#L140) | [`setupSchema()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L158) method | `pkg/driver/kuzu.go` | ✅ Implemented |
 
 ## Node and Edge Types
 
