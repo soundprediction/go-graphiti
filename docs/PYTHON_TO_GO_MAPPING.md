@@ -22,35 +22,35 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status | Notes |
 |---------------|-----------|---------------|--------|--------|
-| `Graphiti.__init__()` | `NewClient()` | `graphiti.go` | ✅ Implemented | Go uses functional construction pattern |
-| `Graphiti.close()` | `Client.Close()` | `graphiti.go` | ✅ Implemented | |
-| `Graphiti.build_indices_and_constraints()` | `Client.CreateIndices()` | `graphiti.go` | ✅ Implemented | |
-| `Graphiti.retrieve_episodes()` | `Client.GetEpisodes()` | `graphiti.go` | ✅ Implemented | |
-| `Graphiti.add_episode()` | `Client.Add()` | `graphiti.go` | ✅ Implemented | Go method accepts multiple episodes |
-| `Graphiti.add_episode_bulk()` | `Client.Add()` | `graphiti.go` | ✅ Implemented | Same as single episode in Go |
-| `Graphiti.build_communities()` | `Builder.BuildCommunities()` | `pkg/community/community.go` | ✅ Implemented | Community building with label propagation |
-| `Graphiti.search()` | `Client.Search()` | `graphiti.go` | ✅ Implemented | |
-| `Graphiti._search()` | `Client.Search()` internal | `graphiti.go` | ✅ Implemented | Merged into main Search method |
-| `Graphiti.search_()` | `searcher.HybridSearch()` | `pkg/search/search.go` | ✅ Implemented | Direct searcher access |
-| `Graphiti.get_nodes_and_edges_by_episode()` | `Client.GetNode()` / `Client.GetEdge()` | `graphiti.go` | ⚠️ Partial | No bulk episode-based retrieval |
-| `Graphiti.add_triplet()` | `Client.addTriplet()` | `graphiti.go` | ❌ Missing | Direct triplet addition not implemented |
-| `Graphiti.remove_episode()` | `Client.removeEpisode()` | `graphiti.go` | ❌ Missing | Episode removal not implemented |
+| [`Graphiti.__init__()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L169) | [`NewClient()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L88) | `graphiti.go` | ✅ Implemented | Go uses functional construction pattern |
+| [`Graphiti.close()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L368) | [`Client.Close()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1300) | `graphiti.go` | ✅ Implemented | |
+| [`Graphiti.build_indices_and_constraints()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L401) | [`Client.CreateIndices()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1296) | `graphiti.go` | ✅ Implemented | |
+| [`Graphiti.retrieve_episodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L440) | [`Client.GetEpisodes()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1253) | `graphiti.go` | ✅ Implemented | |
+| [`Graphiti.add_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L477) | [`Client.Add()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L115) | `graphiti.go` | ✅ Implemented | Go method accepts multiple episodes |
+| [`Graphiti.add_episode_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L650) | [`Client.Add()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L115) | `graphiti.go` | ✅ Implemented | Same as single episode in Go |
+| [`Graphiti.build_communities()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L886) | [`Builder.BuildCommunities()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/community/community.go#L121) | `pkg/community/community.go` | ✅ Implemented | Community building with label propagation |
+| [`Graphiti.search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L920) | [`Client.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1181) | `graphiti.go` | ✅ Implemented | |
+| [`Graphiti._search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L971) | `Client.Search()` internal | `graphiti.go` | ✅ Implemented | Merged into main Search method |
+| [`Graphiti.search_()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L980) | [`searcher.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented | Direct searcher access |
+| [`Graphiti.get_nodes_and_edges_by_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1000) | [`Client.GetNode()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1248) / [`Client.GetEdge()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1252) | `graphiti.go` | ⚠️ Partial | No bulk episode-based retrieval |
+| [`Graphiti.add_triplet()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1012) | `Client.addTriplet()` | `graphiti.go` | ❌ Missing | Direct triplet addition not implemented |
+| [`Graphiti.remove_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1061) | `Client.removeEpisode()` | `graphiti.go` | ❌ Missing | Episode removal not implemented |
 
 ### Result Types
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| `AddEpisodeResults` | `AddEpisodeResults` | `pkg/types/types.go` | ✅ Implemented |
-| `AddBulkEpisodeResults` | `AddBulkEpisodeResults` | `pkg/types/types.go` | ✅ Implemented |
-| `AddTripletResults` | `AddTripletResults` | `pkg/types/types.go` | ✅ Implemented |
+| [`AddEpisodeResults`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L133) | [`AddEpisodeResults`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L273) | `pkg/types/types.go` | ✅ Implemented |
+| [`AddBulkEpisodeResults`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L141) | [`AddBulkEpisodeResults`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L286) | `pkg/types/types.go` | ✅ Implemented |
+| [`AddTripletResults`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L149) | [`AddTripletResults`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L299) | `pkg/types/types.go` | ✅ Implemented |
 
 ### Additional Go Result Types
 
 | Go Type | Description | File Location |
 |---------|-------------|---------------|
-| `EpisodeProcessingResult` | Internal episode processing result | `pkg/types/types.go` |
-| `BulkEpisodeResults` | Bulk episode processing statistics | `pkg/types/types.go` |
-| `TripletResults` | Enhanced triplet operation result | `pkg/types/types.go` |
+| [`EpisodeProcessingResult`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L305) | Internal episode processing result | `pkg/types/types.go` |
+| [`BulkEpisodeResults`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L318) | Bulk episode processing statistics | `pkg/types/types.go` |
+| [`TripletResults`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L327) | Enhanced triplet operation result | `pkg/types/types.go` |
 
 ## Core Graph Queries
 
@@ -58,25 +58,25 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status |
 |---------------|-----------|---------------|--------|
-| `get_range_indices(provider)` | `GetRangeIndices(provider GraphProvider)` | `pkg/driver/graph_queries.go` | ✅ Implemented |
-| `get_fulltext_indices(provider)` | `GetFulltextIndices(provider GraphProvider)` | `pkg/driver/graph_queries.go` | ✅ Implemented |
-| `get_nodes_query(name, query, limit, provider)` | `GetNodesQuery(indexName, query string, limit int, provider GraphProvider)` | `pkg/driver/graph_queries.go` | ✅ Implemented |
-| `get_relationships_query(name, limit, provider)` | `GetRelationshipsQuery(indexName string, limit int, provider GraphProvider)` | `pkg/driver/graph_queries.go` | ✅ Implemented |
-| `get_vector_cosine_func_query(vec1, vec2, provider)` | `GetVectorCosineFuncQuery(vec1, vec2 string, provider GraphProvider)` | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`get_range_indices(provider)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L30) | [`GetRangeIndices(provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L40) | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`get_fulltext_indices(provider)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L80) | [`GetFulltextIndices(provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L100) | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`get_nodes_query(name, query, limit, provider)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L108) | [`GetNodesQuery(indexName, query string, limit int, provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L136) | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`get_relationships_query(name, limit, provider)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L128) | [`GetRelationshipsQuery(indexName string, limit int, provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L152) | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`get_vector_cosine_func_query(vec1, vec2, provider)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L119) | [`GetVectorCosineFuncQuery(vec1, vec2 string, provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L168) | `pkg/driver/graph_queries.go` | ✅ Implemented |
 | `GraphProvider` enum | `GraphProvider` type | `pkg/driver/graph_queries.go` | ✅ Implemented |
-| `NEO4J_TO_FALKORDB_MAPPING` | `neo4jToFalkorDBMapping` | `pkg/driver/graph_queries.go` | ✅ Implemented |
-| `INDEX_TO_LABEL_KUZU_MAPPING` | `indexToLabelKuzuMapping` | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`NEO4J_TO_FALKORDB_MAPPING`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L10) | [`neo4jToFalkorDBMapping`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L21) | `pkg/driver/graph_queries.go` | ✅ Implemented |
+| [`INDEX_TO_LABEL_KUZU_MAPPING`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L17) | [`indexToLabelKuzuMapping`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L29) | `pkg/driver/graph_queries.go` | ✅ Implemented |
 
 ### Additional Go Utilities (not in Python)
 
 | Go Method | Description | File Location |
 |-----------|-------------|---------------|
-| `NewQueryBuilder(provider GraphProvider)` | Creates database-agnostic query builder | `pkg/driver/graph_queries.go` |
-| `QueryBuilder.BuildFulltextNodeQuery()` | Builds fulltext node search queries | `pkg/driver/graph_queries.go` |
-| `QueryBuilder.BuildFulltextRelationshipQuery()` | Builds fulltext relationship queries | `pkg/driver/graph_queries.go` |
-| `QueryBuilder.BuildCosineSimilarityQuery()` | Builds cosine similarity queries | `pkg/driver/graph_queries.go` |
-| `EscapeQueryString(query string)` | Escapes special characters in queries | `pkg/driver/graph_queries.go` |
-| `BuildParameterizedQuery()` | Builds parameterized queries | `pkg/driver/graph_queries.go` |
+| [`NewQueryBuilder(provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L184) | Creates database-agnostic query builder | `pkg/driver/graph_queries.go` |
+| [`QueryBuilder.BuildFulltextNodeQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L191) | Builds fulltext node search queries | `pkg/driver/graph_queries.go` |
+| [`QueryBuilder.BuildFulltextRelationshipQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L196) | Builds fulltext relationship queries | `pkg/driver/graph_queries.go` |
+| [`QueryBuilder.BuildCosineSimilarityQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L201) | Builds cosine similarity queries | `pkg/driver/graph_queries.go` |
+| [`EscapeQueryString(query string)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L226) | Escapes special characters in queries | `pkg/driver/graph_queries.go` |
+| [`BuildParameterizedQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L255) | Builds parameterized queries | `pkg/driver/graph_queries.go` |
 
 ## Search Functionality
 
