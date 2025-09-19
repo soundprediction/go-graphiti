@@ -28,7 +28,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | `Graphiti.retrieve_episodes()` | `Client.GetEpisodes()` | `graphiti.go` | ✅ Implemented | |
 | `Graphiti.add_episode()` | `Client.Add()` | `graphiti.go` | ✅ Implemented | Go method accepts multiple episodes |
 | `Graphiti.add_episode_bulk()` | `Client.Add()` | `graphiti.go` | ✅ Implemented | Same as single episode in Go |
-| `Graphiti.build_communities()` | `CommunityBuilder.BuildCommunities()` | `pkg/community/` | ❌ Missing | Community building not yet implemented |
+| `Graphiti.build_communities()` | `Builder.BuildCommunities()` | `pkg/community/community.go` | ✅ Implemented | Community building with label propagation |
 | `Graphiti.search()` | `Client.Search()` | `graphiti.go` | ✅ Implemented | |
 | `Graphiti._search()` | `Client.Search()` internal | `graphiti.go` | ✅ Implemented | Merged into main Search method |
 | `Graphiti.search_()` | `searcher.HybridSearch()` | `pkg/search/search.go` | ✅ Implemented | Direct searcher access |
@@ -40,9 +40,17 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| `AddEpisodeResults` | `EpisodeProcessingResult` | `pkg/types/types.go` | ❌ Missing |
-| `AddBulkEpisodeResults` | `BulkEpisodeResults` | `pkg/types/types.go` | ❌ Missing |
-| `AddTripletResults` | `TripletResults` | `pkg/types/types.go` | ❌ Missing |
+| `AddEpisodeResults` | `AddEpisodeResults` | `pkg/types/types.go` | ✅ Implemented |
+| `AddBulkEpisodeResults` | `AddBulkEpisodeResults` | `pkg/types/types.go` | ✅ Implemented |
+| `AddTripletResults` | `AddTripletResults` | `pkg/types/types.go` | ✅ Implemented |
+
+### Additional Go Result Types
+
+| Go Type | Description | File Location |
+|---------|-------------|---------------|
+| `EpisodeProcessingResult` | Internal episode processing result | `pkg/types/types.go` |
+| `BulkEpisodeResults` | Bulk episode processing statistics | `pkg/types/types.go` |
+| `TripletResults` | Enhanced triplet operation result | `pkg/types/types.go` |
 
 ## Core Graph Queries
 
@@ -259,6 +267,44 @@ This document tracks the mapping between the original Python Graphiti methods an
 | `BGERerankerClient` | N/A | N/A | ❌ Missing |
 | `GeminiRerankerClient` | N/A | N/A | ❌ Missing |
 
+## Community Operations
+
+### utils/maintenance/community_operations.py
+
+| Python Function | Go Method | File Location | Status | Notes |
+|-----------------|-----------|---------------|--------|--------|
+| `get_community_clusters()` | `Builder.GetCommunityClusters()` | `pkg/community/community.go` | ✅ Implemented | |
+| `label_propagation()` | `Builder.labelPropagation()` | `pkg/community/label_propagation.go` | ✅ Implemented | |
+| `build_community()` | `Builder.buildCommunity()` | `pkg/community/community.go` | ✅ Implemented | |
+| `build_communities()` | `Builder.BuildCommunities()` | `pkg/community/community.go` | ✅ Implemented | |
+| `remove_communities()` | `Builder.RemoveCommunities()` | `pkg/community/community.go` | ✅ Implemented | |
+| `determine_entity_community()` | `Builder.DetermineEntityCommunity()` | `pkg/community/update.go` | ✅ Implemented | |
+| `update_community()` | `Builder.UpdateCommunity()` | `pkg/community/update.go` | ✅ Implemented | |
+| `summarize_pair()` | `Builder.summarizePair()` | `pkg/community/community.go` | ✅ Implemented | |
+| `generate_summary_description()` | `Builder.generateCommunityName()` | `pkg/community/community.go` | ✅ Implemented | |
+
+### Community Types and Models
+
+| Python Type | Go Type | File Location | Status |
+|-------------|---------|---------------|--------|
+| `Neighbor` class | `Neighbor` struct | `pkg/community/community.go` | ✅ Implemented |
+| `BuildCommunitiesResult` | `BuildCommunitiesResult` struct | `pkg/community/community.go` | ✅ Implemented |
+| `DetermineEntityCommunityResult` | `DetermineEntityCommunityResult` struct | `pkg/community/update.go` | ✅ Implemented |
+| `UpdateCommunityResult` | `UpdateCommunityResult` struct | `pkg/community/update.go` | ✅ Implemented |
+
+### Additional Go Community Functions
+
+| Go Method | Description | File Location |
+|-----------|-------------|---------------|
+| `NewBuilder()` | Creates new community builder | `pkg/community/community.go` |
+| `buildProjection()` | Builds neighbor projection for clustering | `pkg/community/label_propagation.go` |
+| `getNodeNeighbors()` | Gets node neighbors with edge counts | `pkg/community/label_propagation.go` |
+| `getAllGroupIDs()` | Gets all distinct group IDs | `pkg/community/label_propagation.go` |
+| `getEntityNodesByGroup()` | Gets entity nodes by group | `pkg/community/label_propagation.go` |
+| `hierarchicalSummarize()` | Performs hierarchical summarization | `pkg/community/community.go` |
+| `generateCommunityEmbedding()` | Generates embeddings for communities | `pkg/community/community.go` |
+| `buildCommunityEdges()` | Creates HAS_MEMBER edges | `pkg/community/community.go` |
+
 ## Prompts and Models
 
 ### prompts/models.py
@@ -320,7 +366,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Module | Go Implementation | File Location | Status |
 |---------------|-------------------|---------------|--------|
-| `community_operations.py` | `pkg/community/` | Not implemented | ❌ Missing |
+| `community_operations.py` | `pkg/community/` | Multiple files | ✅ Implemented |
 | `edge_operations.py` | Embedded in main client | `graphiti.go` | ⚠️ Partial |
 | `node_operations.py` | Embedded in main client | `graphiti.go` | ⚠️ Partial |
 | `temporal_operations.py` | `pkg/temporal/` | Not implemented | ❌ Missing |
@@ -385,7 +431,7 @@ When adding new Python-to-Go mappings:
 
 | Category | Total Methods | ✅ Implemented | ⚠️ Partial | ❌ Missing | Coverage |
 |----------|---------------|----------------|------------|------------|----------|
-| Core Graphiti Class | 12 | 6 | 2 | 4 | 67% |
+| Core Graphiti Class | 12 | 7 | 2 | 3 | 75% |
 | Graph Queries | 8 | 8 | 0 | 0 | 100% |
 | Search Functionality | 25+ | 20+ | 3 | 2 | 85% |
 | Driver Interface | 25+ | 25+ | 0 | 0 | 100% |
@@ -399,7 +445,7 @@ When adding new Python-to-Go mappings:
 
 ### Key Missing Components
 
-1. **Community Operations** - Community building and management not implemented
+1. ~~**Community Operations** - Community building and management not implemented~~ ✅ **Completed**
 2. **Cross Encoder Support** - Reranking with cross encoders missing
 3. **Advanced Prompt Templates** - Most prompt templates need implementation
 4. **Bulk Utilities** - Deduplication and bulk operations partially implemented
@@ -414,6 +460,7 @@ When adding new Python-to-Go mappings:
 3. **Basic Graph Operations** - Node/edge CRUD operations complete
 4. **Query Building** - Database-agnostic query construction implemented
 5. **Search Configuration** - Comprehensive search configs and recipes
+6. **Community Operations** - Label propagation clustering and community building
 
 ## Last Updated
 

@@ -200,3 +200,84 @@ type ExtractedRelationship struct {
 	Strength     float64           `json:"strength"`
 	Metadata     map[string]string `json:"metadata"`
 }
+
+// AddEpisodeResults represents the result of adding a single episode to the knowledge graph.
+type AddEpisodeResults struct {
+	// Episode is the episodic node that was created.
+	Episode *Node `json:"episode"`
+	// EpisodicEdges are the edges connecting the episode to entities.
+	EpisodicEdges []*Edge `json:"episodic_edges"`
+	// Nodes are the entity nodes that were extracted or updated.
+	Nodes []*Node `json:"nodes"`
+	// Edges are the entity relationships that were extracted or updated.
+	Edges []*Edge `json:"edges"`
+	// Communities are the community nodes that were created or updated.
+	Communities []*Node `json:"communities"`
+	// CommunityEdges are the edges connecting communities to entities.
+	CommunityEdges []*Edge `json:"community_edges"`
+}
+
+// AddBulkEpisodeResults represents the result of adding multiple episodes to the knowledge graph.
+type AddBulkEpisodeResults struct {
+	// Episodes are the episodic nodes that were created.
+	Episodes []*Node `json:"episodes"`
+	// EpisodicEdges are the edges connecting episodes to entities.
+	EpisodicEdges []*Edge `json:"episodic_edges"`
+	// Nodes are the entity nodes that were extracted or updated.
+	Nodes []*Node `json:"nodes"`
+	// Edges are the entity relationships that were extracted or updated.
+	Edges []*Edge `json:"edges"`
+	// Communities are the community nodes that were created or updated.
+	Communities []*Node `json:"communities"`
+	// CommunityEdges are the edges connecting communities to entities.
+	CommunityEdges []*Edge `json:"community_edges"`
+}
+
+// AddTripletResults represents the result of adding a triplet (subject-predicate-object) to the knowledge graph.
+type AddTripletResults struct {
+	// Nodes are the entity nodes that were created or updated (subject and object).
+	Nodes []*Node `json:"nodes"`
+	// Edges are the relationship edges that were created (predicate).
+	Edges []*Edge `json:"edges"`
+}
+
+// EpisodeProcessingResult represents the result of processing a single episode.
+// This is used internally during episode processing.
+type EpisodeProcessingResult struct {
+	// Episode is the processed episode node.
+	Episode *Node `json:"episode"`
+	// ExtractedEntities are the entities found in the episode.
+	ExtractedEntities []*Node `json:"extracted_entities"`
+	// ExtractedRelationships are the relationships found in the episode.
+	ExtractedRelationships []*Edge `json:"extracted_relationships"`
+	// EpisodicEdges connect the episode to the extracted entities.
+	EpisodicEdges []*Edge `json:"episodic_edges"`
+	// ProcessingTime is the time taken to process this episode.
+	ProcessingTime time.Duration `json:"processing_time"`
+	// Errors encountered during processing.
+	Errors []string `json:"errors,omitempty"`
+}
+
+// BulkEpisodeResults represents the result of bulk episode processing.
+type BulkEpisodeResults struct {
+	// ProcessedEpisodes contains results for each processed episode.
+	ProcessedEpisodes []*EpisodeProcessingResult `json:"processed_episodes"`
+	// TotalProcessingTime is the total time for all episodes.
+	TotalProcessingTime time.Duration `json:"total_processing_time"`
+	// SuccessCount is the number of successfully processed episodes.
+	SuccessCount int `json:"success_count"`
+	// ErrorCount is the number of episodes that failed processing.
+	ErrorCount int `json:"error_count"`
+}
+
+// TripletResults represents the result of triplet operations.
+type TripletResults struct {
+	// SubjectNode is the subject entity node.
+	SubjectNode *Node `json:"subject_node"`
+	// ObjectNode is the object entity node.
+	ObjectNode *Node `json:"object_node"`
+	// PredicateEdge is the relationship edge between subject and object.
+	PredicateEdge *Edge `json:"predicate_edge"`
+	// Created indicates if new nodes/edges were created (vs updated).
+	Created bool `json:"created"`
+}
