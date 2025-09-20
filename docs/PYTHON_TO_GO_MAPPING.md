@@ -33,7 +33,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`Graphiti._search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L971) | `Client.Search()` internal | `graphiti.go` | ✅ Implemented | Merged into main Search method |
 | [`Graphiti.search_()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L980) | [`searcher.Search()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search.go#L142) | `pkg/search/search.go` | ✅ Implemented | Go version is missing `center_node_uuid` and `bfs_origin_node_uuids` arguments. |
 | [`Graphiti.get_nodes_and_edges_by_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1000) | [`Client.GetNode()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1248) / [`Client.GetEdge()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L1252) | `graphiti.go` | ⚠️ Partial | No bulk episode-based retrieval |
-| [`Graphiti.add_triplet()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1012) | `Client.addTriplet()` | `graphiti.go` | ❌ Missing | Direct triplet addition not implemented |
+| [`Graphiti.add_triplet()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1012) | [`Client.AddTriplet()`](https://github.com/soundprediction/go-graphiti/blob/main/graphiti.go#L) | `graphiti.go` | ✅ Implemented | Direct triplet addition |
 | [`Graphiti.remove_episode()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graphiti.py#L1061) | `Client.removeEpisode()` | `graphiti.go` | ❌ Missing | Episode removal not implemented |
 
 ### Result Types

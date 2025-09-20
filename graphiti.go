@@ -14,6 +14,8 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/prompts"
 	"github.com/soundprediction/go-graphiti/pkg/search"
 	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/utils"
+	"github.com/soundprediction/go-graphiti/pkg/utils/maintenance"
 )
 
 // Graphiti is the main interface for interacting with temporal knowledge graphs.
@@ -42,6 +44,9 @@ type Graphiti interface {
 
 	// CreateIndices creates database indices and constraints for optimal performance.
 	CreateIndices(ctx context.Context) error
+
+	// AddTriplet adds a triplet (subject-predicate-object) directly to the knowledge graph.
+	AddTriplet(ctx context.Context, sourceNode *types.Node, edge *types.Edge, targetNode *types.Node) (*types.AddTripletResults, error)
 
 	// Close closes all connections and cleans up resources.
 	Close(ctx context.Context) error
@@ -1001,6 +1006,206 @@ func (c *Client) CreateIndices(ctx context.Context) error {
 // Close closes the client and all its connections.
 func (c *Client) Close(ctx context.Context) error {
 	return c.driver.Close()
+}
+
+// AddTriplet adds a triplet (subject-predicate-object) directly to the knowledge graph.
+// This is an exact translation of the Python Graphiti.add_triplet() method.
+func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *types.Edge, targetNode *types.Node) (*types.AddTripletResults, error) {
+	if sourceNode == nil || edge == nil || targetNode == nil {
+		return nil, fmt.Errorf("source node, edge, and target node must not be nil")
+	}
+
+	// Step 1: Generate name embeddings for nodes if missing (lines 1024-1027)
+	if len(sourceNode.Embedding) == 0 && c.embedder != nil {
+		embedding, err := c.embedder.EmbedSingle(ctx, sourceNode.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate name embedding for source node: %w", err)
+		}
+		sourceNode.Embedding = embedding
+	}
+
+	if len(targetNode.Embedding) == 0 && c.embedder != nil {
+		embedding, err := c.embedder.EmbedSingle(ctx, targetNode.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate name embedding for target node: %w", err)
+		}
+		targetNode.Embedding = embedding
+	}
+
+	// Step 2: Generate fact embedding for edge if missing (lines 1028-1029)
+	if len(edge.Embedding) == 0 && c.embedder != nil {
+		embedding, err := c.embedder.EmbedSingle(ctx, edge.Summary)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate fact embedding for edge: %w", err)
+		}
+		edge.Embedding = embedding
+	}
+
+	// Step 3: Resolve extracted nodes (lines 1031-1034)
+	nodeOps := maintenance.NewNodeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	nodes, uuidMap, _, err := nodeOps.ResolveExtractedNodes(ctx, []*types.Node{sourceNode, targetNode}, nil, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve extracted nodes: %w", err)
+	}
+
+	// Step 4: Update edge pointers to resolved node UUIDs (line 1036)
+	utils.ResolveEdgePointers([]*types.Edge{edge}, uuidMap)
+	updatedEdge := edge // The edge is updated in-place
+
+	// Step 5: Get existing edges between nodes (lines 1038-1040)
+	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	validEdges, err := edgeOps.GetBetweenNodes(ctx, updatedEdge.SourceID, updatedEdge.TargetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get edges between nodes: %w", err)
+	}
+
+	// Step 6: Search for related edges with edge UUID filters (lines 1042-1050)
+	var edgeUUIDs []string
+	for _, validEdge := range validEdges {
+		edgeUUIDs = append(edgeUUIDs, validEdge.ID)
+	}
+
+	searchFilters := &search.SearchFilters{
+		EdgeTypes: []types.EdgeType{types.EntityEdgeType}, // Filter for entity edges
+	}
+	
+	// Use edge hybrid search RRF config
+	edgeSearchConfig := &search.SearchConfig{
+		EdgeConfig: &search.EdgeSearchConfig{
+			SearchMethods: []search.SearchMethod{search.BM25, search.CosineSimilarity},
+			Reranker:      search.RRFRerankType,
+			MinScore:      0.0,
+		},
+		Limit:    20,
+		MinScore: 0.0,
+	}
+
+	relatedResults, err := c.searcher.Search(ctx, updatedEdge.Summary, edgeSearchConfig, searchFilters, updatedEdge.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search for related edges: %w", err)
+	}
+	relatedEdges := relatedResults.Edges
+
+	// Step 7: Search for existing edges without filters (lines 1051-1059)
+	existingResults, err := c.searcher.Search(ctx, updatedEdge.Summary, edgeSearchConfig, &search.SearchFilters{}, updatedEdge.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search for existing edges: %w", err)
+	}
+	existingEdges := existingResults.Edges
+
+	// Step 8: Create EpisodicNode exactly as in Python (lines 1066-1074)
+	var validAt time.Time
+	if !updatedEdge.ValidFrom.IsZero() {
+		validAt = updatedEdge.ValidFrom
+	} else {
+		validAt = time.Now()
+	}
+
+	episodicNode := &types.Node{
+		Name:        "",
+		Type:        types.EpisodicNodeType,
+		EpisodeType: types.DocumentEpisodeType, // Equivalent to Python's EpisodeType.text
+		Content:     "",
+		Summary:     "",
+		ValidFrom:   validAt,
+		GroupID:     updatedEdge.GroupID,
+	}
+
+	// Step 9: Resolve extracted edge (lines 1061-1077)
+	resolvedEdge, invalidatedEdges, err := c.resolveExtractedEdgeExact(ctx, updatedEdge, relatedEdges, existingEdges, episodicNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve extracted edge: %w", err)
+	}
+
+	// Step 10: Combine all edges (line 1079)
+	allEdges := []*types.Edge{resolvedEdge}
+	allEdges = append(allEdges, invalidatedEdges...)
+
+	// Step 11: Create entity edge embeddings (line 1081)
+	err = c.createEntityEdgeEmbeddings(ctx, allEdges)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create entity edge embeddings: %w", err)
+	}
+
+	// Step 12: Create entity node embeddings (line 1082)
+	err = c.createEntityNodeEmbeddings(ctx, nodes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create entity node embeddings: %w", err)
+	}
+
+	// Step 13: Add nodes and edges in bulk (line 1084)
+	_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver, []*types.Node{}, []*types.Edge{}, nodes, allEdges, c.embedder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add nodes and edges to database: %w", err)
+	}
+
+	// Step 14: Return results (line 1085)
+	return &types.AddTripletResults{
+		Edges: allEdges,
+		Nodes: nodes,
+	}, nil
+}
+
+
+
+// resolveExtractedEdgeExact is an exact translation of Python's resolve_extracted_edge function
+func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node) (*types.Edge, []*types.Edge, error) {
+	// Use the EdgeOperations to resolve the edge exactly as in Python
+	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	
+	// The Go implementation wraps the private resolveExtractedEdge method
+	// We'll use ResolveExtractedEdges which internally calls the same logic
+	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{})
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	var resolvedEdge *types.Edge
+	if len(resolvedEdges) > 0 {
+		resolvedEdge = resolvedEdges[0]
+	} else {
+		resolvedEdge = extractedEdge
+	}
+	
+	return resolvedEdge, invalidatedEdges, nil
+}
+
+// createEntityEdgeEmbeddings creates embeddings for entity edges (equivalent to Python's create_entity_edge_embeddings)
+func (c *Client) createEntityEdgeEmbeddings(ctx context.Context, edges []*types.Edge) error {
+	if c.embedder == nil {
+		return nil
+	}
+	
+	for _, edge := range edges {
+		if edge.Type == types.EntityEdgeType && len(edge.Embedding) == 0 && edge.Summary != "" {
+			embedding, err := c.embedder.EmbedSingle(ctx, edge.Summary)
+			if err != nil {
+				return fmt.Errorf("failed to create embedding for edge %s: %w", edge.ID, err)
+			}
+			edge.Embedding = embedding
+		}
+	}
+	
+	return nil
+}
+
+// createEntityNodeEmbeddings creates embeddings for entity nodes (equivalent to Python's create_entity_node_embeddings)
+func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.Node) error {
+	if c.embedder == nil {
+		return nil
+	}
+	
+	for _, node := range nodes {
+		if node.Type == types.EntityNodeType && len(node.Embedding) == 0 && node.Name != "" {
+			embedding, err := c.embedder.EmbedSingle(ctx, node.Name)
+			if err != nil {
+				return fmt.Errorf("failed to create embedding for node %s: %w", node.ID, err)
+			}
+			node.Embedding = embedding
+		}
+	}
+	
+	return nil
 }
 
 // NewDefaultSearchConfig creates a default search configuration.
