@@ -50,7 +50,8 @@ type TokenUsage struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-// Config holds configuration for LLM clients.
+// Config holds legacy configuration for LLM clients (deprecated, use LLMConfig)
+// Kept for backward compatibility
 type Config struct {
 	Model       string   `json:"model"`
 	Temperature *float32 `json:"temperature,omitempty"`
