@@ -206,35 +206,108 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	return edges, nil
 }
 
-// GetBetweenNodes retrieves edges between two specific nodes
+// GetBetweenNodes retrieves edges between two specific nodes using the proper Kuzu query pattern
 func (eo *EdgeOperations) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error) {
-	// Use the driver's SearchEdges method with appropriate filters
-	options := &driver.SearchOptions{
-		Limit: 100, // Reasonable limit for between-node queries
+	query := `
+		MATCH (a:Entity {uuid: $source_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $target_uuid})
+		RETURN rel.*, a.uuid AS source_id, b.uuid AS target_id
+		UNION
+		MATCH (a:Entity {uuid: $target_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $source_uuid})
+		RETURN rel.*, a.uuid AS source_id, b.uuid AS target_id
+	`
+
+	params := map[string]interface{}{
+		"source_uuid": sourceNodeID,
+		"target_uuid": targetNodeID,
 	}
 
-	// Search for edges connecting the two nodes
-	allEdges, err := eo.driver.SearchEdges(ctx, "", "", options)
+	result, _, _, err := eo.driver.ExecuteQuery(query, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search edges: %w", err)
+		return nil, fmt.Errorf("failed to execute GetBetweenNodes query: %w", err)
 	}
 
-	// Filter edges that connect the specified nodes
-	var betweenEdges []*types.Edge
-	for _, edge := range allEdges {
-		if (edge.SourceID == sourceNodeID && edge.TargetID == targetNodeID) ||
-			(edge.SourceID == targetNodeID && edge.TargetID == sourceNodeID) {
-			betweenEdges = append(betweenEdges, edge)
+	// Convert result to Edge objects
+	var edges []*types.Edge
+	if result != nil {
+		// Handle different result types based on driver implementation
+		switch records := result.(type) {
+		case []map[string]interface{}:
+			for _, record := range records {
+				edge, err := eo.convertRecordToEdge(record)
+				if err != nil {
+					log.Printf("Warning: failed to convert record to edge: %v", err)
+					continue
+				}
+				edges = append(edges, edge)
+			}
+		default:
+			log.Printf("Warning: unexpected result type from GetBetweenNodes query: %T", result)
 		}
 	}
 
-	return betweenEdges, nil
+	return edges, nil
 }
 
-// NodePair represents a pair of nodes, typically for duplicate detection
-type NodePair struct {
-	Source *types.Node
-	Target *types.Node
+// convertRecordToEdge converts a database record to an Edge object
+func (eo *EdgeOperations) convertRecordToEdge(record map[string]interface{}) (*types.Edge, error) {
+	edge := &types.Edge{}
+
+	// Extract basic fields
+	if uuid, ok := record["uuid"].(string); ok {
+		edge.ID = uuid
+	} else {
+		return nil, fmt.Errorf("missing or invalid uuid field")
+	}
+
+	if name, ok := record["name"].(string); ok {
+		edge.Name = name
+	}
+
+	if fact, ok := record["fact"].(string); ok {
+		edge.Summary = fact
+	}
+
+	if groupID, ok := record["group_id"].(string); ok {
+		edge.GroupID = groupID
+	}
+
+	// Extract source and target IDs
+	if sourceID, ok := record["source_id"].(string); ok {
+		edge.SourceID = sourceID
+	}
+	if targetID, ok := record["target_id"].(string); ok {
+		edge.TargetID = targetID
+	}
+
+	// Extract timestamps
+	if createdAt, ok := record["created_at"].(time.Time); ok {
+		edge.CreatedAt = createdAt
+	}
+	if updatedAt, ok := record["updated_at"].(time.Time); ok {
+		edge.UpdatedAt = updatedAt
+	}
+	if validFrom, ok := record["valid_from"].(time.Time); ok {
+		edge.ValidFrom = validFrom
+	}
+	if validTo, ok := record["valid_to"].(time.Time); ok {
+		edge.ValidTo = &validTo
+	}
+
+	// Set edge type - assume EntityEdge for relationships from RelatesToNode_
+	edge.Type = types.EntityEdgeType
+
+	// Extract source IDs if present
+	if sourceIDs, ok := record["source_ids"].([]interface{}); ok {
+		strSourceIDs := make([]string, len(sourceIDs))
+		for i, id := range sourceIDs {
+			if strID, ok := id.(string); ok {
+				strSourceIDs[i] = strID
+			}
+		}
+		edge.SourceIDs = strSourceIDs
+	}
+
+	return edge, nil
 }
 
 // ResolveExtractedEdges resolves newly extracted edges with existing ones in the graph
@@ -328,33 +401,51 @@ func (eo *EdgeOperations) createEdgeEmbedding(ctx context.Context, edge *types.E
 	return nil
 }
 
-// searchRelatedEdges searches for semantically related edges
+// searchRelatedEdges searches for semantically related edges using hybrid search with UUID filtering
 func (eo *EdgeOperations) searchRelatedEdges(ctx context.Context, extractedEdge *types.Edge, existingEdges []*types.Edge) ([]*types.Edge, error) {
 	if extractedEdge.Summary == "" {
 		return []*types.Edge{}, nil
 	}
 
-	// Create a simple search filter for edges with the same group ID
+	// Create UUID filter for existing edges (equivalent to Python's SearchFilters(edge_uuids=...))
+	edgeUUIDs := make([]string, len(existingEdges))
+	for i, edge := range existingEdges {
+		edgeUUIDs[i] = edge.ID
+	}
+
+	// Create a map for quick UUID lookup
+	validUUIDs := make(map[string]bool)
+	for _, uuid := range edgeUUIDs {
+		validUUIDs[uuid] = true
+	}
+
+	// Use hybrid search with proper filtering
+	// This is equivalent to Python's EDGE_HYBRID_SEARCH_RRF config
 	searchOptions := &driver.SearchOptions{
 		Limit:     50,
 		EdgeTypes: []types.EdgeType{types.EntityEdgeType},
+		// Note: GroupIDs filtering would need to be added to SearchOptions
 	}
 
-	// Search for edges using text similarity
+	// Search for edges using semantic similarity (fact content)
 	edges, err := eo.driver.SearchEdges(ctx, extractedEdge.Summary, extractedEdge.GroupID, searchOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search edges: %w", err)
+		return nil, fmt.Errorf("failed to search related edges: %w", err)
 	}
 
-	// Filter out edges that are not between the same nodes
+	// Filter results to only include edges in the UUID filter
 	var relatedEdges []*types.Edge
 	for _, edge := range edges {
-		// Include edges that mention similar facts but may involve different entities
-		if edge.ID != extractedEdge.ID {
-			relatedEdges = append(relatedEdges, edge)
+		// Only include edges that are in the valid UUID set
+		if len(edgeUUIDs) == 0 || validUUIDs[edge.ID] {
+			// Exclude the extracted edge itself
+			if edge.ID != extractedEdge.ID {
+				relatedEdges = append(relatedEdges, edge)
+			}
 		}
 	}
 
+	log.Printf("Found %d related edges for edge fact: %s", len(relatedEdges), extractedEdge.Summary)
 	return relatedEdges, nil
 }
 
@@ -479,45 +570,67 @@ func (eo *EdgeOperations) resolveEdgeContradictions(resolvedEdge *types.Edge, in
 	return invalidatedEdges
 }
 
-// FilterExistingDuplicateOfEdges filters out duplicate node pairs that already have IS_DUPLICATE_OF edges
+// FilterExistingDuplicateOfEdges filters out duplicate node pairs that already have IS_DUPLICATE_OF edges using proper Kuzu query
 func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, duplicateNodePairs []NodePair) ([]NodePair, error) {
 	if len(duplicateNodePairs) == 0 {
 		return []NodePair{}, nil
 	}
 
-	// Create a map for quick lookup
-	duplicateMap := make(map[string]NodePair)
-	for _, pair := range duplicateNodePairs {
-		key := fmt.Sprintf("%s-%s", pair.Source.ID, pair.Target.ID)
-		duplicateMap[key] = pair
-	}
-
-	// Search for existing IS_DUPLICATE_OF edges
-	options := &driver.SearchOptions{
-		Limit:     1000,
-		EdgeTypes: []types.EdgeType{types.EntityEdgeType},
-	}
-
-	// Get all entity edges - this is a simplified approach
-	// In a production system, you'd want a more targeted query
-	edges, err := eo.driver.SearchEdges(ctx, "IS_DUPLICATE_OF", "", options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search for duplicate edges: %w", err)
-	}
-
-	// Remove pairs that already have duplicate edges
-	for _, edge := range edges {
-		if edge.Name == "IS_DUPLICATE_OF" {
-			key := fmt.Sprintf("%s-%s", edge.SourceID, edge.TargetID)
-			delete(duplicateMap, key)
+	// Prepare parameters exactly like Python implementation
+	duplicateNodeUUIDs := make([]map[string]interface{}, len(duplicateNodePairs))
+	for i, pair := range duplicateNodePairs {
+		duplicateNodeUUIDs[i] = map[string]interface{}{
+			"src": pair.Source.ID,
+			"dst": pair.Target.ID,
 		}
 	}
 
-	// Convert back to slice
-	result := make([]NodePair, 0, len(duplicateMap))
-	for _, pair := range duplicateMap {
-		result = append(result, pair)
+	query := `
+		UNWIND $duplicate_node_uuids AS duplicate
+		MATCH (n:Entity {uuid: duplicate.src})-[:RELATES_TO]->(e:RelatesToNode_ {name: 'IS_DUPLICATE_OF'})-[:RELATES_TO]->(m:Entity {uuid: duplicate.dst})
+		RETURN DISTINCT
+			n.uuid AS source_uuid,
+			m.uuid AS target_uuid
+	`
+
+	params := map[string]interface{}{
+		"duplicate_node_uuids": duplicateNodeUUIDs,
 	}
 
-	return result, nil
+	result, _, _, err := eo.driver.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute FilterExistingDuplicateOfEdges query: %w", err)
+	}
+
+	// Create a set of existing duplicate pairs
+	existingPairs := make(map[string]bool)
+	if result != nil {
+		switch records := result.(type) {
+		case []map[string]interface{}:
+			for _, record := range records {
+				if sourceUUID, ok := record["source_uuid"].(string); ok {
+					if targetUUID, ok := record["target_uuid"].(string); ok {
+						key := fmt.Sprintf("%s-%s", sourceUUID, targetUUID)
+						existingPairs[key] = true
+					}
+				}
+			}
+		default:
+			log.Printf("Warning: unexpected result type from FilterExistingDuplicateOfEdges query: %T", result)
+		}
+	}
+
+	// Filter out pairs that already exist
+	var filteredPairs []NodePair
+	for _, pair := range duplicateNodePairs {
+		key := fmt.Sprintf("%s-%s", pair.Source.ID, pair.Target.ID)
+		if !existingPairs[key] {
+			filteredPairs = append(filteredPairs, pair)
+		}
+	}
+
+	log.Printf("Filtered %d duplicate node pairs, %d remain after filtering existing IS_DUPLICATE_OF edges",
+		len(duplicateNodePairs)-len(filteredPairs), len(filteredPairs))
+
+	return filteredPairs, nil
 }

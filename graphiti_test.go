@@ -113,7 +113,27 @@ func (m *MockGraphDriver) SearchEdgesByVector(ctx context.Context, vector []floa
 	return []*types.Edge{}, nil
 }
 
-func (m *MockGraphDriver) Close(ctx context.Context) error {
+func (m *MockGraphDriver) Close() error {
+	return nil
+}
+
+func (m *MockGraphDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	return nil, nil, nil, nil
+}
+
+func (m *MockGraphDriver) Session(database *string) driver.GraphDriverSession {
+	return nil
+}
+
+func (m *MockGraphDriver) DeleteAllIndexes(database string) {
+	// No-op for mock
+}
+
+func (m *MockGraphDriver) Provider() driver.GraphProvider {
+	return driver.GraphProviderNeo4j
+}
+
+func (m *MockGraphDriver) GetAossClient() interface{} {
 	return nil
 }
 
@@ -229,7 +249,7 @@ func TestClient_Add(t *testing.T) {
 	err := client.Add(ctx, []types.Episode{})
 	assert.NoError(t, err)
 
-	// Test adding episodes (currently returns not implemented)
+	// Test adding episodes (should work with mock)
 	episodes := []types.Episode{
 		{
 			ID:        "test-episode",
@@ -241,8 +261,8 @@ func TestClient_Add(t *testing.T) {
 		},
 	}
 	err = client.Add(ctx, episodes)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not implemented")
+	// With mock driver, this should work without error
+	assert.NoError(t, err)
 }
 
 func TestClient_AddBulk(t *testing.T) {
@@ -278,9 +298,6 @@ func TestClient_AddBulk(t *testing.T) {
 
 	// Test bulk add operations
 	err := client.Add(ctx, episodes)
-	if err != nil && err.Error() == "not implemented" {
-		t.Skip("Add method not yet implemented")
-	}
 	assert.NoError(t, err)
 }
 

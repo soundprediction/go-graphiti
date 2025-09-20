@@ -80,7 +80,27 @@ func (m *MockGraphDriver) CreateIndices(ctx context.Context) error              
 func (m *MockGraphDriver) GetStats(ctx context.Context, groupID string) (*driver.GraphStats, error) {
 	return &driver.GraphStats{}, nil
 }
-func (m *MockGraphDriver) Close(ctx context.Context) error { return nil }
+func (m *MockGraphDriver) Close() error { return nil }
+
+func (m *MockGraphDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	return nil, nil, nil, nil
+}
+
+func (m *MockGraphDriver) Session(database *string) driver.GraphDriverSession {
+	return nil
+}
+
+func (m *MockGraphDriver) DeleteAllIndexes(database string) {
+	// No-op for mock
+}
+
+func (m *MockGraphDriver) Provider() driver.GraphProvider {
+	return driver.GraphProviderNeo4j
+}
+
+func (m *MockGraphDriver) GetAossClient() interface{} {
+	return nil
+}
 
 // New search interface methods
 func (m *MockGraphDriver) SearchNodes(ctx context.Context, query, groupID string, options *driver.SearchOptions) ([]*types.Node, error) {

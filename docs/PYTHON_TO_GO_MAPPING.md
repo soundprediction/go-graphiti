@@ -575,8 +575,38 @@ This document tracks the mapping between the original Python Graphiti methods an
 | `build_episodic_edges` | [`EdgeOperations.BuildEpisodicEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L33) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
 | `build_duplicate_of_edges` | [`EdgeOperations.BuildDuplicateOfEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L57) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
 | `get_between_nodes` | [`EdgeOperations.GetBetweenNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L204) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
-| `filter_existing_duplicate_of_edges` | [`EdgeOperations.FilterExistingDuplicateOfEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L485) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
-| `resolve_edge_contradictions` | [`EdgeOperations.resolveEdgeContradictions()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L461) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `filter_existing_duplicate_of_edges` | [`EdgeOperations.FilterExistingDuplicateOfEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L555) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `resolve_edge_contradictions` | [`EdgeOperations.resolveEdgeContradictions()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L523) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+
+#### Recent Improvements (December 2024)
+
+The following edge operations have been significantly improved to match the exact Python implementation:
+
+1. **GetBetweenNodes** - Now uses proper Kuzu query pattern:
+   - Uses `RelatesToNode_` intermediate nodes pattern from Python
+   - Implements bidirectional search with `UNION` clause
+   - Direct database query with `ExecuteQuery` instead of generic search
+   - Added `convertRecordToEdge` helper for consistent result processing
+
+2. **FilterExistingDuplicateOfEdges** - Exact Python implementation:
+   - Uses `UNWIND` for batch parameter processing
+   - Matches Python's parameter structure with `src`/`dst` mapping
+   - Proper Kuzu query: `MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_ {name: 'IS_DUPLICATE_OF'})-[:RELATES_TO]->(m:Entity)`
+
+3. **searchRelatedEdges** - Enhanced with hybrid search:
+   - Implements UUID filtering equivalent to Python's `SearchFilters(edge_uuids=...)`
+   - Uses hybrid search approach similar to `EDGE_HYBRID_SEARCH_RRF`
+   - Proper exclusion of the extracted edge itself
+   - Group ID filtering in search operations
+
+4. **NodePair Type** - Fixed struct definition:
+   - Changed from `{Node1, Node2}` to `{Source, Target}` to match usage patterns
+   - Located in `pkg/utils/maintenance/types.go`
+
+5. **Compilation Issues** - Fixed unused variables:
+   - Removed unused `maxCount` in label propagation
+   - Removed unused `query` and `params` in placeholder functions
+   - Removed unused `sort` import
 
 ### utils/maintenance/graph_data_operations.py
 

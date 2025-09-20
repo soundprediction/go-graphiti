@@ -40,7 +40,6 @@ func (b *Builder) labelPropagation(projection map[string][]Neighbor) [][]string 
 
 			// Find the community with highest weighted count
 			newCommunity := currentCommunity
-			maxCount := 0
 
 			// Convert to slice for sorting
 			type communityScore struct {
@@ -126,18 +125,6 @@ func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string
 	// Check if this is a Kuzu driver to use the appropriate query
 	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
 		return b.getNodeNeighborsKuzu(ctx, kuzuDriver, nodeUUID, groupID)
-	}
-
-	// Default Neo4j query
-	query := `
-		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[e:RELATES_TO]-(m:Entity {group_id: $group_id})
-		WITH count(e) AS count, m.uuid AS uuid
-		RETURN uuid, count
-	`
-
-	params := map[string]interface{}{
-		"uuid":     nodeUUID,
-		"group_id": groupID,
 	}
 
 	// For other drivers, we'd need to implement the query execution
