@@ -48,6 +48,12 @@ type Graphiti interface {
 	// AddTriplet adds a triplet (subject-predicate-object) directly to the knowledge graph.
 	AddTriplet(ctx context.Context, sourceNode *types.Node, edge *types.Edge, targetNode *types.Node) (*types.AddTripletResults, error)
 
+	// RemoveEpisode removes an episode and its associated nodes and edges from the knowledge graph.
+	RemoveEpisode(ctx context.Context, episodeUUID string) error
+
+	// GetNodesAndEdgesByEpisode retrieves all nodes and edges associated with a specific episode.
+	GetNodesAndEdgesByEpisode(ctx context.Context, episodeUUID string) ([]*types.Node, []*types.Edge, error)
+
 	// Close closes all connections and cleans up resources.
 	Close(ctx context.Context) error
 }
@@ -1003,6 +1009,121 @@ func (c *Client) CreateIndices(ctx context.Context) error {
 	return c.driver.CreateIndices(ctx)
 }
 
+// RemoveEpisode removes an episode and its associated nodes and edges from the knowledge graph.
+// This is an exact translation of the Python Graphiti.remove_episode() method.
+func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
+	// Find the episode to be deleted
+	// Equivalent to: episode = await EpisodicNode.get_by_uuid(self.driver, episode_uuid)
+	episode, err := types.GetEpisodicNodeByUUID(ctx, c.driver, episodeUUID)
+	if err != nil {
+		return fmt.Errorf("failed to get episode: %w", err)
+	}
+
+	// Find edges mentioned by the episode
+	// Equivalent to: edges = await EntityEdge.get_by_uuids(self.driver, episode.entity_edges)
+	edges, err := types.GetEntityEdgesByUUIDs(ctx, c.driver, episode.EntityEdges)
+	if err != nil {
+		return fmt.Errorf("failed to get entity edges: %w", err)
+	}
+
+	// We should only delete edges created by the episode
+	// Equivalent to: if edge.episodes and edge.episodes[0] == episode.uuid:
+	var edgesToDelete []*types.Edge
+	for _, edge := range edges {
+		if len(edge.SourceIDs) > 0 && edge.SourceIDs[0] == episode.ID {
+			edgesToDelete = append(edgesToDelete, edge)
+		}
+	}
+
+	// Find nodes mentioned by the episode
+	// Equivalent to: nodes = await get_mentioned_nodes(self.driver, [episode])
+	mentionedNodes, err := types.GetMentionedNodes(ctx, c.driver, []*types.Node{episode})
+	if err != nil {
+		return fmt.Errorf("failed to get mentioned nodes: %w", err)
+	}
+
+	// We should delete all nodes that are only mentioned in the deleted episode
+	var nodesToDelete []*types.Node
+	for _, node := range mentionedNodes {
+		// Equivalent to: query: LiteralString = 'MATCH (e:Episodic)-[:MENTIONS]->(n:Entity {uuid: $uuid}) RETURN count(*) AS episode_count'
+		query := `MATCH (e:Episodic)-[:MENTIONS]->(n:Entity {uuid: $uuid}) RETURN count(*) AS episode_count`
+		records, _, _, err := c.driver.ExecuteQuery(query, map[string]interface{}{
+			"uuid": node.ID,
+		})
+		if err != nil {
+			continue // Skip on error, don't delete
+		}
+
+		// Check if only one episode mentions this node
+		if recordList, ok := records.([]map[string]interface{}); ok {
+			for _, record := range recordList {
+				if count, ok := record["episode_count"].(int64); ok && count == 1 {
+					nodesToDelete = append(nodesToDelete, node)
+				}
+			}
+		}
+	}
+
+	// Delete edges first
+	// Equivalent to: await Edge.delete_by_uuids(self.driver, [edge.uuid for edge in edges_to_delete])
+	if len(edgesToDelete) > 0 {
+		edgeUUIDs := make([]string, len(edgesToDelete))
+		for i, edge := range edgesToDelete {
+			edgeUUIDs[i] = edge.ID
+		}
+		if err := types.DeleteEdgesByUUIDs(ctx, c.driver, edgeUUIDs); err != nil {
+			return fmt.Errorf("failed to delete edges: %w", err)
+		}
+	}
+
+	// Delete nodes
+	// Equivalent to: await Node.delete_by_uuids(self.driver, [node.uuid for node in nodes_to_delete])
+	if len(nodesToDelete) > 0 {
+		nodeUUIDs := make([]string, len(nodesToDelete))
+		for i, node := range nodesToDelete {
+			nodeUUIDs[i] = node.ID
+		}
+		if err := types.DeleteNodesByUUIDs(ctx, c.driver, nodeUUIDs); err != nil {
+			return fmt.Errorf("failed to delete nodes: %w", err)
+		}
+	}
+
+	// Finally, delete the episode itself
+	// Equivalent to: await episode.delete(self.driver)
+	if err := types.DeleteNode(ctx, c.driver, episode); err != nil {
+		return fmt.Errorf("failed to delete episode: %w", err)
+	}
+
+	return nil
+}
+
+// GetNodesAndEdgesByEpisode retrieves all nodes and edges associated with a specific episode.
+// This is a port of the Python Graphiti.get_nodes_and_edges_by_episode() method.
+func (c *Client) GetNodesAndEdgesByEpisode(ctx context.Context, episodeUUID string) ([]*types.Node, []*types.Edge, error) {
+	// Get the episode first
+	episode, err := c.GetNode(ctx, episodeUUID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get episode: %w", err)
+	}
+	if episode.Type != types.EpisodicNodeType {
+		return nil, nil, fmt.Errorf("node %s is not an episode", episodeUUID)
+	}
+
+	// Find nodes mentioned by the episode
+	mentionedNodes, err := types.GetMentionedNodes(ctx, c.driver, []*types.Node{episode})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get mentioned nodes: %w", err)
+	}
+
+	// Find edges mentioned by the episode
+	edges, err := types.GetEntityEdgesByUUIDs(ctx, c.driver, episode.EntityEdges)
+	if err != nil {
+		return mentionedNodes, nil, fmt.Errorf("failed to get entity edges: %w", err)
+	}
+
+	return mentionedNodes, edges, nil
+}
+
 // Close closes the client and all its connections.
 func (c *Client) Close(ctx context.Context) error {
 	return c.driver.Close()
@@ -1145,7 +1266,6 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 		Nodes: nodes,
 	}, nil
 }
-
 
 
 // resolveExtractedEdgeExact is an exact translation of Python's resolve_extracted_edge function

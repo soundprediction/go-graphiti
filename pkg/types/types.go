@@ -21,6 +21,7 @@ type Node struct {
 	EpisodeType  EpisodeType            `json:"episode_type,omitempty"`
 	Content      string                 `json:"content,omitempty"`
 	Reference    time.Time              `json:"reference,omitempty"`
+	EntityEdges  []string               `json:"entity_edges,omitempty"`
 	
 	// Community-specific fields
 	Level        int                    `json:"level,omitempty"`
