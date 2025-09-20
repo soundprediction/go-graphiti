@@ -10,6 +10,7 @@ import (
 )
 
 // OpenAIClient implements the Client interface for OpenAI's language models.
+// This is the legacy client, use OpenAIGenericClient for new implementations.
 type OpenAIClient struct {
 	client *openai.Client
 	config Config
