@@ -209,10 +209,14 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `get_entity_edge_return_query` | N/A | N/A | ❌ Missing |
-| `get_entity_edge_save_bulk_query` | N/A | N/A | ❌ Missing |
-| `get_entity_edge_save_query` | N/A | N/A | ❌ Missing |
-| `get_community_edge_save_query` | N/A | N/A | ❌ Missing |
+| [`get_episodic_edge_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L30) | [`GetEpisodicEdgeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L18) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_entity_edge_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L63) | [`GetEntityEdgeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L45) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_entity_edge_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L123) | [`GetEntityEdgeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L91) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_entity_edge_return_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L186) | [`GetEntityEdgeReturnQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L139) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_community_edge_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L224) | [`GetCommunityEdgeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L166) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| `EPISODIC_EDGE_SAVE` | [`EPISODIC_EDGE_SAVE`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L8) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| `EPISODIC_EDGE_RETURN` | [`EPISODIC_EDGE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L36) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| `COMMUNITY_EDGE_RETURN` | [`COMMUNITY_EDGE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L216) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
 
 ### models/nodes/node_db_queries.py
 
@@ -649,6 +653,39 @@ The LLM client infrastructure has been significantly enhanced to match the Pytho
    - Original OpenAIClient preserved for existing code
    - New implementations are additive, not breaking
    - Clear migration path to new base classes
+
+#### Models/Edges Database Queries Port (September 2024)
+
+The complete edge database queries module has been ported to provide exact functional parity with the Python implementation:
+
+1. **Complete Function Coverage** - All edge database query functions ported:
+   - `GetEpisodicEdgeSaveBulkQuery` - Handles bulk episodic edge creation with provider-specific logic
+   - `GetEntityEdgeSaveQuery` - Single entity edge save with AOSS and provider support
+   - `GetEntityEdgeSaveBulkQuery` - Bulk entity edge operations for all supported providers
+   - `GetEntityEdgeReturnQuery` - Provider-specific return field mapping
+   - `GetCommunityEdgeSaveQuery` - Community membership edge creation with UNION support for Kuzu
+
+2. **Provider-Specific Implementation** - Exact match to Python logic:
+   - **Neo4j**: Standard RELATES_TO relationships with vector property support
+   - **FalkorDB**: Vector embeddings with vecf32() function calls
+   - **Kuzu**: RelatesToNode_ intermediate pattern with bidirectional RELATES_TO
+   - **Neptune**: String-based embedding storage with join() operations
+
+3. **Query Constants** - All constants preserved:
+   - `EPISODIC_EDGE_SAVE` - Standard episodic relationship creation
+   - `EPISODIC_EDGE_RETURN` - Return fields for episodic edge queries
+   - `COMMUNITY_EDGE_RETURN` - Return fields for community membership queries
+
+4. **Exact Argument Matching** - Functions use identical signatures:
+   - `provider driver.GraphProvider` - Database provider selection
+   - `hasAOSS bool` - Amazon OpenSearch Service configuration flag
+   - All parameter names and types match Python implementation
+
+5. **Database Feature Support** - Provider-specific capabilities:
+   - Vector embeddings with proper storage format per provider
+   - Bulk operations with UNWIND for efficient batch processing
+   - Conditional query construction based on provider capabilities
+   - AOSS integration for Neo4j vector property handling
 
 ### utils/maintenance/graph_data_operations.py
 
