@@ -1107,9 +1107,143 @@ func (n *Neo4jDriver) SearchEdgesByVector(ctx context.Context, vector []float32,
 	return edges, nil
 }
 
+// ExecuteQuery executes a Cypher query and returns records, summary, and keys (matching Python interface).
+func (n *Neo4jDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	session := n.client.NewSession(context.Background(), neo4j.SessionConfig{DatabaseName: n.database})
+	defer session.Close(context.Background())
+
+	result, err := session.Run(context.Background(), cypherQuery, kwargs)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	records, err := result.Collect(context.Background())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	summary, err := result.Consume(context.Background())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	keys, err := result.Keys()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return records, summary, keys, nil
+}
+
+// Session creates a new database session.
+func (n *Neo4jDriver) Session(database *string) GraphDriverSession {
+	dbName := n.database
+	if database != nil {
+		dbName = *database
+	}
+	return &Neo4jDriverSession{
+		driver:   n,
+		database: dbName,
+	}
+}
+
+// DeleteAllIndexes deletes all indexes in the specified database.
+func (n *Neo4jDriver) DeleteAllIndexes(database string) {
+	// Implementation for deleting indexes
+	session := n.client.NewSession(context.Background(), neo4j.SessionConfig{DatabaseName: database})
+	defer session.Close(context.Background())
+
+	// Get all indexes
+	result, err := session.Run(context.Background(), "SHOW INDEXES", nil)
+	if err != nil {
+		return
+	}
+
+	records, err := result.Collect(context.Background())
+	if err != nil {
+		return
+	}
+
+	// Drop each index
+	for _, record := range records {
+		if name, ok := record.Values[1].(string); ok {
+			session.Run(context.Background(), fmt.Sprintf("DROP INDEX %s IF EXISTS", name), nil)
+		}
+	}
+}
+
+// Provider returns the provider type.
+func (n *Neo4jDriver) Provider() GraphProvider {
+	return GraphProviderNeo4j
+}
+
+// GetAossClient returns nil for Neo4j (Amazon OpenSearch not applicable).
+func (n *Neo4jDriver) GetAossClient() interface{} {
+	return nil
+}
+
 // Close closes the Neo4j driver.
-func (n *Neo4jDriver) Close(ctx context.Context) error {
-	return n.client.Close(ctx)
+func (n *Neo4jDriver) Close() error {
+	return n.client.Close(context.Background())
+}
+
+// Neo4jDriverSession implements GraphDriverSession for Neo4j.
+type Neo4jDriverSession struct {
+	driver   *Neo4jDriver
+	database string
+	session  neo4j.SessionWithContext
+}
+
+// Enter implements the context manager pattern.
+func (s *Neo4jDriverSession) Enter(ctx context.Context) (GraphDriverSession, error) {
+	s.session = s.driver.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: s.database})
+	return s, nil
+}
+
+// Exit implements the context manager pattern.
+func (s *Neo4jDriverSession) Exit(ctx context.Context, excType, excVal, excTb interface{}) error {
+	if s.session != nil {
+		return s.session.Close(ctx)
+	}
+	return nil
+}
+
+// Close closes the session.
+func (s *Neo4jDriverSession) Close() error {
+	if s.session != nil {
+		return s.session.Close(context.Background())
+	}
+	return nil
+}
+
+// Run executes a query in this session.
+func (s *Neo4jDriverSession) Run(ctx context.Context, query interface{}, kwargs map[string]interface{}) error {
+	if s.session == nil {
+		return fmt.Errorf("session not entered")
+	}
+
+	queryStr, ok := query.(string)
+	if !ok {
+		return fmt.Errorf("query must be a string")
+	}
+
+	_, err := s.session.Run(ctx, queryStr, kwargs)
+	return err
+}
+
+// ExecuteWrite executes a write transaction.
+func (s *Neo4jDriverSession) ExecuteWrite(ctx context.Context, fn func(context.Context, GraphDriverSession, ...interface{}) (interface{}, error), args ...interface{}) (interface{}, error) {
+	if s.session == nil {
+		return nil, fmt.Errorf("session not entered")
+	}
+
+	return s.session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		return fn(ctx, s, args...)
+	})
+}
+
+// Provider returns the provider type.
+func (s *Neo4jDriverSession) Provider() GraphProvider {
+	return GraphProviderNeo4j
 }
 
 // Helper methods for converting between Graphiti and Neo4j types

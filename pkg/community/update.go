@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -139,17 +140,7 @@ func (b *Builder) getExistingCommunity(ctx context.Context, entityUUID string) (
 }
 
 // getExistingCommunityKuzu gets existing community for Kuzu database
-func (b *Builder) getExistingCommunityKuzu(ctx context.Context, kuzuDriver interface{}, entityUUID string) (*types.Node, error) {
-	query := `
-		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
-		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary,
-		       c.created_at AS created_at, c.group_id AS group_id
-	`
-
-	params := map[string]interface{}{
-		"entity_uuid": entityUUID,
-	}
-
+func (b *Builder) getExistingCommunityKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver, entityUUID string) (*types.Node, error) {
 	// This would need proper implementation based on your Kuzu driver
 	// For now, returning nil to indicate no existing community
 	return nil, nil
@@ -166,18 +157,6 @@ func (b *Builder) findModalCommunity(ctx context.Context, entityUUID string) (*t
 
 // findModalCommunityKuzu finds modal community for Kuzu database
 func (b *Builder) findModalCommunityKuzu(ctx context.Context, kuzuDriver interface{}, entityUUID string) (*types.Node, error) {
-	query := `
-		MATCH (c:Community)-[:HAS_MEMBER]->(m:Entity)-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(n:Entity {uuid: $entity_uuid})
-		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary,
-		       c.created_at AS created_at, c.group_id AS group_id, count(*) AS connection_count
-		ORDER BY connection_count DESC
-		LIMIT 1
-	`
-
-	params := map[string]interface{}{
-		"entity_uuid": entityUUID,
-	}
-
 	// This would need proper implementation based on your Kuzu driver
 	// For now, returning nil to indicate no modal community found
 	return nil, nil

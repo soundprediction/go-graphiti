@@ -40,7 +40,6 @@ func (b *Builder) labelPropagation(projection map[string][]Neighbor) [][]string 
 
 			// Find the community with highest weighted count
 			newCommunity := currentCommunity
-			maxCount := 0
 
 			// Convert to slice for sorting
 			type communityScore struct {
@@ -128,18 +127,6 @@ func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string
 		return b.getNodeNeighborsKuzu(ctx, kuzuDriver, nodeUUID, groupID)
 	}
 
-	// Default Neo4j query
-	query := `
-		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[e:RELATES_TO]-(m:Entity {group_id: $group_id})
-		WITH count(e) AS count, m.uuid AS uuid
-		RETURN uuid, count
-	`
-
-	params := map[string]interface{}{
-		"uuid":     nodeUUID,
-		"group_id": groupID,
-	}
-
 	// For other drivers, we'd need to implement the query execution
 	// This is a simplified version - in a real implementation, you'd handle this properly
 	return nil, fmt.Errorf("non-Kuzu drivers not yet supported for neighbor queries")
@@ -158,13 +145,17 @@ func (b *Builder) getNodeNeighborsKuzu(ctx context.Context, kuzuDriver *driver.K
 		"group_id": groupID,
 	}
 
-	records, err := kuzuDriver.ExecuteQuery(query, params)
+	records, _, _, err := kuzuDriver.ExecuteQuery(query, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
 	}
 
 	var neighbors []Neighbor
-	for _, record := range records {
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+	for _, record := range recordSlice {
 		if uuid, ok := record["uuid"].(string); ok {
 			if count, ok := record["count"].(int64); ok {
 				neighbors = append(neighbors, Neighbor{
@@ -195,17 +186,22 @@ func (b *Builder) getAllGroupIDsKuzu(ctx context.Context, kuzuDriver *driver.Kuz
 		RETURN collect(DISTINCT n.group_id) AS group_ids
 	`
 
-	records, err := kuzuDriver.ExecuteQuery(query, nil)
+	records, _, _, err := kuzuDriver.ExecuteQuery(query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
 	}
 
-	if len(records) == 0 {
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+
+	if len(recordSlice) == 0 {
 		return []string{}, nil
 	}
 
 	// Extract group IDs from the result
-	if groupIDsInterface, ok := records[0]["group_ids"]; ok {
+	if groupIDsInterface, ok := recordSlice[0]["group_ids"]; ok {
 		if groupIDs, ok := groupIDsInterface.([]interface{}); ok {
 			var result []string
 			for _, gid := range groupIDs {
@@ -240,13 +236,17 @@ func (b *Builder) getEntityNodesByGroupKuzu(ctx context.Context, kuzuDriver *dri
 		"group_id": groupID,
 	}
 
-	records, err := kuzuDriver.ExecuteQuery(query, params)
+	records, _, _, err := kuzuDriver.ExecuteQuery(query, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
 	}
 
 	var nodes []*types.Node
-	for _, record := range records {
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+	for _, record := range recordSlice {
 		node := &types.Node{
 			Type:    types.EntityNodeType,
 			GroupID: groupID,

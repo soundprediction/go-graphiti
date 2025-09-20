@@ -1000,7 +1000,7 @@ func (c *Client) CreateIndices(ctx context.Context) error {
 
 // Close closes the client and all its connections.
 func (c *Client) Close(ctx context.Context) error {
-	return c.driver.Close(ctx)
+	return c.driver.Close()
 }
 
 // NewDefaultSearchConfig creates a default search configuration.

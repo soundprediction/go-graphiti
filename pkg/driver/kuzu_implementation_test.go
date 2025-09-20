@@ -13,9 +13,9 @@ import (
 // TestKuzuDriverImplementedMethods tests the newly implemented methods
 func TestKuzuDriverImplementedMethods(t *testing.T) {
 	ctx := context.Background()
-	d, err := driver.NewKuzuDriver("./test_kuzu_db")
+	d, err := driver.NewKuzuDriver("./test_kuzu_db", 1)
 	require.NoError(t, err)
-	defer d.Close(ctx)
+	defer d.Close()
 
 	t.Run("GetNode returns specific error when not found", func(t *testing.T) {
 		node, err := d.GetNode(ctx, "nonexistent-id", "test-group")
@@ -83,9 +83,9 @@ func TestKuzuDriverImplementedMethods(t *testing.T) {
 // TestKuzuDriverMethodsImplemented verifies that key methods are no longer stubs
 func TestKuzuDriverMethodsImplemented(t *testing.T) {
 	ctx := context.Background()
-	d, err := driver.NewKuzuDriver("./test_impl_kuzu_db")
+	d, err := driver.NewKuzuDriver("./test_impl_kuzu_db", 1)
 	require.NoError(t, err)
-	defer d.Close(ctx)
+	defer d.Close()
 
 	// Test that these methods don't return the "not implemented" error
 	stubError := "KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency"

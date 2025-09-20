@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 )
 
@@ -234,4 +235,9 @@ func ValidateExcludedEntityTypes(excludedEntityTypes []string, availableTypes []
 	}
 
 	return nil
+}
+
+// GenerateUUID generates a new UUID7 string
+func GenerateUUID() string {
+	return uuid.Must(uuid.NewV7()).String()
 }

@@ -141,12 +141,25 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 ### search/search_utils.py
 
-| Python Method | Go Method | File Location | Status |
-|---------------|-----------|---------------|--------|
-| Various search utility functions | `SearchUtilities` struct methods | `pkg/search/search_utils.go` | ✅ Implemented |
-| [`Cosine similarity calculation`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L61) | [`CalculateCosineSimilarity()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L40) | `pkg/search/search_utils.go` | ✅ Implemented |
-| [`RRF reranking`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1433) | [`RRF()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L25) | `pkg/search/rerankers.go` | ✅ Implemented |
-| [`MMR reranking`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1501) | [`MMR()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L231) | `pkg/search/rerankers.go` | ✅ Implemented |
+| Python Method | Go Method | File Location | Status | Notes |
+|---------------|-----------|---------------|--------|-------|
+| [`calculate_cosine_similarity()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L61) | [`CalculateCosineSimilarity()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L38) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`fulltext_query()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L75) | [`FulltextQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L63) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_episodes_by_mentions()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L93) | [`GetEpisodesByMentions()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L297) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_mentioned_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L104) | [`GetMentionedNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L326) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_communities_by_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L121) | [`GetCommunitiesByNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L333) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`edge_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L131) | [`EdgeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L178) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`edge_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L242) | [`EdgeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L208) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`edge_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L371) | [`EdgeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L91) | `pkg/search/graph_traversal.go` | ✅ Implemented | |
+| [`node_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L460) | [`NodeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L119) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L548) | [`NodeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L150) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`node_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L623) | [`NodeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L20) | `pkg/search/graph_traversal.go` | ✅ Implemented | |
+| [`hybrid_node_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L670) | [`HybridNodeSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L236) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_relevant_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L722) | [`GetRelevantNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L126) | `pkg/search/specialized_search.go` | ✅ Implemented | Different signature than Python |
+| [`get_relevant_edges()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L784) | [`GetRelevantEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L188) | `pkg/search/specialized_search.go` | ✅ Implemented | Different signature than Python |
+| [`get_relevant_schema()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L858) | Not implemented | - | ❌ Missing | Complex unified function |
+| [`mmr_rerank()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1501) | [`MMRRerank()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L424) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`rrf_fuse()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1433) | [`RRF()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L25) | `pkg/search/rerankers.go` | ✅ Implemented | |
 
 ## Driver Interface
 
@@ -183,14 +196,14 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status | Notes |
 |-------------|---------|---------------|--------|--------|
-| [`Node`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L88) base class | [`types.Node`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L8) struct | `pkg/types/types.go` | ✅ Implemented | Single struct for all node types |
-| [`EntityNode`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L513) | `types.Node` with `Type: EntityNodeType` | `pkg/types/types.go` | ✅ Implemented | |
-| [`EpisodicNode`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L321) | `types.Node` with `Type: EpisodicNodeType` | `pkg/types/types.go` | ✅ Implemented | |
-| [`CommunityNode`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L653) | `types.Node` with `Type: CommunityNodeType` | `pkg/types/types.go` | ✅ Implemented | |
-| [`Edge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L40) base class | [`types.Edge`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L41) struct | `pkg/types/types.go` | ✅ Implemented | Single struct for all edge types |
-| [`EntityEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L241) | `types.Edge` with `Type: EntityEdgeType` | `pkg/types/types.go` | ✅ Implemented | |
-| [`EpisodicEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L141) | `types.Edge` with `Type: EpisodicEdgeType` | `pkg/types/types.go` | ✅ Implemented | |
-| [`CommunityEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L517) | `types.Edge` with `Type: CommunityEdgeType` | `pkg/types/types.go` | ✅ Implemented | |
+| [`Node`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L88) base class | [`types.Node`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L8) struct | `pkg/types/types.go` | ⚠️ Partial | Go version has many more fields. |
+| [`EntityNode`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L513) | `types.Node` with `Type: EntityNodeType` | `pkg/types/types.go` | ✅ Implemented | Go version has these fields in the `Node` struct. |
+| [`EpisodicNode`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L321) | `types.Node` with `Type: EpisodicNodeType` | `pkg/types/types.go` | ✅ Implemented | Go version has these fields in the `Node` struct. |
+| [`CommunityNode`](https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py#L653) | `types.Node` with `Type: CommunityNodeType` | `pkg/types/types.go` | ✅ Implemented | Go version has these fields in the `Node` struct. |
+| [`Edge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L40) base class | [`types.Edge`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/types/types.go#L41) struct | `pkg/types/types.go` | ⚠️ Partial | Go version has many more fields. |
+| [`EntityEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L241) | `types.Edge` with `Type: EntityEdgeType` | `pkg/types/types.go` | ✅ Implemented | Go version has these fields in the `Edge` struct. |
+| [`EpisodicEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L141) | `types.Edge` with `Type: EpisodicEdgeType` | `pkg/types/types.go` | ✅ Implemented | Go version has the fields from the `Edge` struct. |
+| [`CommunityEdge`](https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py#L517) | `types.Edge` with `Type: CommunityEdgeType` | `pkg/types/types.go` | ✅ Implemented | Go version has the fields from the `Edge` struct. |
 
 ### models/edges/edge_db_queries.py
 
@@ -403,7 +416,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`prompts/dedupe_nodes.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/dedupe_nodes.py) | `DedupeNodesPrompt` interface | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented | All 3 functions implemented |
 | [`prompts/dedupe_edges.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/dedupe_edges.py) | `DedupeEdgesPrompt` interface | `pkg/prompts/dedupe_edges.go` | ✅ Implemented | All 3 functions implemented |
 | [`prompts/summarize_nodes.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/summarize_nodes.py) | `SummarizeNodesPrompt` interface | `pkg/prompts/summarize_nodes.go` | ✅ Implemented | All 3 functions implemented |
-| [`prompts/invalidate_edges.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py) | `InvalidateEdgesPrompt` interface | `pkg/prompts/invalidate_edges.go` | ✅ Implemented | Both v1 and v2 functions |
+| [`prompts/invalidate_edges.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py) | `InvalidateEdgesPrompt` interface | `pkg/prompts/invalidate_edges.go` | ⚠️ Partial | `v2` function is missing. |
 | [`prompts/extract_edge_dates.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/extract_edge_dates.py) | `ExtractEdgeDatesPrompt` interface | `pkg/prompts/extract_edge_dates.go` | ✅ Implemented | v1 function implemented |
 | [`prompts/eval.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/eval.py) | `EvalPrompt` interface | `pkg/prompts/eval.go` | ✅ Implemented | All 4 functions implemented |
 
@@ -506,14 +519,14 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
-| [`add_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L78) | `Client.Add()` | `graphiti.go` | ⚠️ Partial |
-| [`dedupe_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L383) | Helper functions | `pkg/utils/bulk.go` | ✅ Implemented |
-| [`dedupe_nodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L281) | Helper functions | `pkg/utils/bulk.go` | ✅ Implemented |
-| [`extract_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L219) | Embedded in `Client.Add()` | `graphiti.go` | ⚠️ Partial |
-| [`resolve_edge_pointers()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L548) | [`ResolveEdgePointers()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L114) | `pkg/utils/bulk.go` | ✅ Implemented |
-| [`retrieve_previous_episodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L45) | `GetEpisodes()` | `graphiti.go` | ⚠️ Partial |
-| [`compress_uuid_map()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L520) | [`CompressUUIDMap()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L61) | `pkg/utils/bulk.go` | ✅ Implemented |
-| [`UnionFind`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L500) class | [`UnionFind`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L15) struct | `pkg/utils/bulk.go` | ✅ Implemented |
+| [`add_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L78) | `Client.Add()` | `graphiti.go` | ⚠️ Partial | Functionality is different. |
+| [`dedupe_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L383) | Helper functions | `pkg/utils/bulk.go` | ⚠️ Partial | Functionality is different. |
+| [`dedupe_nodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L281) | Helper functions | `pkg/utils/bulk.go` | ⚠️ Partial | Functionality is different. |
+| [`extract_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L219) | Embedded in `Client.Add()` | `graphiti.go` | ⚠️ Partial | Functionality is different. |
+| [`resolve_edge_pointers()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L548) | [`ResolveEdgePointers()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L114) | `pkg/utils/bulk.go` | ✅ Implemented | |
+| [`retrieve_previous_episodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L45) | `GetEpisodes()` | `graphiti.go` | ⚠️ Partial | Functionality is different. |
+| [`compress_uuid_map()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L520) | [`CompressUUIDMap()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L61) | `pkg/utils/bulk.go` | ✅ Implemented | |
+| [`UnionFind`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L500) class | [`UnionFind`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L15) struct | `pkg/utils/bulk.go` | ✅ Implemented | |
 
 ### utils/datetime_utils.py
 
@@ -556,38 +569,90 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `extract_edges` | N/A | N/A | ❌ Missing |
-| `resolve_extracted_edge` | N/A | N/A | ❌ Missing |
-| `resolve_extracted_edges` | N/A | N/A | ❌ Missing |
-| `build_episodic_edges` | N/A | N/A | ❌ Missing |
-| `build_duplicate_of_edges` | N/A | N/A | ❌ Missing |
+| `extract_edges` | [`EdgeOperations.ExtractEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L96) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `resolve_extracted_edge` | [`EdgeOperations.resolveExtractedEdge()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L340) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `resolve_extracted_edges` | [`EdgeOperations.ResolveExtractedEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L232) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `build_episodic_edges` | [`EdgeOperations.BuildEpisodicEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L33) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `build_duplicate_of_edges` | [`EdgeOperations.BuildDuplicateOfEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L57) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `get_between_nodes` | [`EdgeOperations.GetBetweenNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L204) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `filter_existing_duplicate_of_edges` | [`EdgeOperations.FilterExistingDuplicateOfEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L555) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+| `resolve_edge_contradictions` | [`EdgeOperations.resolveEdgeContradictions()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/edge_operations.go#L523) | `pkg/utils/maintenance/edge_operations.go` | ✅ Implemented |
+
+#### Recent Improvements (December 2024)
+
+The following edge operations have been significantly improved to match the exact Python implementation:
+
+1. **GetBetweenNodes** - Now uses proper Kuzu query pattern:
+   - Uses `RelatesToNode_` intermediate nodes pattern from Python
+   - Implements bidirectional search with `UNION` clause
+   - Direct database query with `ExecuteQuery` instead of generic search
+   - Added `convertRecordToEdge` helper for consistent result processing
+
+2. **FilterExistingDuplicateOfEdges** - Exact Python implementation:
+   - Uses `UNWIND` for batch parameter processing
+   - Matches Python's parameter structure with `src`/`dst` mapping
+   - Proper Kuzu query: `MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_ {name: 'IS_DUPLICATE_OF'})-[:RELATES_TO]->(m:Entity)`
+
+3. **searchRelatedEdges** - Enhanced with hybrid search:
+   - Implements UUID filtering equivalent to Python's `SearchFilters(edge_uuids=...)`
+   - Uses hybrid search approach similar to `EDGE_HYBRID_SEARCH_RRF`
+   - Proper exclusion of the extracted edge itself
+   - Group ID filtering in search operations
+
+4. **NodePair Type** - Fixed struct definition:
+   - Changed from `{Node1, Node2}` to `{Source, Target}` to match usage patterns
+   - Located in `pkg/utils/maintenance/types.go`
+
+5. **Compilation Issues** - Fixed unused variables:
+   - Removed unused `maxCount` in label propagation
+   - Removed unused `query` and `params` in placeholder functions
+   - Removed unused `sort` import
 
 ### utils/maintenance/graph_data_operations.py
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `build_indices_and_constraints` | N/A | N/A | ❌ Missing |
-| `retrieve_episodes` | N/A | N/A | ❌ Missing |
+| `build_indices_and_constraints` | [`GraphDataOperations.BuildIndicesAndConstraints()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/graph_data_operations.go#L27) | `pkg/utils/maintenance/graph_data_operations.go` | ✅ Implemented |
+| `retrieve_episodes` | [`GraphDataOperations.RetrieveEpisodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/graph_data_operations.go#L34) | `pkg/utils/maintenance/graph_data_operations.go` | ✅ Implemented |
+| `clear_data` | [`GraphDataOperations.ClearData()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/graph_data_operations.go#L100) | `pkg/utils/maintenance/graph_data_operations.go` | ✅ Implemented |
 
 ### utils/maintenance/node_operations.py
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `extract_nodes` | N/A | N/A | ❌ Missing |
-| `resolve_extracted_nodes` | N/A | N/A | ❌ Missing |
-| `extract_attributes_from_nodes` | N/A | N/A | ❌ Missing |
+| `extract_nodes` | [`NodeOperations.ExtractNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/node_operations.go#L32) | `pkg/utils/maintenance/node_operations.go` | ✅ Implemented |
+| `resolve_extracted_nodes` | [`NodeOperations.ResolveExtractedNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/node_operations.go#L234) | `pkg/utils/maintenance/node_operations.go` | ✅ Implemented |
+| `extract_attributes_from_nodes` | [`NodeOperations.ExtractAttributesFromNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/node_operations.go#L370) | `pkg/utils/maintenance/node_operations.go` | ✅ Implemented |
+| `extract_nodes_reflexion` | [`NodeOperations.extractNodesReflexion()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/node_operations.go#L194) | `pkg/utils/maintenance/node_operations.go` | ✅ Implemented |
 
 ### utils/maintenance/temporal_operations.py
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `extract_and_save_edge_dates` | N/A | N/A | ❌ Missing |
+| `extract_edge_dates` | [`TemporalOperations.ExtractEdgeDates()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L23) | `pkg/utils/maintenance/temporal_operations.go` | ✅ Implemented |
+| `get_edge_contradictions` | [`TemporalOperations.GetEdgeContradictions()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L94) | `pkg/utils/maintenance/temporal_operations.go` | ✅ Implemented |
+| `extract_and_save_edge_dates` | [`TemporalOperations.ExtractAndSaveEdgeDates()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L140) | `pkg/utils/maintenance/temporal_operations.go` | ✅ Implemented |
 
 ### utils/maintenance/utils.py
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `get_entities_and_edges` | N/A | N/A | ❌ Missing |
+| `get_entities_and_edges` | [`MaintenanceUtils.GetEntitiesAndEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L20) | `pkg/utils/maintenance/maintenance_utils.go` | ✅ Implemented |
+
+### Additional Go Maintenance Functions
+
+| Go Method | Description | File Location |
+|-----------|-------------|---------------|
+| [`MaintenanceUtils.GetEntitiesByType()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L42) | Retrieves entities by type | `pkg/utils/maintenance/maintenance_utils.go` |
+| [`MaintenanceUtils.GetEdgesByType()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L55) | Retrieves edges by type | `pkg/utils/maintenance/maintenance_utils.go` |
+| [`MaintenanceUtils.GetNodesConnectedToNode()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L68) | Gets connected nodes within distance | `pkg/utils/maintenance/maintenance_utils.go` |
+| [`MaintenanceUtils.GetEdgesForNode()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L79) | Gets all edges for a node | `pkg/utils/maintenance/maintenance_utils.go` |
+| [`MaintenanceUtils.CleanupOrphanedEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L120) | Removes orphaned edges | `pkg/utils/maintenance/maintenance_utils.go` |
+| [`MaintenanceUtils.ValidateGraphIntegrity()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/maintenance_utils.go#L154) | Validates graph integrity | `pkg/utils/maintenance/maintenance_utils.go` |
+| [`TemporalOperations.ValidateEdgeTemporalConsistency()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L177) | Validates edge temporal consistency | `pkg/utils/maintenance/temporal_operations.go` |
+| [`TemporalOperations.ApplyTemporalInvalidation()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L194) | Applies temporal invalidation logic | `pkg/utils/maintenance/temporal_operations.go` |
+| [`TemporalOperations.GetActiveEdgesAtTime()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L220) | Gets edges active at specific time | `pkg/utils/maintenance/temporal_operations.go` |
+| [`TemporalOperations.GetEdgeLifespan()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/maintenance/temporal_operations.go#L233) | Calculates edge lifespan | `pkg/utils/maintenance/temporal_operations.go` |
 
 
 ### Additional Go Helper Functions
@@ -666,10 +731,11 @@ When adding new Python-to-Go mappings:
 1. ~~**Community Operations** - Community building and management not implemented~~ ✅ **Completed**
 2. **Cross Encoder Support** - Reranking with cross encoders missing
 3. ~~**Advanced Prompt Templates** - Most prompt templates need implementation~~ ✅ **Completed**
-4. **Bulk Utilities** - Deduplication and bulk operations partially implemented
-5. **Telemetry** - Event tracking and metrics collection missing
-6. **Multiple LLM Providers** - Only OpenAI client implemented
-7. **Advanced Temporal Operations** - Time-based graph operations limited
+4. ~~**Edge Operations** - Edge extraction, resolution, and maintenance operations~~ ✅ **Completed**
+5. **Bulk Utilities** - Deduplication and bulk operations partially implemented
+6. **Telemetry** - Event tracking and metrics collection missing
+7. **Multiple LLM Providers** - Only OpenAI client implemented
+8. **Advanced Temporal Operations** - Time-based graph operations limited
 
 ### Well-Implemented Areas
 
@@ -681,9 +747,10 @@ When adding new Python-to-Go mappings:
 6. **Community Operations** - Label propagation clustering and community building
 7. **Prompt Templates** - Complete prompt library with all Python functions ported
 8. **Utility Functions** - Comprehensive helper functions, datetime utils, validation, and bulk operations
+9. **Maintenance Operations** - Complete maintenance toolkit for nodes, edges, temporal operations, and graph data management
 
 ## Last Updated
 
-This document was last updated: 2024-12-19
+This document was last updated: 2025-01-19
 
 *Note: This mapping reflects the current state of the go-graphiti implementation. Status may change as development continues.*

@@ -31,12 +31,12 @@ func TestNewKuzuDriver(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d, err := driver.NewKuzuDriver(tt.dbPath)
+			d, err := driver.NewKuzuDriver(tt.dbPath, 1)
 			require.NoError(t, err)
 			assert.NotNil(t, d)
 
 			// Test that Close works
-			err = d.Close(context.Background())
+			err = d.Close()
 			assert.NoError(t, err)
 		})
 	}
@@ -44,9 +44,9 @@ func TestNewKuzuDriver(t *testing.T) {
 
 func TestKuzuDriverStubImplementation(t *testing.T) {
 	ctx := context.Background()
-	d, err := driver.NewKuzuDriver("")
+	d, err := driver.NewKuzuDriver("", 1)
 	require.NoError(t, err)
-	defer d.Close(ctx)
+	defer d.Close()
 
 	// Test that all methods return "not implemented" errors
 	expectedError := "KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency"
@@ -199,7 +199,7 @@ func TestKuzuDriverStubImplementation(t *testing.T) {
 
 	t.Run("Close", func(t *testing.T) {
 		// Close should not return an error even in stub implementation
-		err := d.Close(ctx)
+		err := d.Close()
 		assert.NoError(t, err)
 	})
 }
@@ -215,10 +215,9 @@ func TestKuzuDriverUsageExample(t *testing.T) {
 	
 	// This test demonstrates expected usage patterns but is skipped
 	// until the actual Kuzu library dependency is available
-	ctx := context.Background()
-	d, err := driver.NewKuzuDriver("./test_kuzu_db")
+	d, err := driver.NewKuzuDriver("./test_kuzu_db", 1)
 	require.NoError(t, err)
-	defer d.Close(ctx)
+	defer d.Close()
 	
 	// In a real scenario, you would:
 	// 1. Create nodes

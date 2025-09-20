@@ -234,7 +234,7 @@ func runGraphitiIntegrationExample() error {
 	if err != nil {
 		return fmt.Errorf("failed to create Neo4j driver: %w", err)
 	}
-	defer neo4jDriver.Close(context.Background())
+	defer neo4jDriver.Close()
 
 	// Create Ollama LLM client
 	llmClient, err := llm.NewOpenAIClient(

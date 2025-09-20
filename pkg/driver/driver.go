@@ -7,10 +7,42 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
-// GraphDriver defines the interface for graph database operations.
-// It provides methods for storing and retrieving nodes and edges
-// from a graph database backend.
+// GraphProvider represents the type of graph database provider
+type GraphProvider string
+
+const (
+	GraphProviderNeo4j    GraphProvider = "neo4j"
+	GraphProviderFalkorDB GraphProvider = "falkordb"
+	GraphProviderKuzu     GraphProvider = "kuzu"
+	GraphProviderNeptune  GraphProvider = "neptune"
+)
+
+// GraphDriverSession defines the interface for database sessions (matching Python GraphDriverSession)
+type GraphDriverSession interface {
+	// Session management
+	Enter(ctx context.Context) (GraphDriverSession, error)
+	Exit(ctx context.Context, excType, excVal, excTb interface{}) error
+	Close() error
+
+	// Query execution
+	Run(ctx context.Context, query interface{}, kwargs map[string]interface{}) error
+	ExecuteWrite(ctx context.Context, fn func(context.Context, GraphDriverSession, ...interface{}) (interface{}, error), args ...interface{}) (interface{}, error)
+
+	// Provider info
+	Provider() GraphProvider
+}
+
+// GraphDriver defines the interface for graph database operations (matching Python GraphDriver)
 type GraphDriver interface {
+	// Core methods matching Python interface
+	ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error)
+	Session(database *string) GraphDriverSession
+	Close() error
+	DeleteAllIndexes(database string)
+	Provider() GraphProvider
+	GetAossClient() interface{}
+
+	// Database-specific extensions (these can remain for compatibility)
 	// Node operations
 	GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error)
 	UpsertNode(ctx context.Context, node *types.Node) error
@@ -50,9 +82,6 @@ type GraphDriver interface {
 	// Database maintenance
 	CreateIndices(ctx context.Context) error
 	GetStats(ctx context.Context, groupID string) (*GraphStats, error)
-
-	// Connection management
-	Close(ctx context.Context) error
 }
 
 // GraphStats holds statistics about the graph.

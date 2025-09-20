@@ -5,17 +5,7 @@ import (
 	"strings"
 )
 
-// GraphProvider represents the type of graph database backend
-type GraphProvider string
-
-const (
-	// GraphProviderNeo4j represents Neo4j database
-	GraphProviderNeo4j GraphProvider = "neo4j"
-	// GraphProviderFalkorDB represents FalkorDB database
-	GraphProviderFalkorDB GraphProvider = "falkordb"
-	// GraphProviderKuzu represents Kuzu database
-	GraphProviderKuzu GraphProvider = "kuzu"
-)
+// GraphProvider and constants are defined in driver.go
 
 // Mapping from Neo4j fulltext index names to FalkorDB node labels
 var neo4jToFalkorDBMapping = map[string]string{
