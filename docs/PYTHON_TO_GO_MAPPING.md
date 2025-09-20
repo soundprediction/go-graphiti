@@ -209,25 +209,29 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| [`get_episodic_edge_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L30) | [`GetEpisodicEdgeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L18) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
-| [`get_entity_edge_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L63) | [`GetEntityEdgeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L45) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
-| [`get_entity_edge_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L123) | [`GetEntityEdgeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L91) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
-| [`get_entity_edge_return_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L186) | [`GetEntityEdgeReturnQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L139) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
-| [`get_community_edge_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L224) | [`GetCommunityEdgeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L166) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_episodic_edge_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L30) | [`GetEpisodicEdgeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L19) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_entity_edge_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L63) | [`GetEntityEdgeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L54) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_entity_edge_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L123) | [`GetEntityEdgeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L110) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_entity_edge_return_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L186) | [`GetEntityEdgeReturnQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L172) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| [`get_community_edge_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py#L224) | [`GetCommunityEdgeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L211) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
 | `EPISODIC_EDGE_SAVE` | [`EPISODIC_EDGE_SAVE`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L8) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
-| `EPISODIC_EDGE_RETURN` | [`EPISODIC_EDGE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L36) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
-| `COMMUNITY_EDGE_RETURN` | [`COMMUNITY_EDGE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L216) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| `EPISODIC_EDGE_RETURN` | [`EPISODIC_EDGE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L45) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
+| `COMMUNITY_EDGE_RETURN` | [`COMMUNITY_EDGE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/edges/edge_db_queries.go#L262) | `pkg/models/edges/edge_db_queries.go` | ✅ Implemented |
 
 ### models/nodes/node_db_queries.py
 
 | Python Function | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `get_entity_node_return_query` | N/A | N/A | ❌ Missing |
-| `get_entity_node_save_bulk_query` | N/A | N/A | ❌ Missing |
-| `get_entity_node_save_query` | N/A | N/A | ❌ Missing |
-| `get_community_node_save_query` | N/A | N/A | ❌ Missing |
-| `get_episode_node_save_bulk_query` | N/A | N/A | ❌ Missing |
-| `get_episode_node_save_query` | N/A | N/A | ❌ Missing |
+| [`get_episode_node_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py#L22) | [`GetEpisodeNodeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L11) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| [`get_episode_node_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py#L61) | [`GetEpisodeNodeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L52) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| [`get_entity_node_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py#L129) | [`GetEntityNodeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L123) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| [`get_entity_node_save_bulk_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py#L182) | [`GetEntityNodeSaveBulkQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L184) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| [`get_entity_node_return_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py#L255) | [`GetEntityNodeReturnQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L271) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| [`get_community_node_save_query`](https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py#L279) | [`GetCommunityNodeSaveQuery`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L296) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| `EPISODIC_NODE_RETURN` | [`EPISODIC_NODE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L97) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| `EPISODIC_NODE_RETURN_NEPTUNE` | [`EPISODIC_NODE_RETURN_NEPTUNE`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L110) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| `COMMUNITY_NODE_RETURN` | [`COMMUNITY_NODE_RETURN`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L333) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
+| `COMMUNITY_NODE_RETURN_NEPTUNE` | [`COMMUNITY_NODE_RETURN_NEPTUNE`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/models/nodes/node_db_queries.go#L343) | `pkg/models/nodes/node_db_queries.go` | ✅ Implemented |
 
 
 ## LLM Client Interface
@@ -269,7 +273,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| [`BaseOpenAIClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/openai_base_client.py#L40) | [`BaseOpenAIClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/openai_base.go#L40) | `pkg/llm/openai_base.go` | ✅ Implemented | Provides common functionality for OpenAI-compatible clients with retry logic, message conversion, and error handling |
+| [`BaseOpenAIClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/openai_base_client.py#L40) | [`BaseOpenAIClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/openai_base.go#L26) | `pkg/llm/openai_base.go` | ✅ Implemented | Provides common functionality for OpenAI-compatible clients with retry logic, message conversion, and error handling |
 
 ### llm_client/openai_generic_client.py
 
@@ -420,7 +424,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`prompts/dedupe_nodes.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/dedupe_nodes.py) | `DedupeNodesPrompt` interface | `pkg/prompts/dedupe_nodes.go` | ✅ Implemented | All 3 functions implemented |
 | [`prompts/dedupe_edges.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/dedupe_edges.py) | `DedupeEdgesPrompt` interface | `pkg/prompts/dedupe_edges.go` | ✅ Implemented | All 3 functions implemented |
 | [`prompts/summarize_nodes.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/summarize_nodes.py) | `SummarizeNodesPrompt` interface | `pkg/prompts/summarize_nodes.go` | ✅ Implemented | All 3 functions implemented |
-| [`prompts/invalidate_edges.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py) | `InvalidateEdgesPrompt` interface | `pkg/prompts/invalidate_edges.go` | ⚠️ Partial | `v2` function is missing. |
+| [`prompts/invalidate_edges.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py) | `InvalidateEdgesPrompt` interface | `pkg/prompts/invalidate_edges.go` | ✅ Implemented | All functions implemented including v2 |
 | [`prompts/extract_edge_dates.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/extract_edge_dates.py) | `ExtractEdgeDatesPrompt` interface | `pkg/prompts/extract_edge_dates.go` | ✅ Implemented | v1 function implemented |
 | [`prompts/eval.py`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/eval.py) | `EvalPrompt` interface | `pkg/prompts/eval.go` | ✅ Implemented | All 4 functions implemented |
 
@@ -473,7 +477,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | Python Function | Go Method | File Location | Status |
 |-----------------|-----------|---------------|--------|
 | [`v1()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py#L35) | [`V1()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/prompts/invalidate_edges.go#L20) | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
-| [`v2()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py#L68) | `V2()` | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
+| [`v2()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/prompts/invalidate_edges.py#L68) | [`V2()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/prompts/invalidate_edges.go#L57) | `pkg/prompts/invalidate_edges.go` | ✅ Implemented |
 
 ### Extract Edge Dates Functions
 
@@ -687,6 +691,48 @@ The complete edge database queries module has been ported to provide exact funct
    - Conditional query construction based on provider capabilities
    - AOSS integration for Neo4j vector property handling
 
+#### Models/Nodes Database Queries Port (September 2024)
+
+The complete node database queries module has been ported to provide exact functional parity with the Python implementation:
+
+1. **Complete Function Coverage** - All node database query functions ported:
+   - `GetEpisodeNodeSaveQuery` - Episodic node creation with provider-specific entity_edges handling
+   - `GetEpisodeNodeSaveBulkQuery` - Bulk episodic node operations with UNWIND patterns
+   - `GetEntityNodeSaveQuery` - Entity node save with dynamic label assignment and embeddings
+   - `GetEntityNodeSaveBulkQuery` - Complex bulk entity operations with multiple return types
+   - `GetEntityNodeReturnQuery` - Provider-specific field selection and label handling
+   - `GetCommunityNodeSaveQuery` - Community node creation with vector embedding support
+
+2. **Provider-Specific Implementation** - Exact match to Python logic:
+   - **Neo4j**: Standard node labels with vector property support via `db.create.setNodeVectorProperty`
+   - **FalkorDB**: Vector embeddings with `vecf32()` function calls and explicit property mapping
+   - **Kuzu**: Structured property assignment with array-based labels and attributes
+   - **Neptune**: String-based embedding storage with `join()` and `removeKeyFromMap()` operations
+
+3. **Complex Return Types** - Handling Python's mixed return scenarios:
+   - `GetEntityNodeSaveBulkQuery` returns `interface{}` to handle different provider needs
+   - FalkorDB/Neptune: Returns `[]QueryWithParams` or `[]string` for multiple query execution
+   - Kuzu/Neo4j: Returns single query string for standard bulk processing
+   - Added `QueryWithParams` struct to match Python's tuple structure
+
+4. **Query Constants** - All provider-specific constants preserved:
+   - `EPISODIC_NODE_RETURN` - Standard episodic node return fields
+   - `EPISODIC_NODE_RETURN_NEPTUNE` - Neptune-specific field mapping with split operations
+   - `COMMUNITY_NODE_RETURN` - Community node return fields
+   - `COMMUNITY_NODE_RETURN_NEPTUNE` - Neptune community fields with float conversion
+
+5. **Dynamic Query Construction** - Advanced features:
+   - Dynamic label assignment with string splitting and formatting
+   - AOSS conditional vector property handling for Neo4j
+   - Label subquery generation for Neptune with proper SET operations
+   - Entity edges handling with provider-specific array/string conversions
+
+6. **Exact Argument Matching** - Functions use identical signatures:
+   - `provider driver.GraphProvider` - Database provider selection
+   - `labels string` - Dynamic label string for entity nodes
+   - `hasAOSS bool` - Amazon OpenSearch Service configuration flag
+   - `nodes []map[string]interface{}` - Complex node data for bulk operations
+
 ### utils/maintenance/graph_data_operations.py
 
 | Python Function | Go Implementation | File Location | Status |
@@ -830,6 +876,6 @@ When adding new Python-to-Go mappings:
 
 ## Last Updated
 
-This document was last updated: 2025-01-19
+This document was last updated: 2025-01-20
 
 *Note: This mapping reflects the current state of the go-graphiti implementation. Status may change as development continues.*
