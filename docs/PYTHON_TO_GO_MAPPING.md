@@ -265,13 +265,13 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `BaseOpenAIClient` | N/A | N/A | ❌ Missing |
+| [`BaseOpenAIClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/openai_base_client.py#L40) | [`BaseOpenAIClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/openai_base.go#L40) | `pkg/llm/openai_base.go` | ✅ Implemented | Provides common functionality for OpenAI-compatible clients with retry logic, message conversion, and error handling |
 
 ### llm_client/openai_generic_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `OpenAIGenericClient` | N/A | N/A | ❌ Missing |
+| [`OpenAIGenericClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/openai_generic_client.py#L37) | [`OpenAIGenericClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/openai_generic.go#L16) | `pkg/llm/openai_generic.go` | ✅ Implemented | OpenAI client with structured output, retry logic, and enhanced error feedback |
 
 ### llm_client/utils.py
 
@@ -284,8 +284,8 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Type | Go Type | File Location | Status |
 |-------------|---------|---------------|--------|
-| [`LLMConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L21) | [`llm.Config`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/client.go#L65) | `pkg/llm/config.go` | ⚠️ Partial | Go version is missing `api_key` and `small_model`. It has `TopP` and `Stop` which are not in the python version. |
-| [`ModelSize`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L15) enum | `ModelSize` constants | `pkg/llm/config.go` | ❌ Missing | |
+| [`LLMConfig`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L21) | [`LLMConfig`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/config.go#L20) | `pkg/llm/config.go` | ✅ Implemented | Go version matches Python structure with APIKey, Model, BaseURL, Temperature, MaxTokens, and SmallModel |
+| [`ModelSize`](https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client/config.py#L15) enum | [`ModelSize`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/config.go#L5) | `pkg/llm/config.go` | ✅ Implemented | Go constants for ModelSizeSmall and ModelSizeMedium |
 
 ## Embedder Client Interface
 
@@ -607,6 +607,48 @@ The following edge operations have been significantly improved to match the exac
    - Removed unused `maxCount` in label propagation
    - Removed unused `query` and `params` in placeholder functions
    - Removed unused `sort` import
+
+#### LLM Client Improvements (September 2024)
+
+The LLM client infrastructure has been significantly enhanced to match the Python Graphiti implementation:
+
+1. **BaseOpenAIClient** - New base class for OpenAI-compatible clients:
+   - Implements proper message conversion from internal format to OpenAI format
+   - Provides retry logic with exponential backoff and jitter
+   - Handles structured output preparation and JSON schema injection
+   - Includes input cleaning (removes zero-width characters and control characters)
+   - Supports multilingual extraction instructions
+   - Error handling for rate limits, refusals, and API timeouts
+
+2. **OpenAIGenericClient** - Enhanced OpenAI client with Python parity:
+   - Built on BaseOpenAIClient foundation
+   - Implements both regular chat and structured output methods
+   - Enhanced retry logic with error feedback to the LLM
+   - Automatic JSON response format enforcement for structured outputs
+   - Support for custom base URLs (OpenAI-compatible services)
+   - Proper error context injection for failed generations
+
+3. **LLMConfig** - Complete configuration structure:
+   - Matches Python LLMConfig exactly with APIKey, Model, BaseURL, Temperature, MaxTokens, SmallModel
+   - Fluent configuration API with builder methods
+   - Default values matching Python implementation
+   - Separate from legacy Config for backward compatibility
+
+4. **ModelSize Support** - Proper model selection:
+   - ModelSizeSmall and ModelSizeMedium constants
+   - Automatic model selection based on task complexity
+   - Support for different models for different use cases
+
+5. **Error Handling** - Comprehensive error types:
+   - RateLimitError for rate limiting scenarios
+   - RefusalError for LLM refusals
+   - EmptyResponseError for empty responses
+   - Proper error wrapping and context preservation
+
+6. **Backward Compatibility** - Legacy support maintained:
+   - Original OpenAIClient preserved for existing code
+   - New implementations are additive, not breaking
+   - Clear migration path to new base classes
 
 ### utils/maintenance/graph_data_operations.py
 
