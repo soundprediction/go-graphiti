@@ -527,14 +527,14 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Function | Go Function | File Location | Status |
 |-----------------|-------------|---------------|--------|
-| [`add_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L78) | `Client.Add()` | `graphiti.go` | ⚠️ Partial | Functionality is different. |
-| [`dedupe_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L383) | Helper functions | `pkg/utils/bulk.go` | ⚠️ Partial | Functionality is different. |
-| [`dedupe_nodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L281) | Helper functions | `pkg/utils/bulk.go` | ⚠️ Partial | Functionality is different. |
-| [`extract_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L219) | Embedded in `Client.Add()` | `graphiti.go` | ⚠️ Partial | Functionality is different. |
-| [`resolve_edge_pointers()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L548) | [`ResolveEdgePointers()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L114) | `pkg/utils/bulk.go` | ✅ Implemented | |
-| [`retrieve_previous_episodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L45) | `GetEpisodes()` | `graphiti.go` | ⚠️ Partial | Functionality is different. |
-| [`compress_uuid_map()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L520) | [`CompressUUIDMap()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L61) | `pkg/utils/bulk.go` | ✅ Implemented | |
-| [`UnionFind`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L500) class | [`UnionFind`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L15) struct | `pkg/utils/bulk.go` | ✅ Implemented | |
+| [`add_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L78) | [`AddNodesAndEdgesBulk()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk_utils.go#L77) | `pkg/utils/bulk_utils.go` | ✅ Implemented | Complete bulk operation with embeddings |
+| [`dedupe_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L383) | [`DedupeEdgesBulk()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk_utils.go#L491) | `pkg/utils/bulk_utils.go` | ✅ Implemented | Full deduplication with LLM confirmation |
+| [`dedupe_nodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L281) | [`DedupeNodesBulk()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk_utils.go#L335) | `pkg/utils/bulk_utils.go` | ✅ Implemented | Full deduplication with LLM confirmation |
+| [`extract_nodes_and_edges_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L219) | [`ExtractNodesAndEdgesBulk()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk_utils.go#L161) | `pkg/utils/bulk_utils.go` | ✅ Implemented | Complete extraction with batch processing |
+| [`resolve_edge_pointers()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L548) | [`ResolveEdgePointers()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L94) | `pkg/utils/bulk.go` | ✅ Implemented | |
+| [`retrieve_previous_episodes_bulk()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L45) | [`RetrievePreviousEpisodesBulk()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk_utils.go#L40) | `pkg/utils/bulk_utils.go` | ✅ Implemented | Temporal episode retrieval |
+| [`compress_uuid_map()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L520) | [`CompressUUIDMap()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L55) | `pkg/utils/bulk.go` | ✅ Implemented | |
+| [`UnionFind`](https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L500) class | [`UnionFind`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/utils/bulk.go#L18) struct | `pkg/utils/bulk.go` | ✅ Implemented | |
 
 ### utils/datetime_utils.py
 
@@ -857,7 +857,7 @@ When adding new Python-to-Go mappings:
 2. **Cross Encoder Support** - Reranking with cross encoders missing
 3. ~~**Advanced Prompt Templates** - Most prompt templates need implementation~~ ✅ **Completed**
 4. ~~**Edge Operations** - Edge extraction, resolution, and maintenance operations~~ ✅ **Completed**
-5. **Bulk Utilities** - Deduplication and bulk operations partially implemented
+5. ~~**Bulk Utilities** - Deduplication and bulk operations partially implemented~~ ✅ **Completed**
 6. **Telemetry** - Event tracking and metrics collection missing
 7. **Multiple LLM Providers** - Only OpenAI client implemented
 8. **Advanced Temporal Operations** - Time-based graph operations limited
@@ -872,7 +872,8 @@ When adding new Python-to-Go mappings:
 6. **Community Operations** - Label propagation clustering and community building
 7. **Prompt Templates** - Complete prompt library with all Python functions ported
 8. **Utility Functions** - Comprehensive helper functions, datetime utils, validation, and bulk operations
-9. **Maintenance Operations** - Complete maintenance toolkit for nodes, edges, temporal operations, and graph data management
+9. **Bulk Operations** - Complete bulk processing toolkit with node/edge extraction, deduplication, and batch operations
+10. **Maintenance Operations** - Complete maintenance toolkit for nodes, edges, temporal operations, and graph data management
 
 ## Last Updated
 
