@@ -330,19 +330,19 @@ func (b *Builder) buildCommunityEdges(entityNodes []*types.Node, communityNode *
 	edges := make([]*types.Edge, len(entityNodes))
 
 	for i, entityNode := range entityNodes {
-		edges[i] = &types.Edge{
-			ID:           generateUUID(),
-			Type:         types.CommunityEdgeType,
-			SourceID:     communityNode.ID,
-			TargetID:     entityNode.ID,
-			GroupID:      communityNode.GroupID,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-			Name:         "HAS_MEMBER",
-			ValidFrom:    createdAt,
-			SourceIDs:    []string{communityNode.ID},
-			Metadata:     make(map[string]interface{}),
-		}
+		edge := types.NewEntityEdge(
+			generateUUID(),
+			communityNode.ID,
+			entityNode.ID,
+			communityNode.GroupID,
+			"HAS_MEMBER",
+			types.CommunityEdgeType,
+		)
+		edge.UpdatedAt = createdAt
+		edge.ValidFrom = createdAt
+		edge.SourceIDs = []string{communityNode.ID}
+		edge.Metadata = make(map[string]interface{})
+		edges[i] = edge
 	}
 
 	return edges

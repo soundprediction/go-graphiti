@@ -103,19 +103,18 @@ func (b *Builder) UpdateCommunity(ctx context.Context, entity *types.Node) (*Upd
 
 	// If this is a new membership, create HAS_MEMBER edge
 	if result.IsNew {
-		edge := &types.Edge{
-			ID:        generateUUID(),
-			Type:      types.CommunityEdgeType,
-			SourceID:  community.ID,
-			TargetID:  entity.ID,
-			GroupID:   community.GroupID,
-			CreatedAt: time.Now().UTC(),
-			UpdatedAt: time.Now().UTC(),
-			Name:      "HAS_MEMBER",
-			ValidFrom: time.Now().UTC(),
-			SourceIDs: []string{community.ID},
-			Metadata:  make(map[string]interface{}),
-		}
+		edge := types.NewEntityEdge(
+			generateUUID(),
+			community.ID,
+			entity.ID,
+			community.GroupID,
+			"HAS_MEMBER",
+			types.CommunityEdgeType,
+		)
+		edge.UpdatedAt = time.Now().UTC()
+		edge.ValidFrom = time.Now().UTC()
+		edge.SourceIDs = []string{community.ID}
+		edge.Metadata = make(map[string]interface{})
 
 		if err := b.driver.UpsertEdge(ctx, edge); err != nil {
 			return nil, fmt.Errorf("failed to save community edge: %w", err)

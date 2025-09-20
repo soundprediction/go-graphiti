@@ -43,17 +43,16 @@ func (eo *EdgeOperations) BuildEpisodicEdges(ctx context.Context, entityNodes []
 	episodicEdges := make([]*types.Edge, 0, len(entityNodes))
 
 	for _, node := range entityNodes {
-		edge := &types.Edge{
-			ID:        utils.GenerateUUID(),
-			Type:      types.EpisodicEdgeType,
-			SourceID:  episodeUUID,
-			TargetID:  node.ID,
-			GroupID:   node.GroupID,
-			CreatedAt: createdAt,
-			UpdatedAt: createdAt,
-			ValidFrom: createdAt,
-			Name:      "MENTIONED_IN",
-		}
+		edge := types.NewEntityEdge(
+			utils.GenerateUUID(),
+			episodeUUID,
+			node.ID,
+			node.GroupID,
+			"MENTIONED_IN",
+			types.EpisodicEdgeType,
+		)
+		edge.UpdatedAt = createdAt
+		edge.ValidFrom = createdAt
 		episodicEdges = append(episodicEdges, edge)
 	}
 
@@ -72,19 +71,19 @@ func (eo *EdgeOperations) BuildDuplicateOfEdges(ctx context.Context, episode *ty
 
 		fact := fmt.Sprintf("%s is a duplicate of %s", pair.Source.Name, pair.Target.Name)
 
-		edge := &types.Edge{
-			ID:        utils.GenerateUUID(),
-			Type:      types.EntityEdgeType,
-			SourceID:  pair.Source.ID,
-			TargetID:  pair.Target.ID,
-			GroupID:   episode.GroupID,
-			Name:      "IS_DUPLICATE_OF",
-			Summary:   fact,
-			CreatedAt: createdAt,
-			UpdatedAt: createdAt,
-			ValidFrom: createdAt,
-			SourceIDs: []string{episode.ID},
-		}
+		edge := types.NewEntityEdge(
+			utils.GenerateUUID(),
+			pair.Source.ID,
+			pair.Target.ID,
+			episode.GroupID,
+			"IS_DUPLICATE_OF",
+			types.EntityEdgeType,
+		)
+		edge.Summary = fact
+		edge.Fact = fact
+		edge.UpdatedAt = createdAt
+		edge.ValidFrom = createdAt
+		edge.SourceIDs = []string{episode.ID}
 
 		duplicateEdges = append(duplicateEdges, edge)
 	}
@@ -184,20 +183,20 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 			}
 		}
 
-		edge := &types.Edge{
-			ID:        utils.GenerateUUID(),
-			Type:      types.EntityEdgeType,
-			SourceID:  sourceNode.ID,
-			TargetID:  targetNode.ID,
-			GroupID:   groupID,
-			Name:      edgeData.RelationType,
-			Summary:   edgeData.Fact,
-			CreatedAt: time.Now().UTC(),
-			UpdatedAt: time.Now().UTC(),
-			ValidFrom: validAt,
-			ValidTo:   validTo,
-			SourceIDs: []string{episode.ID},
-		}
+		edge := types.NewEntityEdge(
+			utils.GenerateUUID(),
+			sourceNode.ID,
+			targetNode.ID,
+			groupID,
+			edgeData.RelationType,
+			types.EntityEdgeType,
+		)
+		edge.Summary = edgeData.Fact
+		edge.Fact = edgeData.Fact
+		edge.UpdatedAt = time.Now().UTC()
+		edge.ValidFrom = validAt
+		edge.ValidTo = validTo
+		edge.SourceIDs = []string{episode.ID}
 
 		edges = append(edges, edge)
 		log.Printf("Created edge: %s from %s to %s", edge.Name, sourceNode.Name, targetNode.Name)

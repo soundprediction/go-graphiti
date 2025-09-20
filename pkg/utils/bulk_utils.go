@@ -311,16 +311,15 @@ func extractFromSingleEpisode(
 	for i, rel := range relationships {
 		rel = strings.TrimSpace(rel)
 		if rel != "" && len(extractedNodes) >= 2 {
-			edge := &types.Edge{
-				ID:        fmt.Sprintf("edge_%d_%s", i, episodeTuple.Episode.ID),
-				SourceID:  extractedNodes[0].ID,
-				TargetID:  extractedNodes[min(1, len(extractedNodes)-1)].ID,
-				Type:      types.EntityEdgeType,
-				GroupID:   episodeTuple.Episode.GroupID,
-				CreatedAt: episodeTuple.Episode.CreatedAt,
-				Summary:   rel,
-				Name:      rel,
-			}
+			edge := types.NewEntityEdge(
+				fmt.Sprintf("edge_%d_%s", i, episodeTuple.Episode.ID),
+				extractedNodes[0].ID,
+				extractedNodes[min(1, len(extractedNodes)-1)].ID,
+				episodeTuple.Episode.GroupID,
+				rel,
+				types.EntityEdgeType,
+			)
+			edge.CreatedAt = episodeTuple.Episode.CreatedAt
 			extractedEdges = append(extractedEdges, edge)
 		}
 	}

@@ -18,6 +18,27 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/utils/maintenance"
 )
 
+// driverWrapper wraps driver.GraphDriver to implement types.EdgeOperations
+type driverWrapper struct {
+	driver.GraphDriver
+}
+
+// Provider converts driver.GraphProvider to types.GraphProvider  
+func (w *driverWrapper) Provider() types.GraphProvider {
+	switch w.GraphDriver.Provider() {
+	case driver.GraphProviderKuzu:
+		return types.GraphProviderKuzu
+	case driver.GraphProviderNeo4j:
+		return types.GraphProviderNeo4j
+	case driver.GraphProviderFalkorDB:
+		return types.GraphProviderFalkorDB
+	case driver.GraphProviderNeptune:
+		return types.GraphProviderNeptune
+	default:
+		return types.GraphProviderKuzu // default fallback
+	}
+}
+
 // Graphiti is the main interface for interacting with temporal knowledge graphs.
 // It provides methods for building, querying, and maintaining temporally-aware
 // knowledge graphs designed for AI agents.
@@ -156,18 +177,17 @@ func (c *Client) processEpisode(ctx context.Context, episode types.Episode) erro
 
 	// 6. Create episodic edges connecting episode to extracted entities
 	for _, node := range finalNodes {
-		episodeEdge := &types.Edge{
-			ID:        generateID(),
-			Type:      types.EpisodicEdgeType,
-			SourceID:  episodeNode.ID,
-			TargetID:  node.ID,
-			GroupID:   episode.GroupID,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			ValidFrom: episode.Reference,
-			Name:      "MENTIONED_IN",
-			Summary:   "Entity mentioned in episode",
-		}
+		episodeEdge := types.NewEntityEdge(
+			generateID(),
+			episodeNode.ID,
+			node.ID,
+			episode.GroupID,
+			"MENTIONED_IN",
+			types.EpisodicEdgeType,
+		)
+		episodeEdge.UpdatedAt = time.Now()
+		episodeEdge.ValidFrom = episode.Reference
+		episodeEdge.Summary = "Entity mentioned in episode"
 
 		if err := c.driver.UpsertEdge(ctx, episodeEdge); err != nil {
 			return fmt.Errorf("failed to create episodic edge: %w", err)
@@ -583,21 +603,21 @@ func (c *Client) parseRelationshipsFromResponse(responseContent string, episode 
 			}
 		}
 
-		edge := &types.Edge{
-			ID:           generateID(),
-			Type:         types.EntityEdgeType,
-			SourceID:     sourceNode.ID,
-			TargetID:     targetNode.ID,
-			GroupID:      episode.GroupID,
-			CreatedAt:    now,
-			UpdatedAt:    now,
-			Name:         extractedEdge.RelationType,
-			Summary:      extractedEdge.Fact,
-			ValidFrom:    now,
-			ValidTo:      validTo,
-			Metadata:     make(map[string]interface{}),
-			SourceIDs:    []string{episode.ID},
-		}
+		edge := types.NewEntityEdge(
+			generateID(),
+			sourceNode.ID,
+			targetNode.ID,
+			episode.GroupID,
+			extractedEdge.RelationType,
+			types.EntityEdgeType,
+		)
+		edge.CreatedAt = now
+		edge.UpdatedAt = now
+		edge.Fact = extractedEdge.Fact
+		edge.ValidFrom = now
+		edge.ValidTo = validTo
+		edge.Episodes = []string{episode.ID}
+		edge.Metadata = make(map[string]interface{})
 
 		// Add extracted metadata
 		edge.Metadata["fact"] = extractedEdge.Fact
@@ -645,20 +665,20 @@ func (c *Client) parseRelationshipsFromText(responseContent string, episode type
 					   strings.Contains(strings.ToLower(line), targetName) {
 
 						// Create a basic relationship
-						edge := &types.Edge{
-							ID:        generateID(),
-							Type:      types.EntityEdgeType,
-							SourceID:  nodes[sourceIdx].ID,
-							TargetID:  nodes[targetIdx].ID,
-							GroupID:   episode.GroupID,
-							CreatedAt: now,
-							UpdatedAt: now,
-							Name:      "RELATED_TO", // Default relationship type
-							Summary:   line,
-							ValidFrom: now,
-							Metadata:  make(map[string]interface{}),
-							SourceIDs: []string{episode.ID},
-						}
+						edge := types.NewEntityEdge(
+							generateID(),
+							nodes[sourceIdx].ID,
+							nodes[targetIdx].ID,
+							episode.GroupID,
+							"RELATED_TO", // Default relationship type
+							types.EntityEdgeType,
+						)
+						edge.CreatedAt = now
+						edge.UpdatedAt = now
+						edge.Fact = line
+						edge.ValidFrom = now
+						edge.Episodes = []string{episode.ID}
+						edge.Metadata = make(map[string]interface{})
 
 						edge.Metadata["fact"] = line
 						edge.Metadata["source_entity_name"] = nodes[sourceIdx].Name
@@ -1021,7 +1041,8 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 
 	// Find edges mentioned by the episode
 	// Equivalent to: edges = await EntityEdge.get_by_uuids(self.driver, episode.entity_edges)
-	edges, err := types.GetEntityEdgesByUUIDs(ctx, c.driver, episode.EntityEdges)
+	wrapper := &driverWrapper{c.driver}
+	edges, err := types.GetEntityEdgesByUUIDs(ctx, wrapper, episode.EntityEdges)
 	if err != nil {
 		return fmt.Errorf("failed to get entity edges: %w", err)
 	}
@@ -1071,7 +1092,7 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 		for i, edge := range edgesToDelete {
 			edgeUUIDs[i] = edge.ID
 		}
-		if err := types.DeleteEdgesByUUIDs(ctx, c.driver, edgeUUIDs); err != nil {
+		if err := types.DeleteEdgesByUUIDs(ctx, wrapper, edgeUUIDs); err != nil {
 			return fmt.Errorf("failed to delete edges: %w", err)
 		}
 	}
@@ -1116,7 +1137,8 @@ func (c *Client) GetNodesAndEdgesByEpisode(ctx context.Context, episodeUUID stri
 	}
 
 	// Find edges mentioned by the episode
-	edges, err := types.GetEntityEdgesByUUIDs(ctx, c.driver, episode.EntityEdges)
+	wrapper := &driverWrapper{c.driver}
+	edges, err := types.GetEntityEdgesByUUIDs(ctx, wrapper, episode.EntityEdges)
 	if err != nil {
 		return mentionedNodes, nil, fmt.Errorf("failed to get entity edges: %w", err)
 	}

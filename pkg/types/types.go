@@ -39,37 +39,9 @@ type Node struct {
 	SourceIDs    []string               `json:"source_ids,omitempty"`
 }
 
-// Edge represents a relationship between nodes in the knowledge graph.
-type Edge struct {
-	ID           string                 `json:"id"`
-	Type         EdgeType               `json:"type"`
-	SourceID     string                 `json:"source_id"`
-	TargetID     string                 `json:"target_id"`
-	GroupID      string                 `json:"group_id"`
-	CreatedAt    time.Time              `json:"created_at"`
-	UpdatedAt    time.Time              `json:"updated_at"`
-	
-	// Relationship details
-	Name         string                 `json:"name,omitempty"`
-	Summary      string                 `json:"summary,omitempty"`
-	Fact         string                 `json:"fact,omitempty"`
-	Strength     float64                `json:"strength,omitempty"`
-	
-	// Embeddings for semantic search
-	Embedding     []float32              `json:"embedding,omitempty"`
-	FactEmbedding []float32              `json:"fact_embedding,omitempty"`
-	
-	// Episode tracking (matches Python EntityEdge.episodes)
-	Episodes      []string               `json:"episodes,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
-	
-	// Temporal fields
-	ValidFrom    time.Time              `json:"valid_from"`
-	ValidTo      *time.Time             `json:"valid_to,omitempty"`
-	
-	// Source tracking
-	SourceIDs    []string               `json:"source_ids,omitempty"`
-}
+// Edge is an alias for EntityEdge to maintain backward compatibility
+// Use EntityEdge, EpisodicEdge, or CommunityEdge directly for type-safe operations
+type Edge = EntityEdge
 
 // NodeType represents the type of a node.
 type NodeType string
@@ -83,17 +55,7 @@ const (
 	CommunityNodeType NodeType = "community"
 )
 
-// EdgeType represents the type of an edge.
-type EdgeType string
-
-const (
-	// EntityEdgeType represents relationships between entities.
-	EntityEdgeType EdgeType = "entity"
-	// EpisodicEdgeType represents episodic relationships.
-	EpisodicEdgeType EdgeType = "episodic" 
-	// CommunityEdgeType represents community relationships.
-	CommunityEdgeType EdgeType = "community"
-)
+// EdgeType and related constants are now defined in edge.go
 
 // EpisodeType represents the type of an episode.
 type EpisodeType string
