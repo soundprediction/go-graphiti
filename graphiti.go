@@ -1030,7 +1030,7 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 	// Equivalent to: if edge.episodes and edge.episodes[0] == episode.uuid:
 	var edgesToDelete []*types.Edge
 	for _, edge := range edges {
-		if len(edge.SourceIDs) > 0 && edge.SourceIDs[0] == episode.ID {
+		if len(edge.Episodes) > 0 && edge.Episodes[0] == episode.ID {
 			edgesToDelete = append(edgesToDelete, edge)
 		}
 	}
@@ -1137,29 +1137,31 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 	}
 
 	// Step 1: Generate name embeddings for nodes if missing (lines 1024-1027)
-	if len(sourceNode.Embedding) == 0 && c.embedder != nil {
+	// Equivalent to: if source_node.name_embedding is None: await source_node.generate_name_embedding(self.embedder)
+	if len(sourceNode.NameEmbedding) == 0 && c.embedder != nil {
 		embedding, err := c.embedder.EmbedSingle(ctx, sourceNode.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate name embedding for source node: %w", err)
 		}
-		sourceNode.Embedding = embedding
+		sourceNode.NameEmbedding = embedding
 	}
 
-	if len(targetNode.Embedding) == 0 && c.embedder != nil {
+	if len(targetNode.NameEmbedding) == 0 && c.embedder != nil {
 		embedding, err := c.embedder.EmbedSingle(ctx, targetNode.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate name embedding for target node: %w", err)
 		}
-		targetNode.Embedding = embedding
+		targetNode.NameEmbedding = embedding
 	}
 
 	// Step 2: Generate fact embedding for edge if missing (lines 1028-1029)
-	if len(edge.Embedding) == 0 && c.embedder != nil {
-		embedding, err := c.embedder.EmbedSingle(ctx, edge.Summary)
+	// Equivalent to: if edge.fact_embedding is None: await edge.generate_embedding(self.embedder)
+	if len(edge.FactEmbedding) == 0 && c.embedder != nil {
+		embedding, err := c.embedder.EmbedSingle(ctx, edge.Fact)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate fact embedding for edge: %w", err)
 		}
-		edge.Embedding = embedding
+		edge.FactEmbedding = embedding
 	}
 
 	// Step 3: Resolve extracted nodes (lines 1031-1034)

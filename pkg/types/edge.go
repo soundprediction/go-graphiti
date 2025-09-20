@@ -41,7 +41,7 @@ func GetEntityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []s
 		WHERE e.uuid IN $uuids
 		RETURN e.uuid AS uuid, e.source_id AS source_id, e.target_id AS target_id,
 		       e.name AS name, e.fact AS fact, e.group_id AS group_id,
-		       e.source_ids AS source_ids, e.created_at AS created_at,
+		       e.episodes AS episodes, e.created_at AS created_at,
 		       e.expired_at AS expired_at, e.valid_at AS valid_at
 	`
 
@@ -71,21 +71,22 @@ func GetEntityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []s
 			if name, ok := record["name"].(string); ok {
 				edge.Name = name
 			}
-			if summary, ok := record["fact"].(string); ok {
-				edge.Summary = summary
+			if fact, ok := record["fact"].(string); ok {
+				edge.Fact = fact
+				edge.Summary = fact // Also populate summary for compatibility
 			}
 			if groupID, ok := record["group_id"].(string); ok {
 				edge.GroupID = groupID
 			}
-			// Map source_ids to SourceIDs to match Python edge.episodes
-			if sourceIDs, ok := record["source_ids"].([]interface{}); ok {
-				episodes := make([]string, len(sourceIDs))
-				for i, ep := range sourceIDs {
+			// Map episodes field to match Python edge.episodes exactly
+			if episodes, ok := record["episodes"].([]interface{}); ok {
+				episodeList := make([]string, len(episodes))
+				for i, ep := range episodes {
 					if epStr, ok := ep.(string); ok {
-						episodes[i] = epStr
+						episodeList[i] = epStr
 					}
 				}
-				edge.SourceIDs = episodes
+				edge.Episodes = episodeList
 			}
 			
 			edges = append(edges, edge)

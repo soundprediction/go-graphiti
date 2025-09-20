@@ -27,7 +27,8 @@ type Node struct {
 	Level        int                    `json:"level,omitempty"`
 	
 	// Common fields
-	Embedding    []float32              `json:"embedding,omitempty"`
+	Embedding     []float32              `json:"embedding,omitempty"`
+	NameEmbedding []float32              `json:"name_embedding,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 	
 	// Temporal fields
@@ -51,10 +52,15 @@ type Edge struct {
 	// Relationship details
 	Name         string                 `json:"name,omitempty"`
 	Summary      string                 `json:"summary,omitempty"`
+	Fact         string                 `json:"fact,omitempty"`
 	Strength     float64                `json:"strength,omitempty"`
 	
-	// Embedding for semantic search
-	Embedding    []float32              `json:"embedding,omitempty"`
+	// Embeddings for semantic search
+	Embedding     []float32              `json:"embedding,omitempty"`
+	FactEmbedding []float32              `json:"fact_embedding,omitempty"`
+	
+	// Episode tracking (matches Python EntityEdge.episodes)
+	Episodes      []string               `json:"episodes,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 	
 	// Temporal fields
