@@ -141,12 +141,25 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 ### search/search_utils.py
 
-| Python Method | Go Method | File Location | Status |
-|---------------|-----------|---------------|--------|
-| Various search utility functions | `SearchUtilities` struct methods | `pkg/search/search_utils.go` | ✅ Implemented |
-| [`Cosine similarity calculation`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L61) | [`CalculateCosineSimilarity()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L40) | `pkg/search/search_utils.go` | ✅ Implemented |
-| [`RRF reranking`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1433) | [`RRF()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L25) | `pkg/search/rerankers.go` | ✅ Implemented |
-| [`MMR reranking`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1501) | [`MMR()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L231) | `pkg/search/rerankers.go` | ✅ Implemented |
+| Python Method | Go Method | File Location | Status | Notes |
+|---------------|-----------|---------------|--------|-------|
+| [`calculate_cosine_similarity()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L61) | [`CalculateCosineSimilarity()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L38) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`fulltext_query()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L75) | [`FulltextQuery()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L63) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_episodes_by_mentions()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L93) | [`GetEpisodesByMentions()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L297) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_mentioned_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L104) | [`GetMentionedNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L326) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_communities_by_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L121) | [`GetCommunitiesByNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L333) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`edge_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L131) | [`EdgeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L178) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`edge_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L242) | [`EdgeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L208) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`edge_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L371) | [`EdgeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L91) | `pkg/search/graph_traversal.go` | ✅ Implemented | |
+| [`node_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L460) | [`NodeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L119) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L548) | [`NodeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L150) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`node_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L623) | [`NodeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L20) | `pkg/search/graph_traversal.go` | ✅ Implemented | |
+| [`hybrid_node_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L670) | [`HybridNodeSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L236) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`get_relevant_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L722) | [`GetRelevantNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L126) | `pkg/search/specialized_search.go` | ✅ Implemented | Different signature than Python |
+| [`get_relevant_edges()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L784) | [`GetRelevantEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L188) | `pkg/search/specialized_search.go` | ✅ Implemented | Different signature than Python |
+| [`get_relevant_schema()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L858) | Not implemented | - | ❌ Missing | Complex unified function |
+| [`mmr_rerank()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1501) | [`MMRRerank()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L424) | `pkg/search/search_utils.go` | ✅ Implemented | |
+| [`rrf_fuse()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L1433) | [`RRF()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/rerankers.go#L25) | `pkg/search/rerankers.go` | ✅ Implemented | |
 
 ## Driver Interface
 

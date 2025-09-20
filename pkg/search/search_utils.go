@@ -418,3 +418,63 @@ func toFloat32Slice(v interface{}) []float32 {
 	}
 	return nil
 }
+
+
+
+// MMRRerank performs Maximal Marginal Relevance reranking to reduce redundancy
+func MMRRerank(entities []*types.Node, queryEmbedding []float32, lambdaParam float64, topK int) []*types.Node {
+	if len(entities) == 0 || len(queryEmbedding) == 0 {
+		return entities
+	}
+
+	if lambdaParam <= 0 {
+		lambdaParam = DefaultMMRLambda
+	}
+	if topK <= 0 {
+		topK = RelevantSchemaLimit
+	}
+
+	selected := make([]*types.Node, 0, topK)
+	remaining := make([]*types.Node, len(entities))
+	copy(remaining, entities)
+
+	for len(selected) < topK && len(remaining) > 0 {
+		var bestIndex int
+		var bestScore float64 = -1
+
+		for i, entity := range remaining {
+			// Calculate relevance score (similarity to query)
+			var relevanceScore float64
+			if entity.Embedding != nil && len(entity.Embedding) > 0 {
+				relevanceScore = CalculateCosineSimilarity(queryEmbedding, entity.Embedding)
+			}
+
+			// Calculate diversity score (maximum similarity to already selected items)
+			var maxSimilarity float64
+			for _, selectedEntity := range selected {
+				if selectedEntity.Embedding != nil && len(selectedEntity.Embedding) > 0 &&
+				   entity.Embedding != nil && len(entity.Embedding) > 0 {
+					similarity := CalculateCosineSimilarity(entity.Embedding, selectedEntity.Embedding)
+					if similarity > maxSimilarity {
+						maxSimilarity = similarity
+					}
+				}
+			}
+
+			// MMR score: λ * relevance - (1-λ) * max_similarity
+			mmrScore := lambdaParam*relevanceScore - (1-lambdaParam)*maxSimilarity
+
+			if mmrScore > bestScore {
+				bestScore = mmrScore
+				bestIndex = i
+			}
+		}
+
+		// Add best item to selected and remove from remaining
+		selected = append(selected, remaining[bestIndex])
+		remaining = append(remaining[:bestIndex], remaining[bestIndex+1:]...)
+	}
+
+	return selected
+}
+
