@@ -93,7 +93,7 @@ func (s *MCPServer) AddMemoryTool(ctx *ai.ToolContext, input *AddMemoryRequest) 
 	}
 
 	// Add episode using Graphiti client
-	err := s.client.Add(context.Background(), []types.Episode{episode})
+	_, err := s.client.Add(context.Background(), []types.Episode{episode})
 	if err != nil {
 		s.logger.Error("Failed to add episode", "error", err)
 		return &ToolResponse{

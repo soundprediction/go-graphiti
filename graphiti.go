@@ -45,7 +45,11 @@ func (w *driverWrapper) Provider() types.GraphProvider {
 type Graphiti interface {
 	// Add processes and adds new episodes to the knowledge graph.
 	// Episodes can be text, conversations, or any temporal data.
-	Add(ctx context.Context, episodes []types.Episode) error
+	Add(ctx context.Context, episodes []types.Episode) (*types.AddBulkEpisodeResults, error)
+
+	// AddEpisode processes and adds a single episode to the knowledge graph.
+	// This is equivalent to the Python add_episode method.
+	AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error)
 
 	// Search performs hybrid search across the knowledge graph combining
 	// semantic embeddings, keyword search, and graph traversal.
@@ -98,6 +102,23 @@ type Config struct {
 	SearchConfig *types.SearchConfig
 }
 
+// AddEpisodeOptions holds options for adding a single episode.
+// This matches the optional parameters from the Python add_episode method.
+type AddEpisodeOptions struct {
+	// UpdateCommunities whether to update community structures
+	UpdateCommunities bool
+	// EntityTypes custom entity type definitions
+	EntityTypes map[string]interface{}
+	// ExcludedEntityTypes entity types to exclude from extraction
+	ExcludedEntityTypes []string
+	// PreviousEpisodeUUIDs UUIDs of previous episodes for context
+	PreviousEpisodeUUIDs []string
+	// EdgeTypes custom edge type definitions
+	EdgeTypes map[string]interface{}
+	// EdgeTypeMap mapping of entity pairs to edge types
+	EdgeTypeMap map[string][]string
+}
+
 // NewClient creates a new Graphiti client with the provided configuration.
 func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient embedder.Client, config *Config) *Client {
 	if config == nil {
@@ -122,58 +143,93 @@ func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient e
 }
 
 // Add processes episodes and adds them to the knowledge graph.
-func (c *Client) Add(ctx context.Context, episodes []types.Episode) error {
+func (c *Client) Add(ctx context.Context, episodes []types.Episode) (*types.AddBulkEpisodeResults, error) {
 	if len(episodes) == 0 {
-		return nil
+		return &types.AddBulkEpisodeResults{}, nil
+	}
+
+	result := &types.AddBulkEpisodeResults{
+		Episodes:       []*types.Node{},
+		EpisodicEdges:  []*types.Edge{},
+		Nodes:          []*types.Node{},
+		Edges:          []*types.Edge{},
+		Communities:    []*types.Node{},
+		CommunityEdges: []*types.Edge{},
 	}
 
 	for _, episode := range episodes {
-		if err := c.processEpisode(ctx, episode); err != nil {
-			return fmt.Errorf("failed to process episode %s: %w", episode.ID, err)
+		episodeResult, err := c.AddEpisode(ctx, episode, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process episode %s: %w", episode.ID, err)
 		}
+
+		// Aggregate results
+		if episodeResult.Episode != nil {
+			result.Episodes = append(result.Episodes, episodeResult.Episode)
+		}
+		result.EpisodicEdges = append(result.EpisodicEdges, episodeResult.EpisodicEdges...)
+		result.Nodes = append(result.Nodes, episodeResult.Nodes...)
+		result.Edges = append(result.Edges, episodeResult.Edges...)
+		result.Communities = append(result.Communities, episodeResult.Communities...)
+		result.CommunityEdges = append(result.CommunityEdges, episodeResult.CommunityEdges...)
 	}
 
-	return nil
+	return result, nil
 }
 
-// processEpisode processes a single episode through the knowledge extraction pipeline.
-func (c *Client) processEpisode(ctx context.Context, episode types.Episode) error {
+// AddEpisode processes and adds a single episode to the knowledge graph.
+func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
+	if options == nil {
+		options = &AddEpisodeOptions{}
+	}
+
+	result := &types.AddEpisodeResults{
+		EpisodicEdges:  []*types.Edge{},
+		Nodes:          []*types.Node{},
+		Edges:          []*types.Edge{},
+		Communities:    []*types.Node{},
+		CommunityEdges: []*types.Edge{},
+	}
+
 	// 1. Create episode node in graph
 	episodeNode, err := c.createEpisodeNode(ctx, episode)
 	if err != nil {
-		return fmt.Errorf("failed to create episode node: %w", err)
+		return nil, fmt.Errorf("failed to create episode node: %w", err)
 	}
+	result.Episode = episodeNode
 
 	// 2. Extract entities from episode content if LLM is available
 	var extractedNodes []*types.Node
 	if c.llm != nil {
 		extractedNodes, err = c.extractEntities(ctx, episode)
 		if err != nil {
-			return fmt.Errorf("failed to extract entities: %w", err)
+			return nil, fmt.Errorf("failed to extract entities: %w", err)
 		}
 	}
 
 	// 3. Deduplicate and store nodes
 	finalNodes, err := c.deduplicateAndStoreNodes(ctx, extractedNodes, episode.GroupID)
 	if err != nil {
-		return fmt.Errorf("failed to deduplicate and store nodes: %w", err)
+		return nil, fmt.Errorf("failed to deduplicate and store nodes: %w", err)
 	}
+	result.Nodes = finalNodes
 
 	// 4. Extract relationships between entities if LLM is available
 	var extractedEdges []*types.Edge
 	if c.llm != nil && len(finalNodes) > 1 {
 		extractedEdges, err = c.extractRelationships(ctx, episode, finalNodes)
 		if err != nil {
-			return fmt.Errorf("failed to extract relationships: %w", err)
+			return nil, fmt.Errorf("failed to extract relationships: %w", err)
 		}
 	}
 
 	// 5. Store edges in graph
 	for _, edge := range extractedEdges {
 		if err := c.driver.UpsertEdge(ctx, edge); err != nil {
-			return fmt.Errorf("failed to store edge %s: %w", edge.ID, err)
+			return nil, fmt.Errorf("failed to store edge %s: %w", edge.BaseEdge.ID, err)
 		}
 	}
+	result.Edges = extractedEdges
 
 	// 6. Create episodic edges connecting episode to extracted entities
 	for _, node := range finalNodes {
@@ -190,12 +246,20 @@ func (c *Client) processEpisode(ctx context.Context, episode types.Episode) erro
 		episodeEdge.Summary = "Entity mentioned in episode"
 
 		if err := c.driver.UpsertEdge(ctx, episodeEdge); err != nil {
-			return fmt.Errorf("failed to create episodic edge: %w", err)
+			return nil, fmt.Errorf("failed to create episodic edge: %w", err)
 		}
+		result.EpisodicEdges = append(result.EpisodicEdges, episodeEdge)
 	}
 
-	return nil
+	// 7. Update communities if requested
+	if options.UpdateCommunities {
+		// TODO: Implement community updates
+		// This would call the community builder functionality
+	}
+
+	return result, nil
 }
+
 
 // createEpisodeNode creates an episode node in the graph.
 func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode) (*types.Node, error) {

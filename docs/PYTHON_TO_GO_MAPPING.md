@@ -2,6 +2,16 @@
 
 This document tracks the mapping between the original Python Graphiti methods and their corresponding Go implementations in go-graphiti.
 
+## Port Version Tracking
+
+**Last Major Update:** 2025-09-20
+**Python Graphiti Reference:** As of 2025-09-20 (active development)
+**Port Status:** All core methods implemented with date tracking
+
+### Implementation Date Legend
+- **2025-09-20:** Major implementation push - added missing LLM clients (Anthropic, Gemini, Groq, Azure), embedder clients (Azure, Gemini, Voyage), cross encoder functionality (BGE, Gemini rerankers), and get_token_count utility
+- Methods marked as "implemented" without specific dates were completed prior to version tracking implementation
+
 ## Table of Contents
 - [Core Graphiti Class](#core-graphiti-class)
 - [Core Graph Queries](#core-graph-queries)
@@ -249,25 +259,25 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `AnthropicClient` | N/A | N/A | ❌ Missing |
+| `AnthropicClient` | [`AnthropicClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/anthropic.go#L13) | `pkg/llm/anthropic.go` | ✅ Implemented (2025-09-20) |
 
 ### llm_client/azure_openai_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `AzureOpenAIClient` | N/A | N/A | ❌ Missing |
+| `AzureOpenAIClient` | [`AzureOpenAIClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/azure_openai.go#L14) | `pkg/llm/azure_openai.go` | ✅ Implemented (2025-09-20) |
 
 ### llm_client/gemini_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `GeminiClient` | N/A | N/A | ❌ Missing |
+| `GeminiClient` | [`GeminiClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/gemini.go#L14) | `pkg/llm/gemini.go` | ✅ Implemented (2025-09-20) |
 
 ### llm_client/groq_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `GroqClient` | N/A | N/A | ❌ Missing |
+| `GroqClient` | [`GroqClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/llm/groq.go#L15) | `pkg/llm/groq.go` | ✅ Implemented (2025-09-20) |
 
 ### llm_client/openai_base_client.py
 
@@ -309,19 +319,19 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `AzureOpenAIEmbedder` | N/A | N/A | ❌ Missing |
+| `AzureOpenAIEmbedder` | [`AzureOpenAIEmbedder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/azure_openai.go#L14) | `pkg/embedder/azure_openai.go` | ✅ Implemented (2025-09-20) |
 
 ### embedder/gemini.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `GeminiEmbedder` | N/A | N/A | ❌ Missing |
+| `GeminiEmbedder` | [`GeminiEmbedder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/gemini.go#L14) | `pkg/embedder/gemini.go` | ✅ Implemented (2025-09-20) |
 
 ### embedder/voyage.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `VoyageEmbedder` | N/A | N/A | ❌ Missing |
+| `VoyageEmbedder` | [`VoyageEmbedder`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/embedder/voyage.go#L12) | `pkg/embedder/voyage.go` | ✅ Implemented (2025-09-20) |
 
 
 ### Embedder Configuration
@@ -337,20 +347,26 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 | Python Method | Go Method | File Location | Status | Notes |
 |---------------|-----------|---------------|--------|--------|
-| [`CrossEncoderClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/client.py#L18) abstract class | [`crossencoder.Client`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/client.go#L13) interface | `pkg/crossencoder/` | ❌ Missing | Cross encoder not implemented |
-| [`CrossEncoderClient.rerank()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/client.py#L25) | [`Client.Rerank()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/reranker.go#L203) | `pkg/crossencoder/` | ❌ Missing | |
+| [`CrossEncoderClient`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/client.py#L18) abstract class | [`crossencoder.Client`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/client.go#L14) interface | `pkg/crossencoder/client.go` | ✅ Implemented (2025-09-20) | Go interface with Rank() and Close() methods |
+| [`CrossEncoderClient.rerank()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/cross_encoder/client.py#L25) | [`Client.Rank()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/client.go#L17) | `pkg/crossencoder/client.go` | ✅ Implemented (2025-09-20) | Method renamed to Rank for Go conventions |
 
 ### cross_encoder/bge_reranker_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `BGERerankerClient` | N/A | N/A | ❌ Missing |
+| `BGERerankerClient` | [`BGERerankerClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/bge.go#L12) | `pkg/crossencoder/bge.go` | ✅ Implemented (2025-09-20) |
 
 ### cross_encoder/gemini_reranker_client.py
 
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
-| `GeminiRerankerClient` | N/A | N/A | ❌ Missing |
+| `GeminiRerankerClient` | [`GeminiRerankerClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/gemini.go#L15) | `pkg/crossencoder/gemini.go` | ✅ Implemented (2025-09-20) |
+
+### Additional Cross Encoder Implementations
+
+| Go Implementation | Description | File Location |
+|-------------------|-------------|---------------|
+| [`OpenAIRerankerClient`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/crossencoder/openai.go#L15) | OpenAI-based cross encoder using boolean classification | `pkg/crossencoder/openai.go` |
 
 
 ## Community Operations
