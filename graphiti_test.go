@@ -246,7 +246,7 @@ func TestClient_Add(t *testing.T) {
 	ctx := context.Background()
 
 	// Test adding empty episodes
-	err := client.Add(ctx, []types.Episode{})
+	_, err := client.Add(ctx, []types.Episode{})
 	assert.NoError(t, err)
 
 	// Test adding episodes (should work with mock)
@@ -260,7 +260,7 @@ func TestClient_Add(t *testing.T) {
 			GroupID:   "test-group",
 		},
 	}
-	err = client.Add(ctx, episodes)
+	_, err = client.Add(ctx, episodes)
 	// With mock driver, this should work without error
 	assert.NoError(t, err)
 }
@@ -297,7 +297,7 @@ func TestClient_AddBulk(t *testing.T) {
 	}
 
 	// Test bulk add operations
-	err := client.Add(ctx, episodes)
+	_, err := client.Add(ctx, episodes)
 	assert.NoError(t, err)
 }
 
@@ -351,16 +351,20 @@ func TestClient_EdgeOperations(t *testing.T) {
 
 	// Test creating entity edge similar to Python test
 	entityEdge := &types.Edge{
-		ID:        "edge-1",
-		Name:      "likes",
-		Type:      types.EntityEdgeType,
-		SourceID:  "entity-1",
-		TargetID:  "entity-2", 
-		GroupID:   groupID,
-		CreatedAt: now,
-		Metadata: map[string]interface{}{
-			"fact": "test_entity_1 relates to test_entity_2",
+		BaseEdge: types.BaseEdge{
+			ID:           "edge-1",
+			GroupID:      groupID,
+			SourceNodeID: "entity-1",
+			TargetNodeID: "entity-2",
+			CreatedAt:    now,
+			Metadata: map[string]interface{}{
+				"fact": "test_entity_1 relates to test_entity_2",
+			},
 		},
+		Name:     "likes",
+		Type:     types.EntityEdgeType,
+		SourceID: "entity-1",
+		TargetID: "entity-2",
 	}
 
 	// Test upserting edge
@@ -368,7 +372,7 @@ func TestClient_EdgeOperations(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting edge (should return not found)
-	retrievedEdge, err := client.GetEdge(ctx, entityEdge.ID)
+	retrievedEdge, err := client.GetEdge(ctx, entityEdge.BaseEdge.ID)
 	assert.Error(t, err)
 	assert.Equal(t, graphiti.ErrEdgeNotFound, err)
 	assert.Nil(t, retrievedEdge)
