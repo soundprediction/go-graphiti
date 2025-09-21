@@ -114,7 +114,7 @@ func (h *IngestHandler) AddMessages(c *gin.Context) {
 		}
 
 		// Add episodes to graphiti
-		if err := h.graphiti.Add(ctx, episodes); err != nil {
+		if _, err := h.graphiti.Add(ctx, episodes); err != nil {
 			// Log error but don't fail the entire request since it's async
 			fmt.Printf("[%s] Error adding episodes to graphiti for group %s: %v\n", processID, req.GroupID, err)
 		} else {
@@ -200,7 +200,7 @@ func (h *IngestHandler) AddEntityNode(c *gin.Context) {
 	}
 
 	// Add the episode to graphiti which will extract and create the entity
-	if err := h.graphiti.Add(ctx, []types.Episode{episode}); err != nil {
+	if _, err := h.graphiti.Add(ctx, []types.Episode{episode}); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "creation_failed",
 			Message: fmt.Sprintf("Failed to create entity node: %v", err),
