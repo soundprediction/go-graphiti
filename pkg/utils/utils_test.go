@@ -17,45 +17,57 @@ func TestEdgeOperations(t *testing.T) {
 	t.Run("filter existing duplicate edges", func(t *testing.T) {
 		// Create test edges
 		extractedEdge := &types.Edge{
-			ID:       "new-edge",
+			BaseEdge: types.BaseEdge{
+				ID:           "new-edge",
+				GroupID:      groupID,
+				SourceNodeID: "source-uuid",
+				TargetNodeID: "target-uuid",
+				CreatedAt:    now,
+				Metadata: map[string]interface{}{
+					"fact": "Test fact",
+				},
+			},
 			Name:     "test_edge",
 			Type:     types.EntityEdgeType,
 			SourceID: "source-uuid",
 			TargetID: "target-uuid",
-			GroupID:  groupID,
-			CreatedAt: now,
-			Metadata: map[string]interface{}{
-				"fact": "Test fact",
-			},
 		}
 
 		relatedEdges := []*types.Edge{
 			{
-				ID:       "related-edge",
+				BaseEdge: types.BaseEdge{
+					ID:           "related-edge",
+					GroupID:      groupID,
+					SourceNodeID: "source-uuid-2",
+					TargetNodeID: "target-uuid-2",
+					CreatedAt:    now.Add(-24 * time.Hour),
+					Metadata: map[string]interface{}{
+						"fact": "Related fact",
+					},
+				},
 				Name:     "related_edge",
 				Type:     types.EntityEdgeType,
 				SourceID: "source-uuid-2",
 				TargetID: "target-uuid-2",
-				GroupID:  groupID,
-				CreatedAt: now.Add(-24 * time.Hour),
-				Metadata: map[string]interface{}{
-					"fact": "Related fact",
-				},
 			},
 		}
 
 		existingEdges := []*types.Edge{
 			{
-				ID:       "existing-edge",
+				BaseEdge: types.BaseEdge{
+					ID:           "existing-edge",
+					GroupID:      groupID,
+					SourceNodeID: "source-uuid-3",
+					TargetNodeID: "target-uuid-3",
+					CreatedAt:    now.Add(-48 * time.Hour),
+					Metadata: map[string]interface{}{
+						"fact": "Existing fact",
+					},
+				},
 				Name:     "existing_edge",
 				Type:     types.EntityEdgeType,
 				SourceID: "source-uuid-3",
 				TargetID: "target-uuid-3",
-				GroupID:  groupID,
-				CreatedAt: now.Add(-48 * time.Hour),
-				Metadata: map[string]interface{}{
-					"fact": "Existing fact",
-				},
 			},
 		}
 
@@ -70,8 +82,8 @@ func TestEdgeOperations(t *testing.T) {
 		
 		uniqueEdgeIDs := make(map[string]bool)
 		for _, edge := range allEdges {
-			assert.False(t, uniqueEdgeIDs[edge.ID], "Edge ID should be unique: %s", edge.ID)
-			uniqueEdgeIDs[edge.ID] = true
+			assert.False(t, uniqueEdgeIDs[edge.BaseEdge.ID], "Edge ID should be unique: %s", edge.BaseEdge.ID)
+			uniqueEdgeIDs[edge.BaseEdge.ID] = true
 		}
 	})
 }
@@ -227,22 +239,30 @@ func TestTemporalOperations(t *testing.T) {
 		// Create edges with temporal properties
 		edges := []*types.Edge{
 			{
-				ID:        "edge-valid",
+				BaseEdge: types.BaseEdge{
+					ID:           "edge-valid",
+					GroupID:      groupID,
+					SourceNodeID: "source-1",
+					TargetNodeID: "target-1",
+					CreatedAt:    now,
+				},
 				Type:      types.EntityEdgeType,
 				SourceID:  "source-1",
 				TargetID:  "target-1",
-				GroupID:   groupID,
-				CreatedAt: now,
 				ValidFrom: past,
 				ValidTo:   &future,
 			},
 			{
-				ID:        "edge-expired",
+				BaseEdge: types.BaseEdge{
+					ID:           "edge-expired",
+					GroupID:      groupID,
+					SourceNodeID: "source-2",
+					TargetNodeID: "target-2",
+					CreatedAt:    past,
+				},
 				Type:      types.EntityEdgeType,
 				SourceID:  "source-2",
 				TargetID:  "target-2",
-				GroupID:   groupID,
-				CreatedAt: past,
 				ValidFrom: past,
 				ValidTo:   func() *time.Time { t := past.Add(30 * time.Minute); return &t }(),
 			},
@@ -260,7 +280,7 @@ func TestTemporalOperations(t *testing.T) {
 
 		// Should only include the first edge (still valid)
 		assert.Len(t, validEdges, 1)
-		assert.Equal(t, "edge-valid", validEdges[0].ID)
+		assert.Equal(t, "edge-valid", validEdges[0].BaseEdge.ID)
 	})
 }
 
@@ -321,29 +341,37 @@ func TestBulkOperations(t *testing.T) {
 		// Create multiple edges for bulk operations
 		edges := []*types.Edge{
 			{
-				ID:        "bulk-edge-1",
-				Type:      types.EntityEdgeType,
-				SourceID:  "source-1",
-				TargetID:  "target-1",
-				GroupID:   groupID,
-				CreatedAt: now,
+				BaseEdge: types.BaseEdge{
+					ID:           "bulk-edge-1",
+					GroupID:      groupID,
+					SourceNodeID: "source-1",
+					TargetNodeID: "target-1",
+					CreatedAt:    now,
+				},
+				Type:     types.EntityEdgeType,
+				SourceID: "source-1",
+				TargetID: "target-1",
 			},
 			{
-				ID:        "bulk-edge-2",
-				Type:      types.EpisodicEdgeType,
-				SourceID:  "episode-1",
-				TargetID:  "entity-1",
-				GroupID:   groupID,
-				CreatedAt: now,
+				BaseEdge: types.BaseEdge{
+					ID:           "bulk-edge-2",
+					GroupID:      groupID,
+					SourceNodeID: "episode-1",
+					TargetNodeID: "entity-1",
+					CreatedAt:    now,
+				},
+				Type:     types.EpisodicEdgeType,
+				SourceID: "episode-1",
+				TargetID: "entity-1",
 			},
 		}
 
 		// Test bulk validation
 		for _, edge := range edges {
-			assert.NotEmpty(t, edge.ID)
+			assert.NotEmpty(t, edge.BaseEdge.ID)
 			assert.NotEmpty(t, edge.SourceID)
 			assert.NotEmpty(t, edge.TargetID)
-			assert.Equal(t, groupID, edge.GroupID)
+			assert.Equal(t, groupID, edge.BaseEdge.GroupID)
 		}
 
 		// Group by type

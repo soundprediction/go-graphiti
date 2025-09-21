@@ -58,7 +58,11 @@ func TestExtractNodesAndEdgesResult(t *testing.T) {
 	}
 
 	edge1 := &types.Edge{
-		ID:       "edge1",
+		BaseEdge: types.BaseEdge{
+			ID:           "edge1",
+			SourceNodeID: "node1",
+			TargetNodeID: "node2",
+		},
 		SourceID: "node1",
 		TargetID: "node2",
 		Type:     types.EntityEdgeType,

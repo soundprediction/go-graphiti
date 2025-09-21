@@ -34,7 +34,7 @@ func (m *MockGraphDriver) GetNode(ctx context.Context, id string, groupID string
 
 func (m *MockGraphDriver) GetEdge(ctx context.Context, id string, groupID string) (*types.Edge, error) {
 	for _, edge := range m.edges {
-		if edge.ID == id {
+		if edge.BaseEdge.ID == id {
 			return edge, nil
 		}
 	}
@@ -172,19 +172,24 @@ func createMockEdges() []*types.Edge {
 	now := time.Now()
 	return []*types.Edge{
 		{
-			ID:        "edge-1",
+			BaseEdge: types.BaseEdge{
+				ID:           "edge-1",
+				GroupID:      "test-group",
+				SourceNodeID: "node-1",
+				TargetNodeID: "node-2",
+				CreatedAt:    now,
+				Metadata: map[string]interface{}{
+					"fact_embedding": []float32{0.4, 0.5, 0.6, 0.7, 0.8},
+				},
+			},
 			Name:      "Test Relationship",
-			Summary:   "This is a test relationship between nodes",
+			Fact:      "This is a test relationship between nodes",
 			Type:      types.EntityEdgeType,
 			SourceID:  "node-1",
 			TargetID:  "node-2",
-			GroupID:   "test-group",
-			CreatedAt: now,
+			Summary:   "This is a test relationship between nodes",
 			UpdatedAt: now,
 			ValidFrom: now,
-			Metadata: map[string]interface{}{
-				"fact_embedding": []float32{0.4, 0.5, 0.6, 0.7, 0.8},
-			},
 		},
 	}
 }
