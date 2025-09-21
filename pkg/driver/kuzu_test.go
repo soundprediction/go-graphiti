@@ -87,9 +87,13 @@ func TestKuzuDriverStubImplementation(t *testing.T) {
 
 	t.Run("UpsertEdge", func(t *testing.T) {
 		edge := &types.Edge{
-			ID:       "test-id",
+			BaseEdge: types.BaseEdge{
+				ID:           "test-id",
+				GroupID:      "test-group",
+				SourceNodeID: "source-id",
+				TargetNodeID: "target-id",
+			},
 			Type:     types.EntityEdgeType,
-			GroupID:  "test-group",
 			SourceID: "source-id",
 			TargetID: "target-id",
 		}
@@ -148,9 +152,13 @@ func TestKuzuDriverStubImplementation(t *testing.T) {
 	t.Run("UpsertEdges", func(t *testing.T) {
 		edges := []*types.Edge{
 			{
-				ID:       "test-id",
+				BaseEdge: types.BaseEdge{
+					ID:           "test-id",
+					GroupID:      "test-group",
+					SourceNodeID: "source-id",
+					TargetNodeID: "target-id",
+				},
 				Type:     types.EntityEdgeType,
-				GroupID:  "test-group",
 				SourceID: "source-id",
 				TargetID: "target-id",
 			},

@@ -122,11 +122,15 @@ func TestKuzuDriverMethodsImplemented(t *testing.T) {
 
 	t.Run("UpsertEdge is implemented", func(t *testing.T) {
 		edge := &types.Edge{
-			ID:       "test-edge",
+			BaseEdge: types.BaseEdge{
+				ID:           "test-edge",
+				GroupID:      "test",
+				SourceNodeID: "test-source",
+				TargetNodeID: "test-target",
+			},
 			Type:     types.EntityEdgeType,
 			SourceID: "test-source",
 			TargetID: "test-target",
-			GroupID:  "test",
 		}
 		err := d.UpsertEdge(ctx, edge)
 		if err != nil {
@@ -179,8 +183,28 @@ func TestKuzuDriverMethodsImplemented(t *testing.T) {
 
 	t.Run("UpsertEdges is implemented", func(t *testing.T) {
 		edges := []*types.Edge{
-			{ID: "edge1", Type: types.EntityEdgeType, SourceID: "src1", TargetID: "tgt1", GroupID: "test"},
-			{ID: "edge2", Type: types.EntityEdgeType, SourceID: "src2", TargetID: "tgt2", GroupID: "test"},
+			{
+				BaseEdge: types.BaseEdge{
+					ID:           "edge1",
+					GroupID:      "test",
+					SourceNodeID: "src1",
+					TargetNodeID: "tgt1",
+				},
+				Type:     types.EntityEdgeType,
+				SourceID: "src1",
+				TargetID: "tgt1",
+			},
+			{
+				BaseEdge: types.BaseEdge{
+					ID:           "edge2",
+					GroupID:      "test",
+					SourceNodeID: "src2",
+					TargetNodeID: "tgt2",
+				},
+				Type:     types.EntityEdgeType,
+				SourceID: "src2",
+				TargetID: "tgt2",
+			},
 		}
 		err := d.UpsertEdges(ctx, edges)
 		if err != nil {
