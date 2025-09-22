@@ -130,7 +130,7 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 // Returns (results, summary, keys) tuple like Python, though summary and keys are unused in Kuzu
 func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
 	// Filter parameters exactly like Python implementation
-	params := make(map[string]interface{})
+	params := make(map[string]any) // Use 'any' instead of 'interface{}' for go-kuzu compatibility
 	for key, value := range kwargs {
 		if value != nil {
 			params[key] = value
@@ -141,20 +141,50 @@ func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interfac
 	delete(params, "database_")
 	delete(params, "routing_")
 
-	results, err := k.client.Query(cypherQuery)
-	if err != nil {
-		// Log error with truncated params for debugging (matching Python behavior)
-		truncatedParams := make(map[string]interface{})
-		for key, value := range params {
-			if arr, ok := value.([]interface{}); ok && len(arr) > 5 {
-				truncatedParams[key] = arr[:5]
-			} else {
-				truncatedParams[key] = value
+	var results *kuzu.QueryResult
+	var err error
+
+	// Check if we have parameters to use prepared statement
+	if len(params) > 0 {
+		// Use prepared statement for parameterized queries
+		preparedStatement, err := k.client.Prepare(cypherQuery)
+		if err != nil {
+			// Log error with truncated params for debugging (matching Python behavior)
+			truncatedParams := make(map[string]interface{})
+			for key, value := range params {
+				if arr, ok := value.([]interface{}); ok && len(arr) > 5 {
+					truncatedParams[key] = arr[:5]
+				} else {
+					truncatedParams[key] = value
+				}
 			}
+			log.Printf("Error preparing Kuzu query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
+			return nil, nil, nil, err
 		}
-		log.Printf("Error executing Kuzu query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
-		return nil, nil, nil, err
+
+		results, err = k.client.Execute(preparedStatement, params)
+		if err != nil {
+			// Log error with truncated params for debugging (matching Python behavior)
+			truncatedParams := make(map[string]interface{})
+			for key, value := range params {
+				if arr, ok := value.([]interface{}); ok && len(arr) > 5 {
+					truncatedParams[key] = arr[:5]
+				} else {
+					truncatedParams[key] = value
+				}
+			}
+			log.Printf("Error executing Kuzu query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
+			return nil, nil, nil, err
+		}
+	} else {
+		// Use simple Query for queries without parameters
+		results, err = k.client.Query(cypherQuery)
+		if err != nil {
+			log.Printf("Error executing Kuzu query: %v\nQuery: %s", err, cypherQuery)
+			return nil, nil, nil, err
+		}
 	}
+
 	defer results.Close()
 
 	if !results.HasNext() {
