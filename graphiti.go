@@ -359,7 +359,7 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 	}
 	fmt.Printf("response: %v\n", response)
 	// 3. Parse the LLM response into Node structures
-	entities, err := c.parseEntitiesFromResponse(response.Content, episode.GroupID)
+	entities, err := c.ParseEntitiesFromResponse(response.Content, episode.GroupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse entities from LLM response: %w", err)
 	}
@@ -367,42 +367,91 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 	return entities, nil
 }
 
-// ExtractedEntity represents an entity extracted by the LLM (matching Python model)
+// ExtractedEntity represents an entity extracted by the LLM
+// Supports multiple field names for compatibility with different LLM response formats
 type ExtractedEntity struct {
-	Name         string `json:"name"`
+	Name         string `json:"name"`        // Expected format
+	Entity       string `json:"entity"`      // Common LLM format
+	EntityName   string `json:"entity_name"` // Alternative LLM format
 	EntityTypeID int    `json:"entity_type_id"`
 }
 
-// ExtractedEntities represents the response from entity extraction (matching Python model)
-type ExtractedEntities struct {
-	ExtractedEntities []ExtractedEntity `json:"extracted_entities"`
+// GetEntityName returns the entity name, checking all possible field names
+func (e *ExtractedEntity) GetEntityName() string {
+	if e.Name != "" {
+		return e.Name
+	}
+	if e.Entity != "" {
+		return e.Entity
+	}
+	return e.EntityName
 }
 
-// parseEntitiesFromResponse parses the LLM response and converts it to Node structures
-func (c *Client) parseEntitiesFromResponse(responseContent, groupID string) ([]*types.Node, error) {
-	// 1. Parse the structured JSON response from the LLM
-	var extractedEntities ExtractedEntities
-	responseContent, _ = jsonrepair.RepairJSON(responseContent)
-	if err := json.Unmarshal([]byte(responseContent), &extractedEntities); err != nil {
-		// If JSON parsing fails, try to extract JSON from response
-		// Sometimes LLM responses include extra text around the JSON
-		jsonStart := strings.Index(responseContent, "{")
-		jsonEnd := strings.LastIndex(responseContent, "}")
+// ExtractedEntities represents the response from entity extraction (multiple formats)
+type ExtractedEntities struct {
+	ExtractedEntities []ExtractedEntity `json:"extracted_entities"` // Expected format
+	Entities          []ExtractedEntity `json:"entities"`           // Alternative LLM format
+}
 
-		if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
-			jsonContent := responseContent[jsonStart : jsonEnd+1]
-			if err := json.Unmarshal([]byte(jsonContent), &extractedEntities); err != nil {
-				// If still fails, fall back to simple text parsing
+// GetEntitiesList returns the entities list, checking all possible field names
+func (e *ExtractedEntities) GetEntitiesList() []ExtractedEntity {
+	if len(e.ExtractedEntities) > 0 {
+		return e.ExtractedEntities
+	}
+	return e.Entities
+}
+
+// ParseEntitiesFromResponse parses the LLM response and converts it to Node structures
+func (c *Client) ParseEntitiesFromResponse(responseContent, groupID string) ([]*types.Node, error) {
+	// 1. Parse the structured JSON response from the LLM
+	responseContent, _ = jsonrepair.RepairJSON(responseContent)
+
+	var entitiesList []ExtractedEntity
+
+	// Try multiple parsing strategies to handle different LLM response formats
+
+	// Strategy 1: Try to parse as wrapped format {"extracted_entities": [...]} or {"entities": [...]}
+	var extractedEntities ExtractedEntities
+	if err := json.Unmarshal([]byte(responseContent), &extractedEntities); err == nil {
+		entitiesList = extractedEntities.GetEntitiesList()
+	}
+
+	// Strategy 2: If wrapped format didn't work or was empty, try direct array
+	if len(entitiesList) == 0 {
+		if err := json.Unmarshal([]byte(responseContent), &entitiesList); err != nil {
+			// Strategy 3: Try to extract JSON from response text
+			jsonStart := strings.Index(responseContent, "[")
+			if jsonStart == -1 {
+				jsonStart = strings.Index(responseContent, "{")
+			}
+			jsonEnd := strings.LastIndex(responseContent, "]")
+			if jsonEnd == -1 {
+				jsonEnd = strings.LastIndex(responseContent, "}")
+			}
+
+			if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
+				jsonContent := responseContent[jsonStart : jsonEnd+1]
+
+				// Try direct array first
+				if err := json.Unmarshal([]byte(jsonContent), &entitiesList); err != nil {
+					// Try wrapped format
+					var wrappedEntities ExtractedEntities
+					if err := json.Unmarshal([]byte(jsonContent), &wrappedEntities); err != nil {
+						// If all JSON parsing fails, fall back to simple text parsing
+						return c.parseEntitiesFromText(responseContent, groupID)
+					} else {
+						entitiesList = wrappedEntities.GetEntitiesList()
+					}
+				}
+			} else {
+				// Fall back to simple text parsing
 				return c.parseEntitiesFromText(responseContent, groupID)
 			}
-		} else {
-			// Fall back to simple text parsing
-			return c.parseEntitiesFromText(responseContent, groupID)
 		}
 	}
 
-	// 2. Handle the ExtractedEntities response model
-	entities := make([]*types.Node, 0, len(extractedEntities.ExtractedEntities))
+	// 2. Process the extracted entities list
+	entities := make([]*types.Node, 0, len(entitiesList))
 	now := time.Now()
 
 	// Default entity types (matching Python implementation)
@@ -411,9 +460,12 @@ func (c *Client) parseEntitiesFromResponse(responseContent, groupID string) ([]*
 	}
 
 	// 3. Create proper EntityNode objects with all attributes
-	for _, extractedEntity := range extractedEntities.ExtractedEntities {
+	for _, extractedEntity := range entitiesList {
+		// Get entity name using flexible field mapping
+		entityName := strings.TrimSpace(extractedEntity.GetEntityName())
+
 		// Skip empty names
-		if strings.TrimSpace(extractedEntity.Name) == "" {
+		if entityName == "" {
 			continue
 		}
 
@@ -425,7 +477,7 @@ func (c *Client) parseEntitiesFromResponse(responseContent, groupID string) ([]*
 
 		entity := &types.Node{
 			ID:         generateID(),
-			Name:       strings.TrimSpace(extractedEntity.Name),
+			Name:       entityName,
 			Type:       types.EntityNodeType,
 			GroupID:    groupID,
 			CreatedAt:  now,
