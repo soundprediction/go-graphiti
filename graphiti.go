@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	jsonrepair "github.com/RealAlexandreAI/json-repair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -23,7 +24,7 @@ type driverWrapper struct {
 	driver.GraphDriver
 }
 
-// Provider converts driver.GraphProvider to types.GraphProvider  
+// Provider converts driver.GraphProvider to types.GraphProvider
 func (w *driverWrapper) Provider() types.GraphProvider {
 	switch w.GraphDriver.Provider() {
 	case driver.GraphProviderKuzu:
@@ -260,7 +261,6 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	return result, nil
 }
 
-
 // createEpisodeNode creates an episode node in the graph.
 func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode) (*types.Node, error) {
 	now := time.Now()
@@ -357,9 +357,9 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for entity extraction: %w", err)
 	}
-
+	fmt.Printf("response: %v\n", response)
 	// 3. Parse the LLM response into Node structures
-	entities, err := c.parseEntitiesFromResponse(response.Content, episode.GroupID)
+	entities, err := c.ParseEntitiesFromResponse(response.Content, episode.GroupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse entities from LLM response: %w", err)
 	}
@@ -367,41 +367,91 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 	return entities, nil
 }
 
-// ExtractedEntity represents an entity extracted by the LLM (matching Python model)
+// ExtractedEntity represents an entity extracted by the LLM
+// Supports multiple field names for compatibility with different LLM response formats
 type ExtractedEntity struct {
-	Name         string `json:"name"`
+	Name         string `json:"name"`        // Expected format
+	Entity       string `json:"entity"`      // Common LLM format
+	EntityName   string `json:"entity_name"` // Alternative LLM format
 	EntityTypeID int    `json:"entity_type_id"`
 }
 
-// ExtractedEntities represents the response from entity extraction (matching Python model)
-type ExtractedEntities struct {
-	ExtractedEntities []ExtractedEntity `json:"extracted_entities"`
+// GetEntityName returns the entity name, checking all possible field names
+func (e *ExtractedEntity) GetEntityName() string {
+	if e.Name != "" {
+		return e.Name
+	}
+	if e.Entity != "" {
+		return e.Entity
+	}
+	return e.EntityName
 }
 
-// parseEntitiesFromResponse parses the LLM response and converts it to Node structures
-func (c *Client) parseEntitiesFromResponse(responseContent, groupID string) ([]*types.Node, error) {
-	// 1. Parse the structured JSON response from the LLM
-	var extractedEntities ExtractedEntities
-	if err := json.Unmarshal([]byte(responseContent), &extractedEntities); err != nil {
-		// If JSON parsing fails, try to extract JSON from response
-		// Sometimes LLM responses include extra text around the JSON
-		jsonStart := strings.Index(responseContent, "{")
-		jsonEnd := strings.LastIndex(responseContent, "}")
+// ExtractedEntities represents the response from entity extraction (multiple formats)
+type ExtractedEntities struct {
+	ExtractedEntities []ExtractedEntity `json:"extracted_entities"` // Expected format
+	Entities          []ExtractedEntity `json:"entities"`           // Alternative LLM format
+}
 
-		if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
-			jsonContent := responseContent[jsonStart : jsonEnd+1]
-			if err := json.Unmarshal([]byte(jsonContent), &extractedEntities); err != nil {
-				// If still fails, fall back to simple text parsing
+// GetEntitiesList returns the entities list, checking all possible field names
+func (e *ExtractedEntities) GetEntitiesList() []ExtractedEntity {
+	if len(e.ExtractedEntities) > 0 {
+		return e.ExtractedEntities
+	}
+	return e.Entities
+}
+
+// ParseEntitiesFromResponse parses the LLM response and converts it to Node structures
+func (c *Client) ParseEntitiesFromResponse(responseContent, groupID string) ([]*types.Node, error) {
+	// 1. Parse the structured JSON response from the LLM
+	responseContent, _ = jsonrepair.RepairJSON(responseContent)
+
+	var entitiesList []ExtractedEntity
+
+	// Try multiple parsing strategies to handle different LLM response formats
+
+	// Strategy 1: Try to parse as wrapped format {"extracted_entities": [...]} or {"entities": [...]}
+	var extractedEntities ExtractedEntities
+	if err := json.Unmarshal([]byte(responseContent), &extractedEntities); err == nil {
+		entitiesList = extractedEntities.GetEntitiesList()
+	}
+
+	// Strategy 2: If wrapped format didn't work or was empty, try direct array
+	if len(entitiesList) == 0 {
+		if err := json.Unmarshal([]byte(responseContent), &entitiesList); err != nil {
+			// Strategy 3: Try to extract JSON from response text
+			jsonStart := strings.Index(responseContent, "[")
+			if jsonStart == -1 {
+				jsonStart = strings.Index(responseContent, "{")
+			}
+			jsonEnd := strings.LastIndex(responseContent, "]")
+			if jsonEnd == -1 {
+				jsonEnd = strings.LastIndex(responseContent, "}")
+			}
+
+			if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
+				jsonContent := responseContent[jsonStart : jsonEnd+1]
+
+				// Try direct array first
+				if err := json.Unmarshal([]byte(jsonContent), &entitiesList); err != nil {
+					// Try wrapped format
+					var wrappedEntities ExtractedEntities
+					if err := json.Unmarshal([]byte(jsonContent), &wrappedEntities); err != nil {
+						// If all JSON parsing fails, fall back to simple text parsing
+						return c.parseEntitiesFromText(responseContent, groupID)
+					} else {
+						entitiesList = wrappedEntities.GetEntitiesList()
+					}
+				}
+			} else {
+				// Fall back to simple text parsing
 				return c.parseEntitiesFromText(responseContent, groupID)
 			}
-		} else {
-			// Fall back to simple text parsing
-			return c.parseEntitiesFromText(responseContent, groupID)
 		}
 	}
 
-	// 2. Handle the ExtractedEntities response model
-	entities := make([]*types.Node, 0, len(extractedEntities.ExtractedEntities))
+	// 2. Process the extracted entities list
+	entities := make([]*types.Node, 0, len(entitiesList))
 	now := time.Now()
 
 	// Default entity types (matching Python implementation)
@@ -410,9 +460,12 @@ func (c *Client) parseEntitiesFromResponse(responseContent, groupID string) ([]*
 	}
 
 	// 3. Create proper EntityNode objects with all attributes
-	for _, extractedEntity := range extractedEntities.ExtractedEntities {
+	for _, extractedEntity := range entitiesList {
+		// Get entity name using flexible field mapping
+		entityName := strings.TrimSpace(extractedEntity.GetEntityName())
+
 		// Skip empty names
-		if strings.TrimSpace(extractedEntity.Name) == "" {
+		if entityName == "" {
 			continue
 		}
 
@@ -424,7 +477,7 @@ func (c *Client) parseEntitiesFromResponse(responseContent, groupID string) ([]*
 
 		entity := &types.Node{
 			ID:         generateID(),
-			Name:       strings.TrimSpace(extractedEntity.Name),
+			Name:       entityName,
 			Type:       types.EntityNodeType,
 			GroupID:    groupID,
 			CreatedAt:  now,
@@ -568,13 +621,13 @@ func (c *Client) extractRelationships(ctx context.Context, episode types.Episode
 
 	// Prepare context for the prompt
 	context := map[string]interface{}{
-		"episode_content":    episode.Content,
-		"nodes":              nodesContext,
-		"previous_episodes":  previousEpisodes,
-		"reference_time":     episode.Reference,
-		"edge_types":         edgeTypesContext,
-		"custom_prompt":      "",
-		"ensure_ascii":       false,
+		"episode_content":   episode.Content,
+		"nodes":             nodesContext,
+		"previous_episodes": previousEpisodes,
+		"reference_time":    episode.Reference,
+		"edge_types":        edgeTypesContext,
+		"custom_prompt":     "",
+		"ensure_ascii":      false,
 	}
 
 	// 2. Call the LLM to extract relationships
@@ -600,12 +653,12 @@ func (c *Client) extractRelationships(ctx context.Context, episode types.Episode
 
 // ExtractedEdge represents an edge extracted by the LLM (matching Python model)
 type ExtractedEdge struct {
-	RelationType     string `json:"relation_type"`
-	SourceEntityID   int    `json:"source_entity_id"`
-	TargetEntityID   int    `json:"target_entity_id"`
-	Fact             string `json:"fact"`
-	ValidAt          string `json:"valid_at,omitempty"`
-	InvalidAt        string `json:"invalid_at,omitempty"`
+	RelationType   string `json:"relation_type"`
+	SourceEntityID int    `json:"source_entity_id"`
+	TargetEntityID int    `json:"target_entity_id"`
+	Fact           string `json:"fact"`
+	ValidAt        string `json:"valid_at,omitempty"`
+	InvalidAt      string `json:"invalid_at,omitempty"`
 }
 
 // ExtractedEdgesResponse represents the response from edge extraction (matching Python model)
@@ -719,14 +772,14 @@ func (c *Client) parseRelationshipsFromText(responseContent string, episode type
 
 		// Look for relationship patterns in various formats
 		if strings.Contains(line, "relation") || strings.Contains(line, "fact") ||
-		   strings.Contains(line, "->") || strings.Contains(line, "relates to") {
+			strings.Contains(line, "->") || strings.Contains(line, "relates to") {
 
 			// Try to extract entity references and relationship
 			for sourceName, sourceIdx := range nodeNameToIndex {
 				for targetName, targetIdx := range nodeNameToIndex {
 					if sourceIdx != targetIdx &&
-					   strings.Contains(strings.ToLower(line), sourceName) &&
-					   strings.Contains(strings.ToLower(line), targetName) {
+						strings.Contains(strings.ToLower(line), sourceName) &&
+						strings.Contains(strings.ToLower(line), targetName) {
 
 						// Create a basic relationship
 						edge := types.NewEntityEdge(
@@ -1277,7 +1330,7 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 	searchFilters := &search.SearchFilters{
 		EdgeTypes: []types.EdgeType{types.EntityEdgeType}, // Filter for entity edges
 	}
-	
+
 	// Use edge hybrid search RRF config
 	edgeSearchConfig := &search.SearchConfig{
 		EdgeConfig: &search.EdgeSearchConfig{
@@ -1355,26 +1408,25 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 	}, nil
 }
 
-
 // resolveExtractedEdgeExact is an exact translation of Python's resolve_extracted_edge function
 func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node) (*types.Edge, []*types.Edge, error) {
 	// Use the EdgeOperations to resolve the edge exactly as in Python
 	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
-	
+
 	// The Go implementation wraps the private resolveExtractedEdge method
 	// We'll use ResolveExtractedEdges which internally calls the same logic
 	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{})
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	var resolvedEdge *types.Edge
 	if len(resolvedEdges) > 0 {
 		resolvedEdge = resolvedEdges[0]
 	} else {
 		resolvedEdge = extractedEdge
 	}
-	
+
 	return resolvedEdge, invalidatedEdges, nil
 }
 
@@ -1383,7 +1435,7 @@ func (c *Client) createEntityEdgeEmbeddings(ctx context.Context, edges []*types.
 	if c.embedder == nil {
 		return nil
 	}
-	
+
 	for _, edge := range edges {
 		if edge.Type == types.EntityEdgeType && len(edge.Embedding) == 0 && edge.Summary != "" {
 			embedding, err := c.embedder.EmbedSingle(ctx, edge.Summary)
@@ -1393,7 +1445,7 @@ func (c *Client) createEntityEdgeEmbeddings(ctx context.Context, edges []*types.
 			edge.Embedding = embedding
 		}
 	}
-	
+
 	return nil
 }
 
@@ -1402,7 +1454,7 @@ func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.
 	if c.embedder == nil {
 		return nil
 	}
-	
+
 	for _, node := range nodes {
 		if node.Type == types.EntityNodeType && len(node.Embedding) == 0 && node.Name != "" {
 			embedding, err := c.embedder.EmbedSingle(ctx, node.Name)
@@ -1412,7 +1464,7 @@ func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.
 			node.Embedding = embedding
 		}
 	}
-	
+
 	return nil
 }
 

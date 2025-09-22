@@ -423,3 +423,126 @@ func TestEpisodeTypes(t *testing.T) {
 	assert.Equal(t, types.EpisodeType("document"), types.DocumentEpisodeType)
 	assert.Equal(t, types.EpisodeType("event"), types.EventEpisodeType)
 }
+
+func TestClient_parseEntitiesFromResponse(t *testing.T) {
+	// Use same client setup as TestClient_Add
+	mockDriver := &MockGraphDriver{}
+	mockLLM := &MockLLMClient{}
+	mockEmbedder := &MockEmbedderClient{}
+
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	groupID := "test-group"
+
+	tests := []struct {
+		name             string
+		responseContent  string
+		expectedEntities int
+		expectedNames    []string
+		expectError      bool
+	}{
+		{
+			name: "valid JSON response with multiple entities from Test content",
+			responseContent: `{
+				"extracted_entities": [
+					{"name": "Test Episode", "entity_type_id": 0},
+					{"name": "Test content", "entity_type_id": 0}
+				]
+			}`,
+			expectedEntities: 2,
+			expectedNames:    []string{"Test Episode", "Test content"},
+			expectError:      false,
+		},
+		{
+			name: "valid JSON response with single entity",
+			responseContent: `{
+				"extracted_entities": [
+					{"name": "Test Episode", "entity_type_id": 0}
+				]
+			}`,
+			expectedEntities: 1,
+			expectedNames:    []string{"Test Episode"},
+			expectError:      false,
+		},
+		{
+			name: "JSON response with empty entities",
+			responseContent: `{
+				"extracted_entities": []
+			}`,
+			expectedEntities: 0,
+			expectedNames:    []string{},
+			expectError:      false,
+		},
+		{
+			name: "JSON response with empty/whitespace names filtered out",
+			responseContent: `{
+				"extracted_entities": [
+					{"name": "Test Episode", "entity_type_id": 0},
+					{"name": "", "entity_type_id": 0},
+					{"name": "   ", "entity_type_id": 0},
+					{"name": "Content", "entity_type_id": 0}
+				]
+			}`,
+			expectedEntities: 2,
+			expectedNames:    []string{"Test Episode", "Content"},
+			expectError:      false,
+		},
+		{
+			name: "JSON wrapped in extra text",
+			responseContent: `Here are the extracted entities:
+			{
+				"extracted_entities": [
+					{"name": "Test Episode", "entity_type_id": 0}
+				]
+			}
+			That's all the entities I found.`,
+			expectedEntities: 1,
+			expectedNames:    []string{"Test Episode"},
+			expectError:      false,
+		},
+		{
+			name:             "empty response",
+			responseContent:  "",
+			expectedEntities: 0,
+			expectedNames:    []string{},
+			expectError:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entities, err := client.ParseEntitiesFromResponse(tt.responseContent, groupID)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Len(t, entities, tt.expectedEntities)
+
+			// Check entity names
+			actualNames := make([]string, len(entities))
+			for i, entity := range entities {
+				actualNames[i] = entity.Name
+			}
+
+			for _, expectedName := range tt.expectedNames {
+				assert.Contains(t, actualNames, expectedName)
+			}
+
+			// Validate entity properties (same as in TestClient_Add pattern)
+			for _, entity := range entities {
+				assert.NotEmpty(t, entity.ID)
+				assert.Equal(t, types.EntityNodeType, entity.Type)
+				assert.Equal(t, groupID, entity.GroupID)
+				assert.Equal(t, "Entity", entity.EntityType)
+				assert.NotNil(t, entity.Metadata)
+				assert.Contains(t, entity.Metadata, "entity_type_id")
+				assert.Contains(t, entity.Metadata, "labels")
+				assert.NotZero(t, entity.CreatedAt)
+				assert.NotZero(t, entity.UpdatedAt)
+				assert.NotZero(t, entity.ValidFrom)
+			}
+		})
+	}
+}
