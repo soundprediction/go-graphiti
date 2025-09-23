@@ -381,7 +381,7 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for entity extraction: %w", err)
 	}
-	fmt.Printf("response: %v\n", response)
+	// fmt.Printf("response: %v\n", response)
 	// 3. Parse the LLM response into Node structures
 	entities, err := c.ParseEntitiesFromResponse(response.Content, episode.GroupID)
 	if err != nil {
@@ -665,7 +665,7 @@ func (c *Client) extractRelationships(ctx context.Context, episode types.Episode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for edge extraction: %w", err)
 	}
-	fmt.Printf("extractRelationships response.Content: %v\n", response.Content)
+	// fmt.Printf("extractRelationships response.Content: %v\n", response.Content)
 	// 3. Parse the LLM response into Edge structures
 	edges, err := c.parseRelationshipsFromResponse(response.Content, episode, nodes)
 	if err != nil {
