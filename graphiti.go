@@ -118,6 +118,9 @@ type AddEpisodeOptions struct {
 	EdgeTypes map[string]interface{}
 	// EdgeTypeMap mapping of entity pairs to edge types
 	EdgeTypeMap map[string][]string
+	// OverwriteExisting whether to overwrite an existing episode with the same UUID
+	// Default behavior is false (skip if exists)
+	OverwriteExisting bool
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
@@ -182,6 +185,27 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode) (*types.AddB
 func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	if options == nil {
 		options = &AddEpisodeOptions{}
+	}
+
+	// Check if episode with same UUID already exists
+	existingNode, err := c.driver.GetNode(ctx, episode.ID, episode.GroupID)
+	if err == nil && existingNode != nil {
+		// Episode exists - check overwrite option
+		if !options.OverwriteExisting {
+			// Default behavior: skip existing episode
+			return &types.AddEpisodeResults{
+				Episode:        existingNode,
+				EpisodicEdges:  []*types.Edge{},
+				Nodes:          []*types.Node{},
+				Edges:          []*types.Edge{},
+				Communities:    []*types.Node{},
+				CommunityEdges: []*types.Edge{},
+			}, nil
+		}
+		// OverwriteExisting is true - remove existing episode first
+		if err := c.RemoveEpisode(ctx, episode.ID); err != nil {
+			return nil, fmt.Errorf("failed to remove existing episode %s: %w", episode.ID, err)
+		}
 	}
 
 	result := &types.AddEpisodeResults{
@@ -641,7 +665,7 @@ func (c *Client) extractRelationships(ctx context.Context, episode types.Episode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for edge extraction: %w", err)
 	}
-
+	fmt.Printf("extractRelationships response.Content: %v\n", response.Content)
 	// 3. Parse the LLM response into Edge structures
 	edges, err := c.parseRelationshipsFromResponse(response.Content, episode, nodes)
 	if err != nil {
