@@ -118,6 +118,9 @@ type AddEpisodeOptions struct {
 	EdgeTypes map[string]interface{}
 	// EdgeTypeMap mapping of entity pairs to edge types
 	EdgeTypeMap map[string][]string
+	// OverwriteExisting whether to overwrite an existing episode with the same UUID
+	// Default behavior is false (skip if exists)
+	OverwriteExisting bool
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
@@ -182,6 +185,27 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode) (*types.AddB
 func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	if options == nil {
 		options = &AddEpisodeOptions{}
+	}
+
+	// Check if episode with same UUID already exists
+	existingNode, err := c.driver.GetNode(ctx, episode.ID, episode.GroupID)
+	if err == nil && existingNode != nil {
+		// Episode exists - check overwrite option
+		if !options.OverwriteExisting {
+			// Default behavior: skip existing episode
+			return &types.AddEpisodeResults{
+				Episode:        existingNode,
+				EpisodicEdges:  []*types.Edge{},
+				Nodes:          []*types.Node{},
+				Edges:          []*types.Edge{},
+				Communities:    []*types.Node{},
+				CommunityEdges: []*types.Edge{},
+			}, nil
+		}
+		// OverwriteExisting is true - remove existing episode first
+		if err := c.RemoveEpisode(ctx, episode.ID); err != nil {
+			return nil, fmt.Errorf("failed to remove existing episode %s: %w", episode.ID, err)
+		}
 	}
 
 	result := &types.AddEpisodeResults{
@@ -641,7 +665,7 @@ func (c *Client) extractRelationships(ctx context.Context, episode types.Episode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for edge extraction: %w", err)
 	}
-
+	fmt.Printf("extractRelationships response.Content: %v\n", response.Content)
 	// 3. Parse the LLM response into Edge structures
 	edges, err := c.parseRelationshipsFromResponse(response.Content, episode, nodes)
 	if err != nil {
@@ -659,6 +683,10 @@ type ExtractedEdge struct {
 	Fact           string `json:"fact"`
 	ValidAt        string `json:"valid_at,omitempty"`
 	InvalidAt      string `json:"invalid_at,omitempty"`
+	// Alternative field names that some LLMs might use
+	SubjectID int    `json:"subject_id"`
+	ObjectID  int    `json:"object_id"`
+	FactText  string `json:"fact_text"`
 }
 
 // ExtractedEdgesResponse represents the response from edge extraction (matching Python model)
@@ -670,20 +698,56 @@ type ExtractedEdgesResponse struct {
 func (c *Client) parseRelationshipsFromResponse(responseContent string, episode types.Episode, nodes []*types.Node) ([]*types.Edge, error) {
 	// 1. Parse the structured JSON response from the LLM
 	var extractedEdges ExtractedEdgesResponse
-	if err := json.Unmarshal([]byte(responseContent), &extractedEdges); err != nil {
-		// If JSON parsing fails, try to extract JSON from response
-		jsonStart := strings.Index(responseContent, "{")
-		jsonEnd := strings.LastIndex(responseContent, "}")
+	responseContent, _ = jsonrepair.RepairJSON(responseContent)
 
-		if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
-			jsonContent := responseContent[jsonStart : jsonEnd+1]
-			if err := json.Unmarshal([]byte(jsonContent), &extractedEdges); err != nil {
-				// If still fails, fall back to simple text parsing
+	// First try to parse as object with "edges" field
+	if err := json.Unmarshal([]byte(responseContent), &extractedEdges); err != nil {
+		// If that fails, try to parse as direct array
+		var edgeArray []ExtractedEdge
+		if err := json.Unmarshal([]byte(responseContent), &edgeArray); err != nil {
+			// If JSON parsing fails, try to extract JSON from response
+			jsonStart := strings.Index(responseContent, "[")
+			jsonEnd := strings.LastIndex(responseContent, "]")
+
+			if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
+				jsonContent := responseContent[jsonStart : jsonEnd+1]
+				if err := json.Unmarshal([]byte(jsonContent), &edgeArray); err != nil {
+					// Try object format extraction
+					jsonStart = strings.Index(responseContent, "{")
+					jsonEnd = strings.LastIndex(responseContent, "}")
+					if jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart {
+						jsonContent = responseContent[jsonStart : jsonEnd+1]
+						if err := json.Unmarshal([]byte(jsonContent), &extractedEdges); err != nil {
+							// If still fails, fall back to simple text parsing
+							return c.parseRelationshipsFromText(responseContent, episode, nodes)
+						}
+					} else {
+						// Fall back to simple text parsing
+						return c.parseRelationshipsFromText(responseContent, episode, nodes)
+					}
+				} else {
+					extractedEdges.Edges = edgeArray
+				}
+			} else {
+				// Fall back to simple text parsing
 				return c.parseRelationshipsFromText(responseContent, episode, nodes)
 			}
 		} else {
-			// Fall back to simple text parsing
-			return c.parseRelationshipsFromText(responseContent, episode, nodes)
+			extractedEdges.Edges = edgeArray
+		}
+	}
+
+	// Normalize field values for alternative field names
+	for i := range extractedEdges.Edges {
+		edge := &extractedEdges.Edges[i]
+		if edge.SourceEntityID == 0 && edge.SubjectID != 0 {
+			edge.SourceEntityID = edge.SubjectID
+		}
+		if edge.TargetEntityID == 0 && edge.ObjectID != 0 {
+			edge.TargetEntityID = edge.ObjectID
+		}
+		if edge.Fact == "" && edge.FactText != "" {
+			edge.Fact = edge.FactText
 		}
 	}
 

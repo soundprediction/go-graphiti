@@ -9,10 +9,8 @@ import (
 
 	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Integration tests require actual database connections and are marked with build tag
@@ -25,8 +23,6 @@ func TestGraphitiIntegration(t *testing.T) {
 
 	// This test would require actual database setup
 	t.Skip("Skip until actual database driver is implemented")
-	
-	ctx := context.Background()
 	
 	// In a real integration test, you would:
 	// 1. Set up a test database (Kuzu/Neo4j)
@@ -77,9 +73,7 @@ func TestNodeOperationsIntegration(t *testing.T) {
 	}
 
 	t.Skip("Skip until actual database driver is implemented")
-	
-	ctx := context.Background()
-	
+
 	// Test node creation, retrieval, and updates
 	// This would test the full node lifecycle with a real database
 }
@@ -90,9 +84,7 @@ func TestEdgeOperationsIntegration(t *testing.T) {
 	}
 
 	t.Skip("Skip until actual database driver is implemented")
-	
-	ctx := context.Background()
-	
+
 	// Test edge creation, retrieval, and updates
 	// This would test the full edge lifecycle with a real database
 }
@@ -103,9 +95,7 @@ func TestSearchIntegration(t *testing.T) {
 	}
 
 	t.Skip("Skip until actual database driver is implemented")
-	
-	ctx := context.Background()
-	
+
 	// Test various search scenarios:
 	// - Semantic search
 	// - Keyword search
@@ -119,9 +109,7 @@ func TestBulkOperationsIntegration(t *testing.T) {
 	}
 
 	t.Skip("Skip until actual database driver is implemented")
-	
-	ctx := context.Background()
-	
+
 	// Test bulk operations with large datasets
 	// This would verify performance and correctness at scale
 }
@@ -245,8 +233,8 @@ func (m *MockIntegrationDriver) CreateIndices(ctx context.Context) error {
 
 func (m *MockIntegrationDriver) GetStats(ctx context.Context, groupID string) (*driver.GraphStats, error) {
 	return &driver.GraphStats{
-		NodeCount: len(m.nodes),
-		EdgeCount: len(m.edges),
+		NodeCount: int64(len(m.nodes)),
+		EdgeCount: int64(len(m.edges)),
 	}, nil
 }
 
@@ -279,7 +267,7 @@ func TestMockIntegrationDriver(t *testing.T) {
 	node := &types.Node{
 		ID:      "test-node",
 		Name:    "Test Node",
-		Type:    types.NodeTypeEntity,
+		Type:    types.EntityNodeType,
 		GroupID: "test-group",
 	}
 
@@ -295,11 +283,15 @@ func TestMockIntegrationDriver(t *testing.T) {
 
 	// Test edge operations
 	edge := &types.Edge{
-		ID:           "test-edge",
-		Type:         types.EdgeTypeRelation,
-		GroupID:      "test-group",
-		SourceNodeID: "source-id",
-		TargetNodeID: "target-id",
+		BaseEdge: types.BaseEdge{
+			ID:           "test-edge",
+			GroupID:      "test-group",
+			SourceNodeID: "source-id",
+			TargetNodeID: "target-id",
+		},
+		Type:     types.EntityEdgeType,
+		SourceID: "source-id",
+		TargetID: "target-id",
 	}
 
 	// Test create
@@ -315,6 +307,6 @@ func TestMockIntegrationDriver(t *testing.T) {
 	// Test stats
 	stats, err := driver.GetStats(ctx, "test-group")
 	assert.NoError(t, err)
-	assert.Equal(t, 1, stats.NodeCount)
-	assert.Equal(t, 1, stats.EdgeCount)
+	assert.Equal(t, int64(1), stats.NodeCount)
+	assert.Equal(t, int64(1), stats.EdgeCount)
 }
