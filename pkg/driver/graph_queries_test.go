@@ -27,7 +27,7 @@ func TestGetRangeIndices(t *testing.T) {
 		provider GraphProvider
 		expected int // expected number of indices
 	}{
-		{GraphProviderNeo4j, 19},     // Neo4j has 19 range indices
+		{GraphProviderNeo4j, 20},     // Neo4j has 20 range indices
 		{GraphProviderFalkorDB, 6},   // FalkorDB has 6 range indices
 		{GraphProviderKuzu, 0},       // Kuzu has 0 range indices
 	}

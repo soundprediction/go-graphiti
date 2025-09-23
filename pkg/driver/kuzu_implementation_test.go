@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+
 // TestKuzuDriverImplementedMethods tests the newly implemented methods
 func TestKuzuDriverImplementedMethods(t *testing.T) {
 	ctx := context.Background()
-	d, err := driver.NewKuzuDriver("./test_kuzu_db", 1)
+	dbPath := createTempKuzuDB(t)
+	d, err := driver.NewKuzuDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 
@@ -27,7 +29,6 @@ func TestKuzuDriverImplementedMethods(t *testing.T) {
 	t.Run("GetNodes returns empty slice for nonexistent nodes", func(t *testing.T) {
 		nodes, err := d.GetNodes(ctx, []string{"nonexistent-1", "nonexistent-2"}, "test-group")
 		assert.NoError(t, err)
-		assert.NotNil(t, nodes)
 		assert.Len(t, nodes, 0)
 	})
 
@@ -83,7 +84,8 @@ func TestKuzuDriverImplementedMethods(t *testing.T) {
 // TestKuzuDriverMethodsImplemented verifies that key methods are no longer stubs
 func TestKuzuDriverMethodsImplemented(t *testing.T) {
 	ctx := context.Background()
-	d, err := driver.NewKuzuDriver("./test_impl_kuzu_db", 1)
+	dbPath := createTempKuzuDB(t)
+	d, err := driver.NewKuzuDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 
