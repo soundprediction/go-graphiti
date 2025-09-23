@@ -265,6 +265,43 @@ func TestClient_Add(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestClient_AddEpisodeWithCommunityUpdates(t *testing.T) {
+	mockDriver := &MockGraphDriver{}
+	mockLLM := &MockLLMClient{}
+	mockEmbedder := &MockEmbedderClient{}
+
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	ctx := context.Background()
+
+	// Test adding episode with community updates enabled
+	episode := types.Episode{
+		ID:        "test-episode-community",
+		Name:      "Test Episode with Community Updates",
+		Content:   "Test content for community building",
+		Reference: time.Now(),
+		CreatedAt: time.Now(),
+		GroupID:   "test-group",
+	}
+
+	// Test with UpdateCommunities disabled (default)
+	options := &graphiti.AddEpisodeOptions{
+		UpdateCommunities: false,
+	}
+	result, err := client.AddEpisode(ctx, episode, options)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Empty(t, result.Communities, "Communities should be empty when UpdateCommunities is false")
+	assert.Empty(t, result.CommunityEdges, "CommunityEdges should be empty when UpdateCommunities is false")
+
+	// Test with UpdateCommunities enabled
+	options.UpdateCommunities = true
+	result, err = client.AddEpisode(ctx, episode, options)
+	// With mock driver, community building will fail as it only supports Kuzu drivers
+	assert.Error(t, err, "Community building should fail with mock driver")
+	assert.Contains(t, err.Error(), "failed to build communities", "Error should indicate community building failure")
+	assert.Nil(t, result, "Result should be nil when community building fails")
+}
+
 func TestClient_AddBulk(t *testing.T) {
 	mockDriver := &MockGraphDriver{}
 	mockLLM := &MockLLMClient{}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	"github.com/soundprediction/go-graphiti/pkg/community"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -86,11 +87,12 @@ type Graphiti interface {
 
 // Client is the main implementation of the Graphiti interface.
 type Client struct {
-	driver   driver.GraphDriver
-	llm      llm.Client
-	embedder embedder.Client
-	searcher *search.Searcher
-	config   *Config
+	driver    driver.GraphDriver
+	llm       llm.Client
+	embedder  embedder.Client
+	searcher  *search.Searcher
+	community *community.Builder
+	config    *Config
 }
 
 // Config holds configuration for the Graphiti client.
@@ -136,13 +138,15 @@ func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient e
 	}
 
 	searcher := search.NewSearcher(driver, embedderClient, llmClient)
+	communityBuilder := community.NewBuilder(driver, llmClient, embedderClient)
 
 	return &Client{
-		driver:   driver,
-		llm:      llmClient,
-		embedder: embedderClient,
-		searcher: searcher,
-		config:   config,
+		driver:    driver,
+		llm:       llmClient,
+		embedder:  embedderClient,
+		searcher:  searcher,
+		community: communityBuilder,
+		config:    config,
 	}
 }
 
@@ -278,8 +282,15 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 
 	// 7. Update communities if requested
 	if options.UpdateCommunities {
-		// TODO: Implement community updates
-		// This would call the community builder functionality
+		// Build communities for the current group using the community builder
+		communityResult, err := c.community.BuildCommunities(ctx, []string{episode.GroupID})
+		if err != nil {
+			return nil, fmt.Errorf("failed to build communities: %w", err)
+		}
+
+		// Add the community results to the episode results
+		result.Communities = communityResult.CommunityNodes
+		result.CommunityEdges = communityResult.CommunityEdges
 	}
 
 	return result, nil
@@ -381,7 +392,7 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for entity extraction: %w", err)
 	}
-	fmt.Printf("response: %v\n", response)
+	// fmt.Printf("response: %v\n", response)
 	// 3. Parse the LLM response into Node structures
 	entities, err := c.ParseEntitiesFromResponse(response.Content, episode.GroupID)
 	if err != nil {
@@ -665,7 +676,7 @@ func (c *Client) extractRelationships(ctx context.Context, episode types.Episode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response for edge extraction: %w", err)
 	}
-	fmt.Printf("extractRelationships response.Content: %v\n", response.Content)
+	// fmt.Printf("extractRelationships response.Content: %v\n", response.Content)
 	// 3. Parse the LLM response into Edge structures
 	edges, err := c.parseRelationshipsFromResponse(response.Content, episode, nodes)
 	if err != nil {
