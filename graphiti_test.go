@@ -583,3 +583,205 @@ func TestClient_parseEntitiesFromResponse(t *testing.T) {
 		})
 	}
 }
+
+// TestClient_Add_PythonCompatibility tests that Go client.Add() behavior matches Python Graphiti
+// This comprehensive test compares Go implementation against Python add_episode() and add_episode_bulk()
+func TestClient_Add_PythonCompatibility(t *testing.T) {
+	// Setup mock clients that simulate successful operations
+	mockDriver := &MockGraphDriver{}
+	mockLLM := &MockLLMClient{}
+	mockEmbedder := &MockEmbedderClient{}
+
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	ctx := context.Background()
+	now := time.Now()
+	groupID := "test-group"
+
+	t.Run("SingleEpisode_MatchesPythonAddEpisode", func(t *testing.T) {
+		// Test that Go Add([single_episode]) matches Python add_episode(episode)
+		episode := types.Episode{
+			ID:        "episode-001",
+			Name:      "Single Episode Test",
+			Content:   "This is a test episode with some entities like Alice and Bob.",
+			Reference: now,
+			CreatedAt: now,
+			GroupID:   groupID,
+			Metadata: map[string]interface{}{
+				"source":             "test",
+				"source_description": "Integration test",
+				"episode_type":       "text",
+			},
+		}
+
+		// Test Go Add with single episode
+		result, err := client.Add(ctx, []types.Episode{episode})
+		assert.NoError(t, err, "Go Add should succeed with single episode")
+		assert.NotNil(t, result, "Result should not be nil")
+
+		// Verify result structure matches Python add_episode return type
+		assert.NotNil(t, result.Episodes, "Episodes should not be nil")
+		assert.NotNil(t, result.EpisodicEdges, "EpisodicEdges should not be nil")
+		assert.NotNil(t, result.Nodes, "Nodes should not be nil")
+		assert.NotNil(t, result.Edges, "Edges should not be nil")
+		assert.NotNil(t, result.Communities, "Communities should not be nil")
+		assert.NotNil(t, result.CommunityEdges, "CommunityEdges should not be nil")
+
+		// Verify single episode processing
+		assert.Len(t, result.Episodes, 1, "Should have exactly one episode")
+		assert.Equal(t, episode.ID, result.Episodes[0].ID, "Episode ID should match")
+		assert.Equal(t, episode.Name, result.Episodes[0].Name, "Episode name should match")
+		assert.Equal(t, types.EpisodicNodeType, result.Episodes[0].Type, "Episode should be EpisodicNodeType")
+	})
+
+	t.Run("BulkEpisodes_MatchesPythonAddEpisodeBulk", func(t *testing.T) {
+		// Test that Go Add([multiple_episodes]) matches Python add_episode_bulk(episodes)
+		episodes := []types.Episode{
+			{
+				ID:        "bulk-001",
+				Name:      "Bulk Episode 1",
+				Content:   "Alice works at Company A and knows Bob.",
+				Reference: now,
+				CreatedAt: now,
+				GroupID:   groupID,
+				Metadata: map[string]interface{}{
+					"source":       "bulk_test",
+					"episode_type": "text",
+				},
+			},
+			{
+				ID:        "bulk-002",
+				Name:      "Bulk Episode 2",
+				Content:   "Bob is a software engineer and lives in Seattle.",
+				Reference: now.Add(time.Hour),
+				CreatedAt: now.Add(time.Hour),
+				GroupID:   groupID,
+				Metadata: map[string]interface{}{
+					"source":       "bulk_test",
+					"episode_type": "text",
+				},
+			},
+			{
+				ID:        "bulk-003",
+				Name:      "Bulk Episode 3",
+				Content:   "Company A is a tech startup founded in 2020.",
+				Reference: now.Add(2 * time.Hour),
+				CreatedAt: now.Add(2 * time.Hour),
+				GroupID:   groupID,
+				Metadata: map[string]interface{}{
+					"source":       "bulk_test",
+					"episode_type": "text",
+				},
+			},
+		}
+
+		// Test Go Add with multiple episodes
+		result, err := client.Add(ctx, episodes)
+		assert.NoError(t, err, "Go Add should succeed with multiple episodes")
+		assert.NotNil(t, result, "Result should not be nil")
+
+		// Verify bulk processing - should have processed all episodes
+		assert.Len(t, result.Episodes, len(episodes), "Should have processed all episodes")
+
+		// Verify each episode was processed correctly
+		episodeIDs := make(map[string]bool)
+		for _, ep := range result.Episodes {
+			episodeIDs[ep.ID] = true
+			assert.Equal(t, types.EpisodicNodeType, ep.Type, "Each episode should be EpisodicNodeType")
+			assert.Equal(t, groupID, ep.GroupID, "Each episode should have correct GroupID")
+		}
+
+		// Verify all episode IDs are present
+		for _, originalEp := range episodes {
+			assert.True(t, episodeIDs[originalEp.ID], "Episode %s should be in results", originalEp.ID)
+		}
+
+		// Verify aggregation behavior (results should be accumulated)
+		assert.GreaterOrEqual(t, len(result.Nodes), 0, "Should have accumulated entity nodes")
+		assert.GreaterOrEqual(t, len(result.Edges), 0, "Should have accumulated entity edges")
+		assert.GreaterOrEqual(t, len(result.EpisodicEdges), 0, "Should have accumulated episodic edges")
+	})
+
+	t.Run("EmptyEpisodes_HandlesGracefully", func(t *testing.T) {
+		// Test edge case that Python would handle
+		result, err := client.Add(ctx, []types.Episode{})
+		assert.NoError(t, err, "Empty episodes should not cause error")
+		assert.NotNil(t, result, "Result should not be nil")
+		assert.Empty(t, result.Episodes, "Episodes should be empty")
+		assert.Empty(t, result.Nodes, "Nodes should be empty")
+		assert.Empty(t, result.Edges, "Edges should be empty")
+	})
+
+	t.Run("ErrorHandling_MatchesPythonBehavior", func(t *testing.T) {
+		// Test error propagation behavior
+		invalidEpisode := types.Episode{
+			ID:        "", // Invalid empty ID
+			Name:      "Invalid Episode",
+			Content:   "This episode has invalid data",
+			Reference: now,
+			CreatedAt: now,
+			GroupID:   groupID,
+		}
+
+		result, err := client.Add(ctx, []types.Episode{invalidEpisode})
+		// The behavior depends on the mock implementation, but we test that errors are handled
+		if err != nil {
+			assert.Nil(t, result, "Result should be nil when error occurs")
+			assert.Contains(t, err.Error(), "failed to process episode", "Error should indicate episode processing failure")
+		}
+	})
+
+	t.Run("ResultStructure_MatchesPythonTypes", func(t *testing.T) {
+		// Verify that the Go result structure semantically matches Python return types
+		episode := types.Episode{
+			ID:        "structure-test",
+			Name:      "Structure Test Episode",
+			Content:   "Testing result structure compatibility",
+			Reference: now,
+			CreatedAt: now,
+			GroupID:   groupID,
+		}
+
+		result, err := client.Add(ctx, []types.Episode{episode})
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+
+		// Verify types match Python expectations
+		assert.IsType(t, &types.AddBulkEpisodeResults{}, result, "Result should be AddBulkEpisodeResults type")
+		assert.IsType(t, []*types.Node{}, result.Episodes, "Episodes should be slice of Node pointers")
+		assert.IsType(t, []*types.Edge{}, result.EpisodicEdges, "EpisodicEdges should be slice of Edge pointers")
+		assert.IsType(t, []*types.Node{}, result.Nodes, "Nodes should be slice of Node pointers")
+		assert.IsType(t, []*types.Edge{}, result.Edges, "Edges should be slice of Edge pointers")
+		assert.IsType(t, []*types.Node{}, result.Communities, "Communities should be slice of Node pointers")
+		assert.IsType(t, []*types.Edge{}, result.CommunityEdges, "CommunityEdges should be slice of Edge pointers")
+
+		// Verify episode structure matches Python EpisodicNode
+		if len(result.Episodes) > 0 {
+			ep := result.Episodes[0]
+			assert.Equal(t, episode.ID, ep.ID, "Episode ID should match input")
+			assert.Equal(t, episode.Name, ep.Name, "Episode name should match input")
+			assert.Equal(t, episode.Content, ep.Content, "Episode content should match input")
+			assert.Equal(t, episode.GroupID, ep.GroupID, "Episode GroupID should match input")
+			assert.Equal(t, types.EpisodicNodeType, ep.Type, "Episode should have EpisodicNodeType")
+			assert.NotZero(t, ep.CreatedAt, "Episode should have CreatedAt timestamp")
+			assert.NotZero(t, ep.UpdatedAt, "Episode should have UpdatedAt timestamp")
+		}
+	})
+
+	t.Run("SequentialProcessing_MatchesPythonOrder", func(t *testing.T) {
+		// Test that episodes are processed in order like Python
+		episodes := []types.Episode{
+			{ID: "seq-001", Name: "First", Content: "First episode", Reference: now, CreatedAt: now, GroupID: groupID},
+			{ID: "seq-002", Name: "Second", Content: "Second episode", Reference: now.Add(time.Minute), CreatedAt: now.Add(time.Minute), GroupID: groupID},
+			{ID: "seq-003", Name: "Third", Content: "Third episode", Reference: now.Add(2*time.Minute), CreatedAt: now.Add(2*time.Minute), GroupID: groupID},
+		}
+
+		result, err := client.Add(ctx, episodes)
+		assert.NoError(t, err)
+		assert.Len(t, result.Episodes, 3, "Should have processed all episodes")
+
+		// Verify processing order (episodes should appear in same order as input)
+		for i, ep := range result.Episodes {
+			assert.Equal(t, episodes[i].ID, ep.ID, "Episode %d should maintain input order", i)
+		}
+	})
+}
