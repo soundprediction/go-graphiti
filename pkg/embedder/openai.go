@@ -17,7 +17,7 @@ type OpenAIEmbedder struct {
 // Supports OpenAI-compatible services through custom BaseURL configuration.
 func NewOpenAIEmbedder(apiKey string, config Config) *OpenAIEmbedder {
 	var client *openai.Client
-	
+
 	if config.BaseURL != "" {
 		// Create client with custom base URL for OpenAI-compatible services
 		clientConfig := openai.DefaultConfig(apiKey)
@@ -27,7 +27,7 @@ func NewOpenAIEmbedder(apiKey string, config Config) *OpenAIEmbedder {
 		// Use default OpenAI client
 		client = openai.NewClient(apiKey)
 	}
-	
+
 	if config.Model == "" {
 		config.Model = "text-embedding-ada-002"
 	}
@@ -44,10 +44,11 @@ func NewOpenAIEmbedder(apiKey string, config Config) *OpenAIEmbedder {
 		case "text-embedding-3-large":
 			config.Dimensions = 3072
 		default:
-			config.Dimensions = 1536
+			// config.Dimensions = 1536
+			config.Dimensions = 0
 		}
 	}
-	
+
 	return &OpenAIEmbedder{
 		client: client,
 		config: config,
@@ -59,25 +60,25 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 	if len(texts) == 0 {
 		return [][]float32{}, nil
 	}
-	
+
 	var allEmbeddings [][]float32
-	
+
 	// Process in batches
 	for i := 0; i < len(texts); i += e.config.BatchSize {
 		end := i + e.config.BatchSize
 		if end > len(texts) {
 			end = len(texts)
 		}
-		
+
 		batch := texts[i:end]
 		batchEmbeddings, err := e.embedBatch(ctx, batch)
 		if err != nil {
 			return nil, fmt.Errorf("failed to embed batch %d-%d: %w", i, end, err)
 		}
-		
+
 		allEmbeddings = append(allEmbeddings, batchEmbeddings...)
 	}
-	
+
 	return allEmbeddings, nil
 }
 
@@ -87,11 +88,11 @@ func (e *OpenAIEmbedder) EmbedSingle(ctx context.Context, text string) ([]float3
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(embeddings) == 0 {
 		return nil, fmt.Errorf("no embeddings returned")
 	}
-	
+
 	return embeddings[0], nil
 }
 
@@ -110,17 +111,17 @@ func (e *OpenAIEmbedder) embedBatch(ctx context.Context, texts []string) ([][]fl
 		Input: texts,
 		Model: openai.EmbeddingModel(e.config.Model),
 	}
-	
+
 	// Add custom dimensions if specified (useful for OpenAI-compatible services)
 	if e.config.Dimensions > 0 {
 		req.Dimensions = e.config.Dimensions
 	}
-	
+
 	resp, err := e.client.CreateEmbeddings(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("openai embedding request failed: %w", err)
 	}
-	
+
 	embeddings := make([][]float32, len(resp.Data))
 	for i, embedding := range resp.Data {
 		// Convert []float64 to []float32
@@ -130,6 +131,6 @@ func (e *OpenAIEmbedder) embedBatch(ctx context.Context, texts []string) ([][]fl
 		}
 		embeddings[i] = float32Embedding
 	}
-	
+
 	return embeddings, nil
 }
