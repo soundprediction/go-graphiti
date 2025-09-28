@@ -6,37 +6,37 @@ import (
 
 // Node represents a node in the knowledge graph.
 type Node struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Type      NodeType               `json:"type"`
-	GroupID   string                 `json:"group_id"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
-	
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Type      NodeType  `json:"type"`
+	GroupID   string    `json:"group_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
 	// Entity-specific fields
-	EntityType   string                 `json:"entity_type,omitempty"`
-	Summary      string                 `json:"summary,omitempty"`
-	
+	EntityType string `json:"entity_type,omitempty"`
+	Summary    string `json:"summary,omitempty"`
+
 	// Episode-specific fields
-	EpisodeType  EpisodeType            `json:"episode_type,omitempty"`
-	Content      string                 `json:"content,omitempty"`
-	Reference    time.Time              `json:"reference,omitempty"`
-	EntityEdges  []string               `json:"entity_edges,omitempty"`
-	
+	EpisodeType EpisodeType `json:"episode_type,omitempty"`
+	Content     string      `json:"content,omitempty"`
+	Reference   time.Time   `json:"reference,omitempty"`
+	EntityEdges []string    `json:"entity_edges,omitempty"`
+
 	// Community-specific fields
-	Level        int                    `json:"level,omitempty"`
-	
+	Level int `json:"level,omitempty"`
+
 	// Common fields
 	Embedding     []float32              `json:"embedding,omitempty"`
 	NameEmbedding []float32              `json:"name_embedding,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
-	
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+
 	// Temporal fields
-	ValidFrom    time.Time              `json:"valid_from"`
-	ValidTo      *time.Time             `json:"valid_to,omitempty"`
-	
+	ValidFrom time.Time  `json:"valid_from"`
+	ValidTo   *time.Time `json:"valid_to,omitempty"`
+
 	// Source tracking
-	SourceIDs    []string               `json:"source_ids,omitempty"`
+	SourceIDs []string `json:"source_ids,omitempty"`
 }
 
 // Edge is an alias for EntityEdge to maintain backward compatibility
@@ -71,13 +71,14 @@ const (
 
 // Episode represents a temporal data unit to be processed.
 type Episode struct {
-	ID        string
-	Name      string
-	Content   string
-	Reference time.Time
-	CreatedAt time.Time
-	GroupID   string
-	Metadata  map[string]interface{}
+	ID               string
+	Name             string
+	Content          string
+	Reference        time.Time
+	CreatedAt        time.Time
+	GroupID          string
+	Metadata         map[string]interface{}
+	ContentEmbedding []float32
 }
 
 // SearchConfig holds configuration for search operations.

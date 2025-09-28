@@ -300,9 +300,13 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode) (*types.Node, error) {
 	now := time.Now()
 
-	// Create embedding for episode content if embedder is available
+	// Use existing embedding or create new one if embedder is available
 	var embedding []float32
-	if c.embedder != nil {
+	if len(episode.ContentEmbedding) > 0 {
+		// Use pre-computed embedding if available
+		embedding = episode.ContentEmbedding
+	} else if c.embedder != nil {
+		// Generate embedding if not provided and embedder is available
 		var err error
 		embedding, err = c.embedder.EmbedSingle(ctx, episode.Content)
 		if err != nil {
