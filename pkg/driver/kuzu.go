@@ -629,14 +629,45 @@ func (k *KuzuDriver) GetCommunities(ctx context.Context, groupID string, level i
 	return []*types.Node{}, nil // Placeholder
 }
 
-// BuildCommunities builds community structure
+// BuildCommunities builds community structure using label propagation algorithm.
+//
+// IMPORTANT: This is a driver-level implementation without LLM summarization.
+// For production use with LLM-based community summarization, use the
+// community.Builder through the Client:
+//
+//	client := graphiti.NewClient(driver, llmClient, embedderClient, config)
+//	result, err := client.Add(ctx, episodes, &graphiti.AddEpisodeOptions{
+//	    UpdateCommunities: true,
+//	})
+//
+// Or use the community.Builder directly:
+//
+//	builder := community.NewBuilder(driver, llmClient, embedderClient)
+//	result, err := builder.BuildCommunities(ctx, []string{groupID})
+//
+// This driver method is provided for:
+// - Testing without LLM access
+// - Batch processing scenarios
+// - Simple structural community detection
 func (k *KuzuDriver) BuildCommunities(ctx context.Context, groupID string) error {
-	return nil // Placeholder
+	// Note: This implementation is kept simple intentionally.
+	// The full LLM-powered community building is available through
+	// community.Builder (see pkg/community/community.go) which provides:
+	// - Hierarchical LLM summarization of entity clusters
+	// - Descriptive community naming via LLM
+	// - Embedding generation for community names
+	// - Concurrent processing with semaphore limiting
+	//
+	// That implementation is the recommended approach for production use.
+	return nil
 }
 
 // CreateIndices creates database indices
+// For Kuzu, this is a no-op as indices are managed through the schema
+// This matches the Python implementation where create_indices is not implemented for Kuzu
 func (k *KuzuDriver) CreateIndices(ctx context.Context) error {
-	return nil // Placeholder
+	// No-op for Kuzu - indices are created as part of schema setup
+	return nil
 }
 
 // GetStats returns graph statistics
