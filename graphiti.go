@@ -1594,6 +1594,26 @@ func convertReranker(reranker string) search.RerankerType {
 	}
 }
 
+// GetDriver returns the underlying graph driver
+func (c *Client) GetDriver() driver.GraphDriver {
+	return c.driver
+}
+
+// GetLLM returns the LLM client
+func (c *Client) GetLLM() llm.Client {
+	return c.llm
+}
+
+// GetEmbedder returns the embedder client
+func (c *Client) GetEmbedder() embedder.Client {
+	return c.embedder
+}
+
+// GetCommunityBuilder returns the community builder
+func (c *Client) GetCommunityBuilder() *community.Builder {
+	return c.community
+}
+
 var (
 	// ErrNodeNotFound is returned when a node is not found.
 	ErrNodeNotFound = errors.New("node not found")
