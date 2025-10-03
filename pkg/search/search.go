@@ -17,18 +17,18 @@ import (
 type SearchMethod string
 
 const (
-	CosineSimilarity  SearchMethod = "cosine_similarity"
-	BM25             SearchMethod = "bm25"
+	CosineSimilarity   SearchMethod = "cosine_similarity"
+	BM25               SearchMethod = "bm25"
 	BreadthFirstSearch SearchMethod = "bfs"
 )
 
 type RerankerType string
 
 const (
-	RRFRerankType            RerankerType = "rrf"
-	MMRRerankType            RerankerType = "mmr" 
-	CrossEncoderRerankType   RerankerType = "cross_encoder"
-	NodeDistanceRerankType   RerankerType = "node_distance"
+	RRFRerankType             RerankerType = "rrf"
+	MMRRerankType             RerankerType = "mmr"
+	CrossEncoderRerankType    RerankerType = "cross_encoder"
+	NodeDistanceRerankType    RerankerType = "node_distance"
 	EpisodeMentionsRerankType RerankerType = "episode_mentions"
 )
 
@@ -71,20 +71,20 @@ type CommunitySearchConfig struct {
 }
 
 type SearchFilters struct {
-	GroupIDs     []string           `json:"group_ids,omitempty"`
-	NodeTypes    []types.NodeType   `json:"node_types,omitempty"`
-	EdgeTypes    []types.EdgeType   `json:"edge_types,omitempty"`
-	EntityTypes  []string           `json:"entity_types,omitempty"`
-	TimeRange    *types.TimeRange   `json:"time_range,omitempty"`
+	GroupIDs    []string         `json:"group_ids,omitempty"`
+	NodeTypes   []types.NodeType `json:"node_types,omitempty"`
+	EdgeTypes   []types.EdgeType `json:"edge_types,omitempty"`
+	EntityTypes []string         `json:"entity_types,omitempty"`
+	TimeRange   *types.TimeRange `json:"time_range,omitempty"`
 }
 
 type HybridSearchResult struct {
-	Nodes      []*types.Node  `json:"nodes"`
-	Edges      []*types.Edge  `json:"edges"`
-	NodeScores []float64      `json:"node_scores"`
-	EdgeScores []float64      `json:"edge_scores"`
-	Query      string         `json:"query"`
-	Total      int            `json:"total"`
+	Nodes      []*types.Node `json:"nodes"`
+	Edges      []*types.Edge `json:"edges"`
+	NodeScores []float64     `json:"node_scores"`
+	EdgeScores []float64     `json:"edge_scores"`
+	Query      string        `json:"query"`
+	Total      int           `json:"total"`
 }
 
 type Searcher struct {
@@ -116,7 +116,7 @@ func (s *Searcher) Search(ctx context.Context, query string, config *SearchConfi
 	// Generate query embedding if needed for semantic search
 	var queryVector []float32
 	needsEmbedding := s.needsEmbedding(config)
-	
+
 	if needsEmbedding {
 		vectors, err := s.embedder.Embed(ctx, []string{strings.ReplaceAll(query, "\n", " ")})
 		if err != nil {
@@ -270,9 +270,9 @@ func (s *Searcher) nodeFulltextSearch(ctx context.Context, query string, filters
 	// This would use the driver's fulltext search capabilities
 	// For now, return a basic implementation
 	return s.driver.SearchNodes(ctx, query, groupID, &driver.SearchOptions{
-		Limit:     limit,
+		Limit:       limit,
 		UseFullText: true,
-		NodeTypes: filters.NodeTypes,
+		NodeTypes:   filters.NodeTypes,
 	})
 }
 
@@ -287,9 +287,9 @@ func (s *Searcher) nodeSimilaritySearch(ctx context.Context, queryVector []float
 
 func (s *Searcher) edgeFulltextSearch(ctx context.Context, query string, filters *SearchFilters, groupID string, limit int) ([]*types.Edge, error) {
 	return s.driver.SearchEdges(ctx, query, groupID, &driver.SearchOptions{
-		Limit:     limit,
+		Limit:       limit,
 		UseFullText: true,
-		EdgeTypes: filters.EdgeTypes,
+		EdgeTypes:   filters.EdgeTypes,
 	})
 }
 
