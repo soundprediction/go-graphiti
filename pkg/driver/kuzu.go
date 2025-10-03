@@ -492,16 +492,236 @@ func (k *KuzuDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID string
 	return k.GetNeighbors(ctx, nodeID, groupID, 1)
 }
 
-// SearchNodesByEmbedding performs basic embedding search
+// SearchNodesByEmbedding performs vector similarity search on node embeddings using cosine similarity.
+// This matches the Python implementation in search_utils.py:node_similarity_search()
+// For Kuzu, it uses array_cosine_similarity function on name_embedding field.
 func (k *KuzuDriver) SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error) {
-	// Simplified implementation - would need proper vector search
-	return []*types.Node{}, nil
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Convert float32 embedding to float64 for kuzu parameter
+	embeddingF64 := make([]float64, len(embedding))
+	for i, v := range embedding {
+		embeddingF64[i] = float64(v)
+	}
+
+	// Build the Cypher query matching Python's Kuzu implementation
+	// From search_utils.py:node_similarity_search() for Kuzu provider
+	query := `
+		MATCH (n:Entity)
+		WHERE n.group_id = $group_id
+		WITH n, array_cosine_similarity(n.name_embedding, CAST($search_vector AS FLOAT[` + fmt.Sprintf("%d", len(embedding)) + `])) AS score
+		WHERE score > 0.0
+		RETURN
+			n.uuid AS uuid,
+			n.name AS name,
+			n.group_id AS group_id,
+			n.created_at AS created_at,
+			n.summary AS summary,
+			n.labels AS labels,
+			n.name_embedding AS name_embedding,
+			n.attributes AS attributes,
+			score
+		ORDER BY score DESC
+		LIMIT $limit
+	`
+
+	params := map[string]interface{}{
+		"group_id":      groupID,
+		"search_vector": embeddingF64,
+		"limit":         int64(limit),
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute node embedding search: %w", err)
+	}
+
+	resultList, ok := result.([]map[string]interface{})
+	if !ok || len(resultList) == 0 {
+		return []*types.Node{}, nil
+	}
+
+	var nodes []*types.Node
+	for _, row := range resultList {
+		// Extract data from row
+		uuid, _ := row["uuid"].(string)
+		name, _ := row["name"].(string)
+		groupIDVal, _ := row["group_id"].(string)
+		summary, _ := row["summary"].(string)
+
+		// Handle created_at timestamp
+		var createdAt time.Time
+		if createdAtVal, ok := row["created_at"].(time.Time); ok {
+			createdAt = createdAtVal
+		}
+
+		// Handle labels array
+		var labels []string
+		if labelsVal, ok := row["labels"].([]interface{}); ok {
+			labels = make([]string, len(labelsVal))
+			for i, label := range labelsVal {
+				if labelStr, ok := label.(string); ok {
+					labels[i] = labelStr
+				}
+			}
+		}
+
+		// Handle name_embedding
+		var nameEmbedding []float32
+		if embVal, ok := row["name_embedding"].([]interface{}); ok {
+			nameEmbedding = make([]float32, len(embVal))
+			for i, v := range embVal {
+				if f, ok := v.(float64); ok {
+					nameEmbedding[i] = float32(f)
+				} else if f32, ok := v.(float32); ok {
+					nameEmbedding[i] = f32
+				}
+			}
+		}
+
+		node := &types.Node{
+			ID:        uuid,
+			Name:      name,
+			GroupID:   groupIDVal,
+			CreatedAt: createdAt,
+			Summary:   summary,
+			Type:      types.EntityNodeType,
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
 }
 
-// SearchEdgesByEmbedding performs basic embedding search
+// SearchEdgesByEmbedding performs vector similarity search on edge embeddings using cosine similarity.
+// This matches the Python implementation in search_utils.py:edge_similarity_search()
+// For Kuzu, edges are represented as RelatesToNode_ intermediate nodes with fact_embedding field.
 func (k *KuzuDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Edge, error) {
-	// Simplified implementation - would need proper vector search
-	return []*types.Edge{}, nil
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Convert float32 embedding to float64 for kuzu parameter
+	embeddingF64 := make([]float64, len(embedding))
+	for i, v := range embedding {
+		embeddingF64[i] = float64(v)
+	}
+
+	// Build the Cypher query matching Python's Kuzu implementation for edges
+	// From search_utils.py:edge_similarity_search() for Kuzu provider
+	// Uses RelatesToNode_ intermediate representation
+	query := `
+		MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
+		WHERE e.group_id = $group_id
+		WITH DISTINCT e, n, m, array_cosine_similarity(e.fact_embedding, CAST($search_vector AS FLOAT[` + fmt.Sprintf("%d", len(embedding)) + `])) AS score
+		WHERE score > 0.0
+		RETURN
+			e.uuid AS uuid,
+			e.group_id AS group_id,
+			e.created_at AS created_at,
+			e.name AS name,
+			e.fact AS fact,
+			e.fact_embedding AS fact_embedding,
+			e.episodes AS episodes,
+			e.expired_at AS expired_at,
+			e.valid_at AS valid_at,
+			e.invalid_at AS invalid_at,
+			n.uuid AS source_node_uuid,
+			m.uuid AS target_node_uuid,
+			score
+		ORDER BY score DESC
+		LIMIT $limit
+	`
+
+	params := map[string]interface{}{
+		"group_id":      groupID,
+		"search_vector": embeddingF64,
+		"limit":         int64(limit),
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute edge embedding search: %w", err)
+	}
+
+	resultList, ok := result.([]map[string]interface{})
+	if !ok || len(resultList) == 0 {
+		return []*types.Edge{}, nil
+	}
+
+	var edges []*types.Edge
+	for _, row := range resultList {
+		// Extract data from row
+		uuid, _ := row["uuid"].(string)
+		groupIDVal, _ := row["group_id"].(string)
+		name, _ := row["name"].(string)
+		fact, _ := row["fact"].(string)
+		sourceNodeUUID, _ := row["source_node_uuid"].(string)
+		targetNodeUUID, _ := row["target_node_uuid"].(string)
+
+		// Handle timestamps
+		var createdAt, expiredAt, validAt, invalidAt time.Time
+		if createdAtVal, ok := row["created_at"].(time.Time); ok {
+			createdAt = createdAtVal
+		}
+		if expiredAtVal, ok := row["expired_at"].(time.Time); ok {
+			expiredAt = expiredAtVal
+		}
+		if validAtVal, ok := row["valid_at"].(time.Time); ok {
+			validAt = validAtVal
+		}
+		if invalidAtVal, ok := row["invalid_at"].(time.Time); ok {
+			invalidAt = invalidAtVal
+		}
+
+		// Handle episodes array
+		var episodes []string
+		if episodesVal, ok := row["episodes"].([]interface{}); ok {
+			episodes = make([]string, len(episodesVal))
+			for i, ep := range episodesVal {
+				if epStr, ok := ep.(string); ok {
+					episodes[i] = epStr
+				}
+			}
+		}
+
+		// Handle fact_embedding
+		var factEmbedding []float32
+		if embVal, ok := row["fact_embedding"].([]interface{}); ok {
+			factEmbedding = make([]float32, len(embVal))
+			for i, v := range embVal {
+				if f, ok := v.(float64); ok {
+					factEmbedding[i] = float32(f)
+				} else if f32, ok := v.(float32); ok {
+					factEmbedding[i] = f32
+				}
+			}
+		}
+
+		edge := &types.Edge{
+			BaseEdge: types.BaseEdge{
+				ID:           uuid,
+				GroupID:      groupIDVal,
+				SourceNodeID: sourceNodeUUID,
+				TargetNodeID: targetNodeUUID,
+				CreatedAt:    createdAt,
+			},
+			Name:          name,
+			Fact:          fact,
+			FactEmbedding: factEmbedding,
+			Episodes:      episodes,
+			ExpiredAt:     &expiredAt,
+			ValidAt:       &validAt,
+			InvalidAt:     &invalidAt,
+		}
+
+		edges = append(edges, edge)
+	}
+
+	return edges, nil
 }
 
 // SearchNodes performs text-based search on nodes
@@ -616,12 +836,164 @@ func (k *KuzuDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error
 
 // GetNodesInTimeRange retrieves nodes in a time range
 func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error) {
-	return []*types.Node{}, nil // Placeholder
+	query := `
+		MATCH (n:Entity)
+		WHERE n.group_id = $group_id
+		  AND n.created_at >= $start
+		  AND n.created_at <= $end
+		RETURN n.uuid AS uuid,
+		       n.name AS name,
+		       n.summary AS summary,
+		       n.group_id AS group_id,
+		       n.created_at AS created_at,
+		       n.name_embedding AS name_embedding
+	`
+
+	params := map[string]interface{}{
+		"group_id": groupID,
+		"start":    start.Format(time.RFC3339),
+		"end":      end.Format(time.RFC3339),
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute GetNodesInTimeRange query: %w", err)
+	}
+
+	rows, ok := result.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result type: %T", result)
+	}
+
+	nodes := make([]*types.Node, 0, len(rows))
+	for _, row := range rows {
+		node := &types.Node{}
+
+		if uuid, ok := row["uuid"].(string); ok {
+			node.ID = uuid
+		}
+		if name, ok := row["name"].(string); ok {
+			node.Name = name
+		}
+		if summary, ok := row["summary"].(string); ok {
+			node.Summary = summary
+		}
+		if groupID, ok := row["group_id"].(string); ok {
+			node.GroupID = groupID
+		}
+		if createdAt, ok := row["created_at"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, createdAt); err == nil {
+				node.CreatedAt = t
+			}
+		}
+		if embedding, ok := row["name_embedding"].([]interface{}); ok {
+			node.NameEmbedding = make([]float32, len(embedding))
+			for i, v := range embedding {
+				if f, ok := v.(float64); ok {
+					node.NameEmbedding[i] = float32(f)
+				}
+			}
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
 }
 
 // GetEdgesInTimeRange retrieves edges in a time range
 func (k *KuzuDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error) {
-	return []*types.Edge{}, nil // Placeholder
+	query := `
+		MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
+		WHERE e.group_id = $group_id
+		  AND e.created_at >= $start
+		  AND e.created_at <= $end
+		RETURN DISTINCT e.uuid AS uuid,
+		       e.fact AS fact,
+		       e.created_at AS created_at,
+		       e.expired_at AS expired_at,
+		       e.invalid_at AS invalid_at,
+		       e.episodes AS episodes,
+		       e.group_id AS group_id,
+		       e.fact_embedding AS fact_embedding,
+		       n.uuid AS source_node_id,
+		       m.uuid AS target_node_id
+	`
+
+	params := map[string]interface{}{
+		"group_id": groupID,
+		"start":    start.Format(time.RFC3339),
+		"end":      end.Format(time.RFC3339),
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute GetEdgesInTimeRange query: %w", err)
+	}
+
+	rows, ok := result.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result type: %T", result)
+	}
+
+	edges := make([]*types.Edge, 0, len(rows))
+	for _, row := range rows {
+		edge := &types.Edge{
+			BaseEdge: types.BaseEdge{},
+		}
+
+		if uuid, ok := row["uuid"].(string); ok {
+			edge.ID = uuid
+		}
+		if fact, ok := row["fact"].(string); ok {
+			edge.Name = fact
+			edge.Fact = fact
+		}
+		if createdAt, ok := row["created_at"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, createdAt); err == nil {
+				edge.CreatedAt = t
+			}
+		}
+		if expiredAt, ok := row["expired_at"].(string); ok && expiredAt != "" {
+			if t, err := time.Parse(time.RFC3339, expiredAt); err == nil {
+				edge.ExpiredAt = &t
+			}
+		}
+		if invalidAt, ok := row["invalid_at"].(string); ok && invalidAt != "" {
+			if t, err := time.Parse(time.RFC3339, invalidAt); err == nil {
+				edge.InvalidAt = &t
+			}
+		}
+		if episodes, ok := row["episodes"].([]interface{}); ok {
+			edge.Episodes = make([]string, len(episodes))
+			for i, ep := range episodes {
+				if s, ok := ep.(string); ok {
+					edge.Episodes[i] = s
+				}
+			}
+		}
+		if groupID, ok := row["group_id"].(string); ok {
+			edge.GroupID = groupID
+		}
+		if sourceNodeID, ok := row["source_node_id"].(string); ok {
+			edge.SourceNodeID = sourceNodeID
+		}
+		if targetNodeID, ok := row["target_node_id"].(string); ok {
+			edge.TargetNodeID = targetNodeID
+		}
+		if embedding, ok := row["fact_embedding"].([]interface{}); ok {
+			edge.FactEmbedding = make([]float32, len(embedding))
+			for i, v := range embedding {
+				if f, ok := v.(float64); ok {
+					edge.FactEmbedding[i] = float32(f)
+				}
+			}
+		}
+
+		edges = append(edges, edge)
+	}
+
+	return edges, nil
 }
 
 // GetCommunities retrieves community nodes

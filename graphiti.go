@@ -1126,6 +1126,14 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 			MMRLambda:     0.5, // Default MMR lambda
 			MaxDepth:      config.CenterNodeDistance,
 		}
+	} else {
+		searchConfig.NodeConfig = &search.NodeSearchConfig{
+			SearchMethods: []search.SearchMethod{search.CosineSimilarity},
+			Reranker:      search.RRFRerankType,
+			MinScore:      0.0,
+			MMRLambda:     0.5,
+			MaxDepth:      config.CenterNodeDistance,
+		}
 	}
 
 	// Convert edge config if present
@@ -1135,6 +1143,14 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 			Reranker:      convertReranker(config.EdgeConfig.Reranker),
 			MinScore:      config.EdgeConfig.MinScore,
 			MMRLambda:     0.5, // Default MMR lambda
+			MaxDepth:      config.CenterNodeDistance,
+		}
+	} else {
+		searchConfig.EdgeConfig = &search.EdgeSearchConfig{
+			SearchMethods: []search.SearchMethod{search.CosineSimilarity},
+			Reranker:      search.RRFRerankType,
+			MinScore:      0.0,
+			MMRLambda:     0.5,
 			MaxDepth:      config.CenterNodeDistance,
 		}
 	}

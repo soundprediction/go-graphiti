@@ -10,10 +10,13 @@ This document tracks the mapping between the original Python Graphiti methods an
 
 ### Porting Progress Summary
 
-**Total Methods Tracked:** 244 methods/components
-- ✅ **Implemented:** 232 methods (95.1%)
+**Total Methods Tracked:** 246 methods/components
+- ✅ **Implemented:** 234 methods (95.1%)
 - ❌ **Missing:** 8 methods (3.3%)
 - ⚠️ **Partial:** 4 methods (1.6%)
+
+**Recently Completed (2025-10-03):**
+- Kuzu driver embedding search methods (SearchNodesByEmbedding, SearchEdgesByEmbedding)
 
 **Recently Completed (2025-09-20):**
 - All missing LLM clients (Anthropic, Gemini, Groq, Azure OpenAI)
@@ -22,6 +25,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 - Comprehensive Python method linking and date tracking
 
 ### Implementation Date Legend
+- **2025-10-03:** Kuzu driver embedding search - implemented SearchNodesByEmbedding and SearchEdgesByEmbedding based on Python's node_similarity_search and edge_similarity_search functions
 - **2025-09-20:** Major implementation push - added missing LLM clients (Anthropic, Gemini, Groq, Azure), embedder clients (Azure, Gemini, Voyage), cross encoder functionality (BGE, Gemini rerankers), and get_token_count utility
 - Methods marked as "implemented" without specific dates were completed prior to version tracking implementation
 
@@ -211,6 +215,24 @@ This document tracks the mapping between the original Python Graphiti methods an
 | Python Class | Go Implementation | File Location | Status |
 |--------------|-------------------|---------------|--------|
 | `NeptuneDriver` | N/A | N/A | ❌ Missing |
+
+### driver/kuzu_driver.py
+
+| Python Method | Go Method | File Location | Status | Notes |
+|---------------|-----------|---------------|--------|-------|
+| [`KuzuDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/kuzu_driver.py#L93) class | [`KuzuDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L84) struct | `pkg/driver/kuzu.go` | ✅ Implemented | |
+| All GraphDriver interface methods | Same method names | `pkg/driver/kuzu.go` | ✅ Implemented | |
+
+### Additional Kuzu Driver Methods (Go-specific)
+
+These methods implement vector similarity search based on Python's `search_utils.py` functions but are exposed directly on the Kuzu driver for efficiency:
+
+| Python Function (search_utils.py) | Go Method (KuzuDriver) | File Location | Status | Implementation Date | Notes |
+|---------------|-----------|---------------|--------|---------------------|-------|
+| [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L728-869) (Kuzu provider) | [`SearchNodesByEmbedding()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L495-601) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Performs cosine similarity search on Entity.name_embedding using Kuzu's array_cosine_similarity function |
+| [`edge_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L312-477) (Kuzu provider) | [`SearchEdgesByEmbedding()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L603-725) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Performs cosine similarity search on RelatesToNode_.fact_embedding using Kuzu's array_cosine_similarity function |
+| [`get_nodes_in_time_range()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L395-424) (Neo4j reference) | [`GetNodesInTimeRange()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L837-902) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Retrieves Entity nodes filtered by created_at within time range and group_id |
+| [`get_edges_in_time_range()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L426-459) (Neo4j reference) | [`GetEdgesInTimeRange()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L904-997) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Retrieves RelatesToNode_ edges filtered by created_at within time range and group_id |
 
 
 ## Node and Edge Types
