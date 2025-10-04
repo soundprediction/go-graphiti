@@ -42,7 +42,7 @@
 //		},
 //	}
 //
-//	err = client.Add(ctx, episodes)
+//	err = client.Add(ctx, episodes, nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}

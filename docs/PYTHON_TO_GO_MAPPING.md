@@ -177,10 +177,10 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`get_communities_by_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L121) | [`GetCommunitiesByNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L333) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
 | [`edge_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L131) | [`EdgeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L178) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
 | [`edge_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L242) | [`EdgeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L208) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
-| [`edge_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L371) | [`EdgeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L91) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-09-20) | |
+| [`edge_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L371) | [`EdgeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L162) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-10-04) | Full Cypher implementation with provider-specific handling |
 | [`node_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L460) | [`NodeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L119) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
 | [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L548) | [`NodeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L150) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
-| [`node_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L623) | [`NodeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L20) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-09-20) | |
+| [`node_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L623) | [`NodeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L23) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-10-04) | Full Cypher implementation matching Python, handles Kuzu/Neptune/Neo4j/FalkorDB |
 | [`hybrid_node_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L670) | [`HybridNodeSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L236) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
 | [`get_relevant_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L722) | [`GetRelevantNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L126) | `pkg/search/specialized_search.go` | ✅ Implemented (2025-09-20) | Different signature than Python |
 | [`get_relevant_edges()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L784) | [`GetRelevantEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L188) | `pkg/search/specialized_search.go` | ✅ Implemented (2025-09-20) | Different signature than Python |
@@ -928,8 +928,99 @@ When adding new Python-to-Go mappings:
 9. **Bulk Operations** - Complete bulk processing toolkit with node/edge extraction, deduplication, and batch operations
 10. **Maintenance Operations** - Complete maintenance toolkit for nodes, edges, temporal operations, and graph data management
 
+## Go-Specific Additions (Not in Python)
+
+The following classes and functions have been added to the Go implementation but do not exist in the Python version. These provide additional utility and convenience methods.
+
+### Graph Traversal Utilities (`pkg/search/graph_traversal.go`)
+
+**Implemented (2025-10-04):**
+
+| Go Type/Method | Description | Status | Notes |
+|----------------|-------------|--------|--------|
+| `PathFinder` struct | Utility for finding paths between nodes | ⚠️ Partial | Cypher queries written but path parsing not implemented |
+| `PathFinder.FindShortestPath()` | Find shortest path between two nodes | ⚠️ Partial | Query executes but result parsing needs implementation |
+| `PathFinder.FindAllPaths()` | Find all paths between nodes up to max depth | ⚠️ Partial | Query executes but result parsing needs implementation |
+| `PathFinder.GetNeighbors()` | Get direct neighbors of a node | ✅ Implemented | Supports directional queries (in/out/both) |
+| `CommunityTraversal` struct | Utility for community graph operations | ✅ Implemented | Complements Python community search functions |
+| `CommunityTraversal.GetCommunityMembers()` | Get all members of a community | ✅ Implemented | Uses HAS_MEMBER edges |
+| `CommunityTraversal.GetNodeCommunities()` | Get communities a node belongs to | ✅ Implemented | Reverse community lookup |
+| `CommunityTraversal.GetInterCommunityEdges()` | Get edges between communities | ✅ Implemented | Cross-community relationship analysis |
+| `TemporalTraversal` struct | Time-aware graph traversal utilities | ✅ Implemented | Temporal graph analysis |
+| `TemporalTraversal.GetNodesInTimeRange()` | Get nodes created in time range | ✅ Implemented | Temporal filtering on created_at |
+| `TemporalTraversal.GetEdgesInTimeRange()` | Get edges created in time range | ✅ Implemented | Temporal edge filtering |
+| `TemporalTraversal.GetTemporalNeighbors()` | Get neighbors at a point in time | ✅ Implemented | Uses expired_at for temporal validity |
+| `convertRecordsToNodes()` | Helper to parse node records | ✅ Implemented | Handles deduplication and type conversion |
+| `convertRecordsToEdges()` | Helper to parse edge records | ✅ Implemented | Creates EntityEdge instances from records |
+| `getRelatedNodes()` | Get nodes directly related to a node | ✅ Implemented | Used internally by BFS, handles Kuzu intermediate nodes |
+| `getEdgesForNode()` | Get edges connected to a node | ✅ Implemented | Used internally by BFS, provider-specific queries |
+| `stringValue()` | Safe string extraction helper | ✅ Implemented | Type-safe conversion from interface{} |
+
+**Notes on Path Finding:**
+- The `FindShortestPath` and `FindAllPaths` methods execute the correct Cypher queries using the `shortestPath()` function
+- However, parsing the returned path structures (nodes and relationships arrays) is not yet implemented
+- To complete implementation, need to:
+  1. Parse the `nodes(path)` result into `[]*types.Node`
+  2. Parse the `relationships(path)` result into `[]*types.Edge`
+  3. Handle multiple paths for `FindAllPaths`
+
+**Driver Requirements:**
+- No additional driver methods required - all functions use existing `ExecuteQuery()` interface
+- All provider-specific query differences are handled within the traversal functions themselves
+- Kuzu requires special handling for RelatesToNode_ intermediate nodes (depth * 2)
+
+### Embedding Generation (`graphiti.go`)
+
+**Implemented (2025-10-04):**
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| `AddEpisodeOptions.GenerateEmbeddings` | Flag to auto-generate embeddings during ingestion | ✅ Implemented |
+| Auto name_embedding | Generates Entity.name_embedding from name field | ✅ Implemented |
+| Auto fact_embedding | Generates Edge.fact_embedding from fact field | ✅ Implemented |
+
+**Notes:**
+- Python graphiti generates embeddings via the node/edge extraction process
+- Go implementation provides explicit control via options flag
+- Allows for deferred embedding generation or batch backfilling
+- CLI command `set-graphiti-embeddings` backfills missing embeddings
+
+### Search Enhancements
+
+**Implemented (2025-10-04):**
+
+| Enhancement | Description | Status |
+|-------------|-------------|--------|
+| BFS with auto-origin collection | BFS automatically uses BM25/cosine results as origins | ✅ Implemented |
+| Comprehensive search config | All search methods configurable via SearchConfig | ✅ Implemented |
+| Provider-aware BFS | BFS queries adapt to Kuzu/Neo4j/Neptune/FalkorDB | ✅ Implemented |
+
+## Python Functions Not Yet Ported
+
+The following Python functions exist but have not been implemented in Go:
+
+### Search Functions
+
+| Python Method | Purpose | Priority | Notes |
+|---------------|---------|----------|--------|
+| `get_episodes_by_mentions()` | Get episodes that mention given nodes/edges | Medium | Used by search pipeline |
+| `get_mentioned_nodes()` | Get nodes mentioned by episodes | Medium | Reverse episode lookup |
+| `get_communities_by_nodes()` | Get communities containing nodes | Low | Community analysis |
+
+### Path Analysis
+
+Note: Python graphiti does not have PathFinder-style utilities. The Go implementation adds these for convenience.
+
 ## Last Updated
 
-This document was last updated: 2025-01-20
+This document was last updated: 2025-10-04
+
+**Recent Updates (2025-10-04):**
+- Implemented BreadthFirstSearch (BFS) for nodes and edges
+- Added graph traversal utilities (PathFinder, CommunityTraversal, TemporalTraversal)
+- Implemented auto-embedding generation with `GenerateEmbeddings` flag
+- Added CLI command for backfilling embeddings (`set-graphiti-embeddings`)
+- Fixed all BFS placeholder implementations with proper Cypher queries
+- Updated search integration to collect BFS origin nodes automatically
 
 *Note: This mapping reflects the current state of the go-graphiti implementation. Status may change as development continues.*

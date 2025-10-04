@@ -202,6 +202,7 @@ func (s *Searcher) needsEmbedding(config *SearchConfig) bool {
 
 func (s *Searcher) searchNodes(ctx context.Context, query string, queryVector []float32, config *NodeSearchConfig, filters *SearchFilters, groupID string, limit int) ([]*types.Node, []float64, error) {
 	searchResults := make([][]*types.Node, 0)
+	var bfsOriginNodes []string
 
 	// Execute different search methods
 	for _, method := range config.SearchMethods {
@@ -212,6 +213,10 @@ func (s *Searcher) searchNodes(ctx context.Context, query string, queryVector []
 				return nil, nil, fmt.Errorf("BM25 node search failed: %w", err)
 			}
 			searchResults = append(searchResults, nodes)
+			// Collect UUIDs for BFS
+			for _, node := range nodes {
+				bfsOriginNodes = append(bfsOriginNodes, node.ID)
+			}
 
 		case CosineSimilarity:
 			if len(queryVector) == 0 {
@@ -222,10 +227,47 @@ func (s *Searcher) searchNodes(ctx context.Context, query string, queryVector []
 				return nil, nil, fmt.Errorf("similarity node search failed: %w", err)
 			}
 			searchResults = append(searchResults, nodes)
+			// Collect UUIDs for BFS
+			for _, node := range nodes {
+				bfsOriginNodes = append(bfsOriginNodes, node.ID)
+			}
 
 		case BreadthFirstSearch:
-			// BFS requires origin nodes, implement if needed
+			// BFS will be executed after other methods if origin nodes are available
 			continue
+		}
+	}
+
+	// If BFS is requested and we have origin nodes from other searches, execute BFS
+	hasBFS := false
+	for _, method := range config.SearchMethods {
+		if method == BreadthFirstSearch {
+			hasBFS = true
+			break
+		}
+	}
+
+	if hasBFS && len(bfsOriginNodes) > 0 {
+		// Create search utilities for BFS
+		searchUtils := NewSearchUtilities(s.driver)
+		maxDepth := config.MaxDepth
+		if maxDepth == 0 {
+			maxDepth = MaxSearchDepth
+		}
+
+		bfsOptions := &BFSSearchOptions{
+			MaxDepth:      maxDepth,
+			Limit:         limit * 2,
+			SearchFilters: filters,
+			GroupIDs:      []string{groupID},
+		}
+
+		bfsNodes, err := searchUtils.NodeBFSSearch(ctx, bfsOriginNodes, bfsOptions)
+		if err != nil {
+			return nil, nil, fmt.Errorf("BFS node search failed: %w", err)
+		}
+		if len(bfsNodes) > 0 {
+			searchResults = append(searchResults, bfsNodes)
 		}
 	}
 
@@ -235,6 +277,7 @@ func (s *Searcher) searchNodes(ctx context.Context, query string, queryVector []
 
 func (s *Searcher) searchEdges(ctx context.Context, query string, queryVector []float32, config *EdgeSearchConfig, filters *SearchFilters, groupID string, limit int) ([]*types.Edge, []float64, error) {
 	searchResults := make([][]*types.Edge, 0)
+	var bfsOriginNodes []string
 
 	// Execute different search methods
 	for _, method := range config.SearchMethods {
@@ -245,6 +288,10 @@ func (s *Searcher) searchEdges(ctx context.Context, query string, queryVector []
 				return nil, nil, fmt.Errorf("BM25 edge search failed: %w", err)
 			}
 			searchResults = append(searchResults, edges)
+			// Collect source node UUIDs for BFS
+			for _, edge := range edges {
+				bfsOriginNodes = append(bfsOriginNodes, edge.SourceID)
+			}
 
 		case CosineSimilarity:
 			if len(queryVector) == 0 {
@@ -255,10 +302,47 @@ func (s *Searcher) searchEdges(ctx context.Context, query string, queryVector []
 				return nil, nil, fmt.Errorf("similarity edge search failed: %w", err)
 			}
 			searchResults = append(searchResults, edges)
+			// Collect source node UUIDs for BFS
+			for _, edge := range edges {
+				bfsOriginNodes = append(bfsOriginNodes, edge.SourceID)
+			}
 
 		case BreadthFirstSearch:
-			// BFS requires origin nodes, implement if needed
+			// BFS will be executed after other methods if origin nodes are available
 			continue
+		}
+	}
+
+	// If BFS is requested and we have origin nodes from other searches, execute BFS
+	hasBFS := false
+	for _, method := range config.SearchMethods {
+		if method == BreadthFirstSearch {
+			hasBFS = true
+			break
+		}
+	}
+
+	if hasBFS && len(bfsOriginNodes) > 0 {
+		// Create search utilities for BFS
+		searchUtils := NewSearchUtilities(s.driver)
+		maxDepth := config.MaxDepth
+		if maxDepth == 0 {
+			maxDepth = MaxSearchDepth
+		}
+
+		bfsOptions := &BFSSearchOptions{
+			MaxDepth:      maxDepth,
+			Limit:         limit * 2,
+			SearchFilters: filters,
+			GroupIDs:      []string{groupID},
+		}
+
+		bfsEdges, err := searchUtils.EdgeBFSSearch(ctx, bfsOriginNodes, bfsOptions)
+		if err != nil {
+			return nil, nil, fmt.Errorf("BFS edge search failed: %w", err)
+		}
+		if len(bfsEdges) > 0 {
+			searchResults = append(searchResults, bfsEdges)
 		}
 	}
 

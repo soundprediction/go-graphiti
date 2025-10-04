@@ -145,7 +145,7 @@ func main() {
 	}
 
 	fmt.Println("Adding episodes to the knowledge graph...")
-	if err := client.Add(ctx, episodes); err != nil {
+	if err := client.Add(ctx, episodes, nil); err != nil {
 		fmt.Printf("Warning: Add operation failed: %v\n", err)
 		fmt.Println("This is expected if the implementation is still in development.")
 	} else {
