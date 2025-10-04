@@ -293,7 +293,7 @@ func runGraphitiIntegrationExample() error {
 
 	ctx := context.Background()
 	fmt.Println("Adding episodes to knowledge graph...")
-	if _, err := graphitiClient.Add(ctx, episodes); err != nil {
+	if _, err := graphitiClient.Add(ctx, episodes, nil); err != nil {
 		// Note: This might fail if the LLM processing pipeline isn't fully implemented yet
 		fmt.Printf("Warning: Episode processing not yet implemented: %v\n", err)
 	} else {

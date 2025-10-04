@@ -47,7 +47,8 @@ func (w *driverWrapper) Provider() types.GraphProvider {
 type Graphiti interface {
 	// Add processes and adds new episodes to the knowledge graph.
 	// Episodes can be text, conversations, or any temporal data.
-	Add(ctx context.Context, episodes []types.Episode) (*types.AddBulkEpisodeResults, error)
+	// Options parameter is optional and can be nil for default behavior.
+	Add(ctx context.Context, episodes []types.Episode, options *AddEpisodeOptions) (*types.AddBulkEpisodeResults, error)
 
 	// AddEpisode processes and adds a single episode to the knowledge graph.
 	// This is equivalent to the Python add_episode method.

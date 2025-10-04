@@ -145,7 +145,7 @@ func main() {
 
 	// Note: In current implementation, this will demonstrate the API
 	// but actual storage won't work until Kuzu library is available
-	err = client.Add(ctx, episodes)
+	err = client.Add(ctx, episodes, nil)
 	if err != nil {
 		log.Printf("⚠️  Expected error with stub implementation: %v", err)
 		log.Println("   This will work once the Kuzu Go library is available")

@@ -260,7 +260,7 @@ func TestClient_Add(t *testing.T) {
 			GroupID:   "test-group",
 		},
 	}
-	_, err = client.Add(ctx, episodes)
+	_, err = client.Add(ctx, episodes, nil)
 	// With mock driver, this should work without error
 	assert.NoError(t, err)
 }
@@ -334,7 +334,7 @@ func TestClient_AddBulk(t *testing.T) {
 	}
 
 	// Test bulk add operations
-	_, err := client.Add(ctx, episodes)
+	_, err := client.Add(ctx, episodes, nil)
 	assert.NoError(t, err)
 }
 
@@ -675,7 +675,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 		}
 
 		// Test Go Add with multiple episodes
-		result, err := client.Add(ctx, episodes)
+		result, err := client.Add(ctx, episodes, nil)
 		assert.NoError(t, err, "Go Add should succeed with multiple episodes")
 		assert.NotNil(t, result, "Result should not be nil")
 
@@ -775,7 +775,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 			{ID: "seq-003", Name: "Third", Content: "Third episode", Reference: now.Add(2*time.Minute), CreatedAt: now.Add(2*time.Minute), GroupID: groupID},
 		}
 
-		result, err := client.Add(ctx, episodes)
+		result, err := client.Add(ctx, episodes, nil)
 		assert.NoError(t, err)
 		assert.Len(t, result.Episodes, 3, "Should have processed all episodes")
 
