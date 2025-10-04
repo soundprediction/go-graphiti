@@ -188,33 +188,98 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 }
 
 // AddEpisode processes and adds a single episode to the knowledge graph.
+// This implementation follows the Python graphiti.add_episode() flow exactly.
 func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
 
-	// Check if episode with same UUID already exists
-	existingNode, err := c.driver.GetNode(ctx, episode.ID, episode.GroupID)
-	if err == nil && existingNode != nil {
-		// Episode exists - check overwrite option
-		if !options.OverwriteExisting {
-			// Default behavior: skip existing episode
-			return &types.AddEpisodeResults{
-				Episode:        existingNode,
-				EpisodicEdges:  []*types.Edge{},
-				Nodes:          []*types.Node{},
-				Edges:          []*types.Edge{},
-				Communities:    []*types.Node{},
-				CommunityEdges: []*types.Edge{},
-			}, nil
+	now := time.Now()
+
+	// PHASE 1: VALIDATION
+	// Validate entity types
+	if err := utils.ValidateEntityTypes(options.EntityTypes); err != nil {
+		return nil, fmt.Errorf("invalid entity types: %w", err)
+	}
+
+	// Validate excluded entity types
+	entityTypeNames := make([]string, 0, len(options.EntityTypes))
+	for name := range options.EntityTypes {
+		entityTypeNames = append(entityTypeNames, name)
+	}
+	if err := utils.ValidateExcludedEntityTypes(options.ExcludedEntityTypes, entityTypeNames); err != nil {
+		return nil, fmt.Errorf("invalid excluded entity types: %w", err)
+	}
+
+	// Validate and set group ID
+	if err := utils.ValidateGroupID(episode.GroupID); err != nil {
+		return nil, fmt.Errorf("invalid group ID: %w", err)
+	}
+	if episode.GroupID == "" {
+		episode.GroupID = utils.GetDefaultGroupID(c.driver.Provider())
+	}
+
+	// PHASE 2: CONTEXT RETRIEVAL
+	// Get previous episodes for context
+	var previousEpisodes []*types.Node
+	var err error
+
+	if len(options.PreviousEpisodeUUIDs) > 0 {
+		// Get specific episodes by UUIDs
+		for _, uuid := range options.PreviousEpisodeUUIDs {
+			episodeNode, err := c.driver.GetNode(ctx, uuid, episode.GroupID)
+			if err == nil && episodeNode != nil {
+				previousEpisodes = append(previousEpisodes, episodeNode)
+			}
 		}
-		// OverwriteExisting is true - remove existing episode first
-		if err := c.RemoveEpisode(ctx, episode.ID); err != nil {
-			return nil, fmt.Errorf("failed to remove existing episode %s: %w", episode.ID, err)
+	} else {
+		// Get recent episodes for context (simplified - using group ID and limit)
+		previousEpisodes, err = c.GetEpisodes(ctx, episode.GroupID, search.RelevantSchemaLimit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve previous episodes: %w", err)
+		}
+	}
+
+	// Get or create episode node
+	var episodeNode *types.Node
+	if episode.ID != "" {
+		// Check if episode with same UUID already exists
+		existingNode, err := c.driver.GetNode(ctx, episode.ID, episode.GroupID)
+		if err == nil && existingNode != nil {
+			if !options.OverwriteExisting {
+				// Default behavior: skip existing episode
+				return &types.AddEpisodeResults{
+					Episode:        existingNode,
+					EpisodicEdges:  []*types.Edge{},
+					Nodes:          []*types.Node{},
+					Edges:          []*types.Edge{},
+					Communities:    []*types.Node{},
+					CommunityEdges: []*types.Edge{},
+				}, nil
+			}
+			// OverwriteExisting is true - remove existing episode first
+			if err := c.RemoveEpisode(ctx, episode.ID); err != nil {
+				return nil, fmt.Errorf("failed to remove existing episode %s: %w", episode.ID, err)
+			}
+		}
+		episodeNode, err = c.driver.GetNode(ctx, episode.ID, episode.GroupID)
+		if err != nil || episodeNode == nil {
+			// Create new episode node
+			episodeNode, err = c.createEpisodeNode(ctx, episode, options)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create episode node: %w", err)
+			}
+		}
+	} else {
+		// Create new episode node
+		episodeNode, err = c.createEpisodeNode(ctx, episode, options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create episode node: %w", err)
 		}
 	}
 
 	result := &types.AddEpisodeResults{
+		Episode:        episodeNode,
 		EpisodicEdges:  []*types.Edge{},
 		Nodes:          []*types.Node{},
 		Edges:          []*types.Edge{},
@@ -222,84 +287,139 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 		CommunityEdges: []*types.Edge{},
 	}
 
-	// 1. Create episode node in graph
-	episodeNode, err := c.createEpisodeNode(ctx, episode, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create episode node: %w", err)
-	}
-	result.Episode = episodeNode
+	// Initialize maintenance operations
+	nodeOps := maintenance.NewNodeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
 
-	// 2. Extract entities from episode content if LLM is available
+	// PHASE 3: ENTITY EXTRACTION
 	var extractedNodes []*types.Node
 	if c.llm != nil {
-		extractedNodes, err = c.extractEntities(ctx, episode)
+		extractedNodes, err = nodeOps.ExtractNodes(ctx, episodeNode, previousEpisodes,
+			options.EntityTypes, options.ExcludedEntityTypes)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract entities: %w", err)
+			return nil, fmt.Errorf("failed to extract nodes: %w", err)
 		}
 	}
 
-	// 3. Deduplicate and store nodes (with embedding generation if enabled)
-	finalNodes, err := c.deduplicateAndStoreNodes(ctx, extractedNodes, episode.GroupID, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to deduplicate and store nodes: %w", err)
-	}
-	result.Nodes = finalNodes
+	// PHASE 4: ENTITY RESOLUTION & DEDUPLICATION
+	var resolvedNodes []*types.Node
+	var uuidMap map[string]string
+	var duplicatePairs []maintenance.NodePair
 
-	// 4. Extract relationships between entities if LLM is available
-	var extractedEdges []*types.Edge
-	if c.llm != nil && len(finalNodes) > 1 {
-		extractedEdges, err = c.extractRelationships(ctx, episode, finalNodes)
+	if len(extractedNodes) > 0 {
+		resolvedNodes, uuidMap, duplicatePairs, err = nodeOps.ResolveExtractedNodes(ctx,
+			extractedNodes, episodeNode, previousEpisodes, options.EntityTypes)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract relationships: %w", err)
+			return nil, fmt.Errorf("failed to resolve nodes: %w", err)
 		}
-	}
 
-	// 5. Store edges in graph (with fact embedding generation if enabled)
-	for _, edge := range extractedEdges {
-		// Generate fact_embedding if GenerateEmbeddings is enabled
-		if options.GenerateEmbeddings && c.embedder != nil && edge.Fact != "" && len(edge.FactEmbedding) == 0 {
-			factEmbedding, err := c.embedder.EmbedSingle(ctx, edge.Fact)
+		// Build and store duplicate edges
+		if len(duplicatePairs) > 0 {
+			duplicateEdges, err := edgeOps.BuildDuplicateOfEdges(ctx, episodeNode, now, duplicatePairs)
 			if err != nil {
-				return nil, fmt.Errorf("failed to generate fact embedding for edge %s: %w", edge.BaseEdge.ID, err)
+				return nil, fmt.Errorf("failed to build duplicate edges: %w", err)
 			}
-			edge.FactEmbedding = factEmbedding
-		}
-
-		if err := c.driver.UpsertEdge(ctx, edge); err != nil {
-			return nil, fmt.Errorf("failed to store edge %s: %w", edge.BaseEdge.ID, err)
+			for _, edge := range duplicateEdges {
+				if err := c.driver.UpsertEdge(ctx, edge); err != nil {
+					return nil, fmt.Errorf("failed to store duplicate edge: %w", err)
+				}
+			}
 		}
 	}
-	result.Edges = extractedEdges
 
-	// 6. Create episodic edges connecting episode to extracted entities
-	for _, node := range finalNodes {
-		episodeEdge := types.NewEntityEdge(
-			generateID(),
-			episodeNode.ID,
-			node.ID,
-			episode.GroupID,
-			"MENTIONED_IN",
-			types.EpisodicEdgeType,
-		)
-		episodeEdge.UpdatedAt = time.Now()
-		episodeEdge.ValidFrom = episode.Reference
-		episodeEdge.Summary = "Entity mentioned in episode"
-
-		if err := c.driver.UpsertEdge(ctx, episodeEdge); err != nil {
-			return nil, fmt.Errorf("failed to create episodic edge: %w", err)
+	// PHASE 5: RELATIONSHIP EXTRACTION
+	var extractedEdges []*types.Edge
+	if c.llm != nil && len(resolvedNodes) > 0 {
+		// Create edge type map if needed
+		edgeTypeMap := options.EdgeTypeMap
+		if edgeTypeMap == nil && options.EdgeTypes != nil {
+			edgeTypeMap = make(map[string][]string)
+			edgeTypeNames := make([]string, 0, len(options.EdgeTypes))
+			for edgeType := range options.EdgeTypes {
+				edgeTypeNames = append(edgeTypeNames, edgeType)
+			}
+			edgeTypeMap["Entity_Entity"] = edgeTypeNames
 		}
-		result.EpisodicEdges = append(result.EpisodicEdges, episodeEdge)
+
+		extractedEdges, err = edgeOps.ExtractEdges(ctx, episodeNode, resolvedNodes,
+			previousEpisodes, edgeTypeMap, episode.GroupID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract edges: %w", err)
+		}
 	}
 
-	// 7. Update communities if requested
+	// PHASE 6: RELATIONSHIP RESOLUTION & TEMPORAL INVALIDATION
+	var resolvedEdges []*types.Edge
+	var invalidatedEdges []*types.Edge
+
+	if len(extractedEdges) > 0 {
+		// Resolve edge pointers using uuid map from node resolution
+		utils.ResolveEdgePointers(extractedEdges, uuidMap)
+
+		// Resolve extracted edges (dedupe + invalidation)
+		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
+			extractedEdges, episodeNode, resolvedNodes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve edges: %w", err)
+		}
+	}
+
+	// PHASE 7: ATTRIBUTE EXTRACTION
+	var hydratedNodes []*types.Node
+	if len(resolvedNodes) > 0 {
+		hydratedNodes, err = nodeOps.ExtractAttributesFromNodes(ctx,
+			resolvedNodes, episodeNode, previousEpisodes, options.EntityTypes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract attributes: %w", err)
+		}
+	}
+
+	// PHASE 8: BUILD EPISODIC EDGES
+	var episodicEdges []*types.Edge
+	if len(hydratedNodes) > 0 {
+		episodicEdges, err = edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, episodeNode.ID, now)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build episodic edges: %w", err)
+		}
+
+		// Store entity edge UUIDs on episode node
+		entityEdgeUUIDs := make([]string, 0, len(resolvedEdges)+len(invalidatedEdges))
+		for _, edge := range resolvedEdges {
+			entityEdgeUUIDs = append(entityEdgeUUIDs, edge.ID)
+		}
+		for _, edge := range invalidatedEdges {
+			entityEdgeUUIDs = append(entityEdgeUUIDs, edge.ID)
+		}
+		if episodeNode.Metadata == nil {
+			episodeNode.Metadata = make(map[string]interface{})
+		}
+		episodeNode.Metadata["entity_edges"] = entityEdgeUUIDs
+	}
+
+	// PHASE 9: BULK PERSISTENCE
+	allEdges := append(resolvedEdges, invalidatedEdges...)
+
+	// Use bulk operations for efficiency
+	_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
+		[]*types.Node{episodeNode},
+		episodicEdges,
+		hydratedNodes,
+		allEdges,
+		c.embedder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bulk persist data: %w", err)
+	}
+
+	result.Nodes = hydratedNodes
+	result.Edges = allEdges
+	result.EpisodicEdges = episodicEdges
+
+	// PHASE 10: COMMUNITY UPDATE
 	if options.UpdateCommunities {
-		// Build communities for the current group using the community builder
 		communityResult, err := c.community.BuildCommunities(ctx, []string{episode.GroupID})
 		if err != nil {
 			return nil, fmt.Errorf("failed to build communities: %w", err)
 		}
-
-		// Add the community results to the episode results
 		result.Communities = communityResult.CommunityNodes
 		result.CommunityEdges = communityResult.CommunityEdges
 	}
@@ -1147,8 +1267,9 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 			MaxDepth:      config.CenterNodeDistance,
 		}
 	} else {
+		// Default: use all search methods for comprehensive results
 		searchConfig.NodeConfig = &search.NodeSearchConfig{
-			SearchMethods: []search.SearchMethod{search.CosineSimilarity},
+			SearchMethods: []search.SearchMethod{search.CosineSimilarity, search.BM25, search.BreadthFirstSearch},
 			Reranker:      search.RRFRerankType,
 			MinScore:      0.0,
 			MMRLambda:     0.5,
@@ -1167,7 +1288,7 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 		}
 	} else {
 		searchConfig.EdgeConfig = &search.EdgeSearchConfig{
-			SearchMethods: []search.SearchMethod{search.CosineSimilarity},
+			SearchMethods: []search.SearchMethod{search.CosineSimilarity, search.BM25, search.BreadthFirstSearch},
 			Reranker:      search.RRFRerankType,
 			MinScore:      0.0,
 			MMRLambda:     0.5,

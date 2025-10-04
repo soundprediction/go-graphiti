@@ -126,7 +126,7 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 	// Load FTS extension for this connection
 	// Extensions must be loaded for each session (connection)
 	_, err = client.Query("LOAD EXTENSION FTS;")
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "already loaded") {
 		log.Printf("Warning: Failed to load FTS extension on main connection: %v", err)
 	}
 
@@ -194,8 +194,11 @@ func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interfac
 
 	defer results.Close()
 
+	// Get column names from the result
+	columnNames := results.GetColumnNames()
+
 	if !results.HasNext() {
-		return []map[string]interface{}{}, nil, nil, nil
+		return []map[string]interface{}{}, columnNames, nil, nil
 	}
 
 	// Convert results to list of dictionaries like Python
@@ -206,15 +209,23 @@ func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interfac
 			continue
 		}
 
-		// Convert FlatTuple to map[string]interface{} to match Python rows_as_dict()
-		rowDict, err := k.flatTupleToDict(row)
+		// Convert FlatTuple to map[string]interface{} using actual column names
+		values, err := row.GetAsSlice()
 		if err != nil {
 			continue
 		}
+
+		rowDict := make(map[string]interface{})
+		for i, value := range values {
+			if i < len(columnNames) {
+				rowDict[columnNames[i]] = value
+			}
+		}
+
 		dictResults = append(dictResults, rowDict)
 	}
 
-	return dictResults, nil, nil, nil
+	return dictResults, columnNames, nil, nil
 }
 
 // Session creates a new session exactly like Python implementation
@@ -244,14 +255,14 @@ func (k *KuzuDriver) setupSchema() {
 
 	// Install FTS extension (one-time operation, will be no-op if already installed)
 	_, err = conn.Query("INSTALL FTS;")
-	if err != nil {
-		log.Printf("FTS extension install note (may already be installed): %v", err)
+	if err != nil && !strings.Contains(err.Error(), "already installed") {
+		log.Printf("FTS extension install note: %v", err)
 	}
 
 	// Load FTS extension for this temporary setup connection
 	// Note: Each connection needs to load extensions separately
 	_, err = conn.Query("LOAD EXTENSION FTS;")
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "already loaded") {
 		log.Printf("Failed to load FTS extension for setup: %v", err)
 		return
 	}
@@ -1159,14 +1170,52 @@ func (k *KuzuDriver) CreateIndices(ctx context.Context) error {
 
 // GetStats returns graph statistics
 func (k *KuzuDriver) GetStats(ctx context.Context, groupID string) (*GraphStats, error) {
-	return &GraphStats{
-		NodeCount:      0,
-		EdgeCount:      0,
-		NodesByType:    make(map[string]int64),
-		EdgesByType:    make(map[string]int64),
-		CommunityCount: 0,
-		LastUpdated:    time.Now(),
-	}, nil
+	stats := &GraphStats{
+		NodesByType: make(map[string]int64),
+		EdgesByType: make(map[string]int64),
+		LastUpdated: time.Now(),
+	}
+
+	// Get node counts by table
+	nodeTables := []string{"Entity", "Episodic", "Community", "RelatesToNode_"}
+	for _, table := range nodeTables {
+		query := fmt.Sprintf("MATCH (n:%s) RETURN count(n) as count", table)
+		result, _, _, err := k.ExecuteQuery(query, nil)
+		if err != nil {
+			continue
+		}
+
+		if resultList, ok := result.([]map[string]interface{}); ok && len(resultList) > 0 {
+			if count, ok := resultList[0]["count"].(int64); ok {
+				stats.NodesByType[table] = count
+				stats.NodeCount += count
+			}
+		}
+	}
+
+	// Get edge counts by relationship type
+	edgeTables := []string{"RELATES_TO", "MENTIONS", "HAS_MEMBER"}
+	for _, table := range edgeTables {
+		query := fmt.Sprintf("MATCH ()-[r:%s]->() RETURN count(r) as count", table)
+		result, _, _, err := k.ExecuteQuery(query, nil)
+		if err != nil {
+			continue
+		}
+
+		if resultList, ok := result.([]map[string]interface{}); ok && len(resultList) > 0 {
+			if count, ok := resultList[0]["count"].(int64); ok {
+				stats.EdgesByType[table] = count
+				stats.EdgeCount += count
+			}
+		}
+	}
+
+	// Set community count from Community table
+	if communityCount, ok := stats.NodesByType["Community"]; ok {
+		stats.CommunityCount = communityCount
+	}
+
+	return stats, nil
 }
 
 // === Helper methods ===
