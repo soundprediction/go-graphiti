@@ -122,7 +122,8 @@ type AddEpisodeOptions struct {
 	EdgeTypeMap map[string][]string
 	// OverwriteExisting whether to overwrite an existing episode with the same UUID
 	// Default behavior is false (skip if exists)
-	OverwriteExisting bool
+	OverwriteExisting  bool
+	GenerateEmbeddings bool
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
@@ -151,7 +152,7 @@ func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient e
 }
 
 // Add processes episodes and adds them to the knowledge graph.
-func (c *Client) Add(ctx context.Context, episodes []types.Episode) (*types.AddBulkEpisodeResults, error) {
+func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *AddEpisodeOptions) (*types.AddBulkEpisodeResults, error) {
 	if len(episodes) == 0 {
 		return &types.AddBulkEpisodeResults{}, nil
 	}
@@ -166,7 +167,7 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode) (*types.AddB
 	}
 
 	for _, episode := range episodes {
-		episodeResult, err := c.AddEpisode(ctx, episode, nil)
+		episodeResult, err := c.AddEpisode(ctx, episode, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process episode %s: %w", episode.ID, err)
 		}
@@ -221,7 +222,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	}
 
 	// 1. Create episode node in graph
-	episodeNode, err := c.createEpisodeNode(ctx, episode)
+	episodeNode, err := c.createEpisodeNode(ctx, episode, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create episode node: %w", err)
 	}
@@ -236,8 +237,8 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 		}
 	}
 
-	// 3. Deduplicate and store nodes
-	finalNodes, err := c.deduplicateAndStoreNodes(ctx, extractedNodes, episode.GroupID)
+	// 3. Deduplicate and store nodes (with embedding generation if enabled)
+	finalNodes, err := c.deduplicateAndStoreNodes(ctx, extractedNodes, episode.GroupID, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deduplicate and store nodes: %w", err)
 	}
@@ -252,8 +253,17 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 		}
 	}
 
-	// 5. Store edges in graph
+	// 5. Store edges in graph (with fact embedding generation if enabled)
 	for _, edge := range extractedEdges {
+		// Generate fact_embedding if GenerateEmbeddings is enabled
+		if options.GenerateEmbeddings && c.embedder != nil && edge.Fact != "" && len(edge.FactEmbedding) == 0 {
+			factEmbedding, err := c.embedder.EmbedSingle(ctx, edge.Fact)
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate fact embedding for edge %s: %w", edge.BaseEdge.ID, err)
+			}
+			edge.FactEmbedding = factEmbedding
+		}
+
 		if err := c.driver.UpsertEdge(ctx, edge); err != nil {
 			return nil, fmt.Errorf("failed to store edge %s: %w", edge.BaseEdge.ID, err)
 		}
@@ -297,7 +307,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 }
 
 // createEpisodeNode creates an episode node in the graph.
-func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode) (*types.Node, error) {
+func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.Node, error) {
 	now := time.Now()
 
 	// Use existing embedding or create new one if embedder is available
@@ -589,7 +599,7 @@ func (c *Client) parseEntitiesFromText(responseContent, groupID string) ([]*type
 }
 
 // deduplicateAndStoreNodes deduplicates nodes against existing nodes and stores them.
-func (c *Client) deduplicateAndStoreNodes(ctx context.Context, nodes []*types.Node, groupID string) ([]*types.Node, error) {
+func (c *Client) deduplicateAndStoreNodes(ctx context.Context, nodes []*types.Node, groupID string, options *AddEpisodeOptions) ([]*types.Node, error) {
 	var finalNodes []*types.Node
 
 	for _, node := range nodes {
@@ -611,7 +621,16 @@ func (c *Client) deduplicateAndStoreNodes(ctx context.Context, nodes []*types.No
 			node.UpdatedAt = now
 			node.ValidFrom = now
 
-			// Create embedding if embedder available
+			// Generate name_embedding if GenerateEmbeddings is enabled and embedder is available
+			if options != nil && options.GenerateEmbeddings && c.embedder != nil && node.Name != "" && len(node.NameEmbedding) == 0 {
+				nameEmbedding, err := c.embedder.EmbedSingle(ctx, node.Name)
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate name embedding for node %s: %w", node.Name, err)
+				}
+				node.NameEmbedding = nameEmbedding
+			}
+
+			// Create summary embedding if embedder available (existing behavior)
 			if c.embedder != nil && node.Summary != "" {
 				embedding, err := c.embedder.EmbedSingle(ctx, node.Summary)
 				if err != nil {
