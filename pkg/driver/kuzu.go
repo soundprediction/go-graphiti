@@ -123,6 +123,13 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 	}
 	driver.client = client
 
+	// Load FTS extension for this connection
+	// Extensions must be loaded for each session (connection)
+	_, err = client.Query("LOAD EXTENSION FTS;")
+	if err != nil {
+		log.Printf("Warning: Failed to load FTS extension on main connection: %v", err)
+	}
+
 	return driver, nil
 }
 
@@ -235,6 +242,21 @@ func (k *KuzuDriver) setupSchema() {
 	}
 	defer conn.Close()
 
+	// Install FTS extension (one-time operation, will be no-op if already installed)
+	_, err = conn.Query("INSTALL FTS;")
+	if err != nil {
+		log.Printf("FTS extension install note (may already be installed): %v", err)
+	}
+
+	// Load FTS extension for this temporary setup connection
+	// Note: Each connection needs to load extensions separately
+	_, err = conn.Query("LOAD EXTENSION FTS;")
+	if err != nil {
+		log.Printf("Failed to load FTS extension for setup: %v", err)
+		return
+	}
+
+	// Create schema tables
 	_, err = conn.Query(KuzuSchemaQueries)
 	if err != nil {
 		log.Printf("Failed to create schema: %v", err)
@@ -242,6 +264,7 @@ func (k *KuzuDriver) setupSchema() {
 
 	// Create fulltext indexes for BM25 search (matching Python implementation)
 	// From graph_queries.py get_fulltext_indices() for Kuzu provider
+	// Note: These can be created before or after data exists in the tables
 	fulltextIndexQueries := []string{
 		"CALL CREATE_FTS_INDEX('Episodic', 'episode_content', ['content', 'source', 'source_description']);",
 		"CALL CREATE_FTS_INDEX('Entity', 'node_name_and_summary', ['name', 'summary']);",
@@ -252,7 +275,7 @@ func (k *KuzuDriver) setupSchema() {
 	for _, query := range fulltextIndexQueries {
 		_, err = conn.Query(query)
 		if err != nil {
-			// Ignore errors if indexes already exist
+			// Log but continue - indexes may already exist or table may not have data yet
 			log.Printf("Fulltext index creation note: %v", err)
 		}
 	}
