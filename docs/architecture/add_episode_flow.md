@@ -5,77 +5,94 @@ This diagram shows the execution flow of the `Graphiti.add_episode()` method wit
 ## Process Flow Diagram
 
 ```mermaid
-flowchart TD
-    Start([add_episode]) --> A[Validate Inputs]
-    A --> B[validate_entity_types]
-    A --> C[validate_excluded_entity_types]
-    A --> D[validate_group_id]
+flowchart TB
+    Start([add_episode]) --> Validation[PHASE 1: Validation]
 
-    Start --> E{Get Previous Episodes}
+    Validation --> B[validate_entity_types]
+    Validation --> C[validate_excluded_entity_types]
+    Validation --> D[validate_group_id]
+
+    Validation --> Context[PHASE 2: Context Retrieval]
+
+    Context --> E{Get Previous Episodes}
     E -->|if previous_episode_uuids is None| F["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/graph_data_operations.py#L89'>retrieve_episodes</a>"]
     E -->|else| G["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py'>EpisodicNode.get_by_uuids</a>"]
 
-    Start --> H{Get or Create Episode}
+    F --> H{Get or Create Episode}
+    G --> H
     H -->|if uuid provided| I["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py'>EpisodicNode.get_by_uuid</a>"]
     H -->|else| J[Create New EpisodicNode]
 
-    Start --> K["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L84'>extract_nodes</a>"]
+    I --> NodeExtraction[PHASE 3: Entity Extraction]
+    J --> NodeExtraction
+
+    NodeExtraction --> K["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L84'>extract_nodes</a>"]
     K --> K1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    K1 --> K1a[prompt_library.extract_nodes.extract_message]
-    K1 --> K1b[prompt_library.extract_nodes.extract_text]
-    K1 --> K1c[prompt_library.extract_nodes.extract_json]
+    K1 --> K1a[prompt: extract_message/extract_text/extract_json]
     K --> K2["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L62'>extract_nodes_reflexion</a>"]
     K2 --> K2a["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    K2a --> K2b[prompt_library.extract_nodes.reflexion]
+    K2a --> K2b[prompt: reflexion]
 
-    Start --> L["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L387'>resolve_extracted_nodes</a>"]
+    K2b --> NodeResolution[PHASE 4: Entity Resolution]
+
+    NodeResolution --> L["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L387'>resolve_extracted_nodes</a>"]
     L --> L1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L204'>_collect_candidate_nodes</a>"]
     L1 --> L1a["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search.py'>search</a>"]
-    L1a --> L1a1[NODE_HYBRID_SEARCH_RRF config]
+    L1a --> L1a1[NODE_HYBRID_SEARCH_RRF]
     L --> L2["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/dedup_helpers.py'>_build_candidate_indexes</a>"]
     L --> L3["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/dedup_helpers.py'>_resolve_with_similarity</a>"]
     L --> L4["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L239'>_resolve_with_llm</a>"]
     L4 --> L4a["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    L4a --> L4b[prompt_library.dedupe_nodes.nodes]
+    L4a --> L4b[prompt: dedupe_nodes.nodes]
     L --> L5["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L641'>filter_existing_duplicate_of_edges</a>"]
     L5 --> L5a[driver.execute_query]
 
-    Start --> M["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L89'>extract_edges</a>"]
+    L5a --> EdgeExtraction[PHASE 5: Relationship Extraction]
+
+    EdgeExtraction --> M["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L89'>extract_edges</a>"]
     M --> M1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    M1 --> M1a[prompt_library.extract_edges.edge]
+    M1 --> M1a[prompt: extract_edges.edge]
     M --> M2["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    M2 --> M2a[prompt_library.extract_edges.reflexion]
+    M2 --> M2a[prompt: extract_edges.reflexion]
 
-    Start --> N["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L555'>resolve_edge_pointers</a>"]
+    M2a --> N["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L555'>resolve_edge_pointers</a>"]
 
-    Start --> O["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L239'>resolve_extracted_edges</a>"]
+    N --> EdgeResolution[PHASE 6: Relationship Resolution]
+
+    EdgeResolution --> O["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L239'>resolve_extracted_edges</a>"]
     O --> O1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py'>create_entity_edge_embeddings</a>"]
     O1 --> O1a[embedder.create]
     O --> O2["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py'>EntityEdge.get_between_nodes</a>"]
     O2 --> O2a[driver.execute_query]
     O --> O3["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search.py'>search</a>"]
-    O3 --> O3a[EDGE_HYBRID_SEARCH_RRF config]
+    O3 --> O3a[EDGE_HYBRID_SEARCH_RRF]
     O --> O4["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L437'>resolve_extracted_edge</a>"]
     O4 --> O4a["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    O4a --> O4b[prompt_library.dedupe_edges.resolve_edge]
+    O4a --> O4b[prompt: dedupe_edges.resolve_edge]
     O4 --> O4c["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L404'>resolve_edge_contradictions</a>"]
     O4c --> O4c1[Check temporal validity]
     O4c --> O4c2[Mark edges as expired]
     O --> O5["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/edges.py'>create_entity_edge_embeddings</a>"]
 
-    Start --> P["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L445'>extract_attributes_from_nodes</a>"]
+    O5 --> AttributeExtraction[PHASE 7: Attribute Extraction]
+
+    AttributeExtraction --> P["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L445'>extract_attributes_from_nodes</a>"]
     P --> P1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/node_operations.py#L478'>extract_attributes_from_node</a>"]
     P1 --> P1a["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    P1a --> P1a1[prompt_library.extract_nodes.extract_attributes]
+    P1a --> P1a1[prompt: extract_attributes]
     P1 --> P1b["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    P1b --> P1b1[prompt_library.extract_nodes.extract_summary]
+    P1b --> P1b1[prompt: extract_summary]
     P --> P2["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py'>create_entity_node_embeddings</a>"]
     P2 --> P2a[embedder.create]
 
-    Start --> Q["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L51'>build_episodic_edges</a>"]
+    P2a --> BuildEdges[PHASE 8: Build Episodic Edges]
+
+    BuildEdges --> Q["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/edge_operations.py#L51'>build_episodic_edges</a>"]
     Q --> Q1[Create EpisodicEdge objects]
 
-    Start --> R["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L131'>add_nodes_and_edges_bulk</a>"]
+    Q1 --> Persistence[PHASE 9: Persistence]
+
+    Persistence --> R["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L131'>add_nodes_and_edges_bulk</a>"]
     R --> R1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/bulk_utils.py#L154'>add_nodes_and_edges_bulk_tx</a>"]
     R1 --> R1a["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/nodes.py'>node.generate_name_embedding</a>"]
     R1a --> R1a1[embedder.create]
@@ -85,24 +102,31 @@ flowchart TD
     R1 --> R1d["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/models/nodes/node_db_queries.py'>get_entity_node_save_bulk_query</a>"]
     R1 --> R1e["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py'>get_episodic_edge_save_bulk_query</a>"]
     R1 --> R1f["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/models/edges/edge_db_queries.py'>get_entity_edge_save_bulk_query</a>"]
-    R1 --> R1g[tx.run - Execute Cypher queries]
+    R1 --> R1g[tx.run: Execute Cypher queries]
 
-    Start --> S{Update Communities?}
+    R1g --> Communities[PHASE 10: Community Update]
+
+    Communities --> S{Update Communities?}
     S -->|if update_communities=True| T["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/utils/maintenance/community_operations.py'>update_community</a>"]
+    S -->|else| End
     T --> T1["<a href='https://github.com/getzep/graphiti/blob/main/graphiti_core/llm_client'>llm_client.generate_response</a>"]
-    T1 --> T1a[prompt_library.update_community]
+    T1 --> T1a[prompt: update_community]
     T --> T2[embedder.create]
 
-    Start --> End([Return AddEpisodeResults])
+    T2 --> End([Return AddEpisodeResults])
 
     style Start fill:#e1f5fe
     style End fill:#c8e6c9
-    style K fill:#fff9c4
-    style L fill:#fff9c4
-    style M fill:#fff9c4
-    style O fill:#fff9c4
-    style P fill:#fff9c4
-    style R fill:#fff9c4
+    style Validation fill:#ffe0b2
+    style Context fill:#ffe0b2
+    style NodeExtraction fill:#fff9c4
+    style NodeResolution fill:#fff9c4
+    style EdgeExtraction fill:#c5e1a5
+    style EdgeResolution fill:#c5e1a5
+    style AttributeExtraction fill:#b2ebf2
+    style BuildEdges fill:#d1c4e9
+    style Persistence fill:#f8bbd0
+    style Communities fill:#ffccbc
 ```
 
 ## Function Call Summary
