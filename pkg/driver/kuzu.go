@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/kuzudb/go-kuzu"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // SCHEMA_QUERIES defines the Kuzu database schema exactly as in Python implementation
@@ -511,6 +511,7 @@ func (k *KuzuDriver) SearchNodesByEmbedding(ctx context.Context, embedding []flo
 	query := `
 		MATCH (n:Entity)
 		WHERE n.group_id = $group_id
+		  AND size(n.name_embedding) > 0
 		WITH n, array_cosine_similarity(n.name_embedding, CAST($search_vector AS FLOAT[` + fmt.Sprintf("%d", len(embedding)) + `])) AS score
 		WHERE score > 0.0
 		RETURN
