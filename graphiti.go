@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -94,6 +95,7 @@ type Client struct {
 	searcher  *search.Searcher
 	community *community.Builder
 	config    *Config
+	logger    *slog.Logger
 }
 
 // Config holds configuration for the Graphiti client.
@@ -128,7 +130,7 @@ type AddEpisodeOptions struct {
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
-func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient embedder.Client, config *Config) *Client {
+func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient embedder.Client, config *Config, logger *slog.Logger) *Client {
 	if config == nil {
 		config = &Config{
 			GroupID:  "default",
@@ -137,6 +139,9 @@ func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient e
 	}
 	if config.SearchConfig == nil {
 		config.SearchConfig = NewDefaultSearchConfig()
+	}
+	if logger == nil {
+		logger = slog.Default()
 	}
 
 	searcher := search.NewSearcher(driver, embedderClient, llmClient)
@@ -149,6 +154,7 @@ func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient e
 		searcher:  searcher,
 		community: communityBuilder,
 		config:    config,
+		logger:    logger,
 	}
 }
 
@@ -294,11 +300,20 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	// PHASE 3: ENTITY EXTRACTION
 	var extractedNodes []*types.Node
 	if c.llm != nil {
+		c.logger.Info("Starting entity extraction",
+			"episode_id", episodeNode.ID,
+			"group_id", episode.GroupID,
+			"previous_episodes", len(previousEpisodes))
+
 		extractedNodes, err = nodeOps.ExtractNodes(ctx, episodeNode, previousEpisodes,
 			options.EntityTypes, options.ExcludedEntityTypes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract nodes: %w", err)
 		}
+
+		c.logger.Info("Entity extraction completed",
+			"episode_id", episodeNode.ID,
+			"entities_extracted", len(extractedNodes))
 	}
 
 	// PHASE 4: ENTITY RESOLUTION & DEDUPLICATION
@@ -307,11 +322,20 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	var duplicatePairs []maintenance.NodePair
 
 	if len(extractedNodes) > 0 {
+		c.logger.Info("Starting entity resolution and deduplication",
+			"episode_id", episodeNode.ID,
+			"entities_to_resolve", len(extractedNodes))
+
 		resolvedNodes, uuidMap, duplicatePairs, err = nodeOps.ResolveExtractedNodes(ctx,
 			extractedNodes, episodeNode, previousEpisodes, options.EntityTypes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve nodes: %w", err)
 		}
+
+		c.logger.Info("Entity resolution completed",
+			"episode_id", episodeNode.ID,
+			"resolved_entities", len(resolvedNodes),
+			"duplicates_found", len(duplicatePairs))
 
 		// Build and store duplicate edges
 		if len(duplicatePairs) > 0 {
@@ -330,6 +354,10 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	// PHASE 5: RELATIONSHIP EXTRACTION
 	var extractedEdges []*types.Edge
 	if c.llm != nil && len(resolvedNodes) > 0 {
+		c.logger.Info("Starting relationship extraction",
+			"episode_id", episodeNode.ID,
+			"entity_count", len(resolvedNodes))
+
 		// Create edge type map if needed
 		edgeTypeMap := options.EdgeTypeMap
 		if edgeTypeMap == nil && options.EdgeTypes != nil {
@@ -346,6 +374,10 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract edges: %w", err)
 		}
+
+		c.logger.Info("Relationship extraction completed",
+			"episode_id", episodeNode.ID,
+			"relationships_extracted", len(extractedEdges))
 	}
 
 	// PHASE 6: RELATIONSHIP RESOLUTION & TEMPORAL INVALIDATION
@@ -353,6 +385,10 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	var invalidatedEdges []*types.Edge
 
 	if len(extractedEdges) > 0 {
+		c.logger.Info("Starting relationship resolution",
+			"episode_id", episodeNode.ID,
+			"relationships_to_resolve", len(extractedEdges))
+
 		// Resolve edge pointers using uuid map from node resolution
 		utils.ResolveEdgePointers(extractedEdges, uuidMap)
 
@@ -362,16 +398,29 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve edges: %w", err)
 		}
+
+		c.logger.Info("Relationship resolution completed",
+			"episode_id", episodeNode.ID,
+			"resolved_relationships", len(resolvedEdges),
+			"invalidated_relationships", len(invalidatedEdges))
 	}
 
 	// PHASE 7: ATTRIBUTE EXTRACTION
 	var hydratedNodes []*types.Node
 	if len(resolvedNodes) > 0 {
+		c.logger.Info("Starting attribute extraction",
+			"episode_id", episodeNode.ID,
+			"entities_to_hydrate", len(resolvedNodes))
+
 		hydratedNodes, err = nodeOps.ExtractAttributesFromNodes(ctx,
 			resolvedNodes, episodeNode, previousEpisodes, options.EntityTypes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract attributes: %w", err)
 		}
+
+		c.logger.Info("Attribute extraction completed",
+			"episode_id", episodeNode.ID,
+			"hydrated_entities", len(hydratedNodes))
 	}
 
 	// PHASE 8: BUILD EPISODIC EDGES
@@ -416,13 +465,31 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 
 	// PHASE 10: COMMUNITY UPDATE
 	if options.UpdateCommunities {
+		c.logger.Info("Starting community update",
+			"episode_id", episodeNode.ID,
+			"group_id", episode.GroupID)
+
 		communityResult, err := c.community.BuildCommunities(ctx, []string{episode.GroupID})
 		if err != nil {
 			return nil, fmt.Errorf("failed to build communities: %w", err)
 		}
 		result.Communities = communityResult.CommunityNodes
 		result.CommunityEdges = communityResult.CommunityEdges
+
+		c.logger.Info("Community update completed",
+			"episode_id", episodeNode.ID,
+			"communities", len(result.Communities),
+			"community_edges", len(result.CommunityEdges))
 	}
+
+	// Final summary log
+	c.logger.Info("Episode processing completed",
+		"episode_id", episodeNode.ID,
+		"group_id", episode.GroupID,
+		"total_entities", len(result.Nodes),
+		"total_relationships", len(result.Edges),
+		"episodic_edges", len(result.EpisodicEdges),
+		"communities", len(result.Communities))
 
 	return result, nil
 }

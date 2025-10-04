@@ -201,7 +201,7 @@ func TestNewClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, tt.config)
+			client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, tt.config, nil)
 			require.NotNil(t, client)
 		})
 	}
@@ -212,7 +212,7 @@ func TestClient_GetNode(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	// Test getting a non-existent node
@@ -227,7 +227,7 @@ func TestClient_GetEdge(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	// Test getting a non-existent edge
@@ -242,7 +242,7 @@ func TestClient_Add(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	// Test adding empty episodes
@@ -270,7 +270,7 @@ func TestClient_AddEpisodeWithCommunityUpdates(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	// Test adding episode with community updates enabled
@@ -307,7 +307,7 @@ func TestClient_AddBulk(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -343,7 +343,7 @@ func TestClient_NodeOperations(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -380,7 +380,7 @@ func TestClient_EdgeOperations(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -420,7 +420,7 @@ func TestClient_Search(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 
 	// Test search (returns empty results with mock driver)
@@ -467,7 +467,7 @@ func TestClient_parseEntitiesFromResponse(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	groupID := "test-group"
 
 	tests := []struct {
@@ -592,7 +592,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 	mockLLM := &MockLLMClient{}
 	mockEmbedder := &MockEmbedderClient{}
 
-	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil)
+	client := graphiti.NewClient(mockDriver, mockLLM, mockEmbedder, nil, nil)
 	ctx := context.Background()
 	now := time.Now()
 	groupID := "test-group"
