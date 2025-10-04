@@ -239,6 +239,23 @@ func (k *KuzuDriver) setupSchema() {
 	if err != nil {
 		log.Printf("Failed to create schema: %v", err)
 	}
+
+	// Create fulltext indexes for BM25 search (matching Python implementation)
+	// From graph_queries.py get_fulltext_indices() for Kuzu provider
+	fulltextIndexQueries := []string{
+		"CALL CREATE_FTS_INDEX('Episodic', 'episode_content', ['content', 'source', 'source_description']);",
+		"CALL CREATE_FTS_INDEX('Entity', 'node_name_and_summary', ['name', 'summary']);",
+		"CALL CREATE_FTS_INDEX('Community', 'community_name', ['name']);",
+		"CALL CREATE_FTS_INDEX('RelatesToNode_', 'edge_name_and_fact', ['name', 'fact']);",
+	}
+
+	for _, query := range fulltextIndexQueries {
+		_, err = conn.Query(query)
+		if err != nil {
+			// Ignore errors if indexes already exist
+			log.Printf("Fulltext index creation note: %v", err)
+		}
+	}
 }
 
 // Provider returns the graph provider type
@@ -736,18 +753,24 @@ func (k *KuzuDriver) SearchNodes(ctx context.Context, query, groupID string, opt
 		limit = options.Limit
 	}
 
-	// Basic text search using CONTAINS
-	searchQuery := fmt.Sprintf(`
-		MATCH (n:Entity)
-		WHERE n.group_id = '%s'
-		  AND (n.name CONTAINS '%s' OR n.summary CONTAINS '%s')
-		RETURN n.*
-		LIMIT %d
-	`, strings.ReplaceAll(groupID, "'", "\\'"),
-		strings.ReplaceAll(query, "'", "\\'"),
-		strings.ReplaceAll(query, "'", "\\'"), limit)
+	// BM25 fulltext search using QUERY_FTS_INDEX (matching Python implementation)
+	// From graph_queries.py get_nodes_query() and search_utils.py node_fulltext_search()
+	// For Kuzu: CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', query, TOP := limit)
+	searchQuery := `
+		CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', cast($query AS STRING), TOP := $limit)
+		WITH node AS n, score
+		WHERE n.group_id = $group_id
+		RETURN n.*, score
+		ORDER BY score DESC
+	`
 
-	result, _, _, err := k.ExecuteQuery(searchQuery, nil)
+	params := map[string]interface{}{
+		"query":    query,
+		"group_id": groupID,
+		"limit":    int64(limit),
+	}
+
+	result, _, _, err := k.ExecuteQuery(searchQuery, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search nodes: %w", err)
 	}
@@ -776,18 +799,38 @@ func (k *KuzuDriver) SearchEdges(ctx context.Context, query, groupID string, opt
 		limit = options.Limit
 	}
 
-	// Basic text search using CONTAINS
-	searchQuery := fmt.Sprintf(`
-		MATCH (a:Entity)-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
-		WHERE rel.group_id = '%s'
-		  AND (rel.name CONTAINS '%s' OR rel.fact CONTAINS '%s')
-		RETURN rel.*, a.uuid AS source_id, b.uuid AS target_id
-		LIMIT %d
-	`, strings.ReplaceAll(groupID, "'", "\\'"),
-		strings.ReplaceAll(query, "'", "\\'"),
-		strings.ReplaceAll(query, "'", "\\'"), limit)
+	// BM25 fulltext search using QUERY_FTS_INDEX (matching Python implementation)
+	// From graph_queries.py get_relationships_query() and search_utils.py edge_fulltext_search()
+	// For Kuzu edges (RelatesToNode_): CALL QUERY_FTS_INDEX('RelatesToNode_', 'edge_name_and_fact', query, TOP := limit)
+	searchQuery := `
+		CALL QUERY_FTS_INDEX('RelatesToNode_', 'edge_name_and_fact', cast($query AS STRING), TOP := $limit)
+		YIELD node, score
+		MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_ {uuid: node.uuid})-[:RELATES_TO]->(m:Entity)
+		WHERE e.group_id = $group_id
+		RETURN
+			e.uuid AS uuid,
+			e.group_id AS group_id,
+			e.created_at AS created_at,
+			e.name AS name,
+			e.fact AS fact,
+			e.fact_embedding AS fact_embedding,
+			e.episodes AS episodes,
+			e.expired_at AS expired_at,
+			e.valid_at AS valid_at,
+			e.invalid_at AS invalid_at,
+			n.uuid AS source_node_uuid,
+			m.uuid AS target_node_uuid,
+			score
+		ORDER BY score DESC
+	`
 
-	result, _, _, err := k.ExecuteQuery(searchQuery, nil)
+	params := map[string]interface{}{
+		"query":    query,
+		"group_id": groupID,
+		"limit":    int64(limit),
+	}
+
+	result, _, _, err := k.ExecuteQuery(searchQuery, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search edges: %w", err)
 	}
