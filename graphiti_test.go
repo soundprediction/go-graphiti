@@ -246,7 +246,7 @@ func TestClient_Add(t *testing.T) {
 	ctx := context.Background()
 
 	// Test adding empty episodes
-	_, err := client.Add(ctx, []types.Episode{})
+	_, err := client.Add(ctx, []types.Episode{}, nil)
 	assert.NoError(t, err)
 
 	// Test adding episodes (should work with mock)
@@ -324,7 +324,7 @@ func TestClient_AddBulk(t *testing.T) {
 			GroupID:   groupID,
 		},
 		{
-			ID:        "episode-2", 
+			ID:        "episode-2",
 			Name:      "test_episode_2",
 			Content:   "Bob adores Alice",
 			Reference: now,
@@ -351,7 +351,7 @@ func TestClient_NodeOperations(t *testing.T) {
 
 	// Test creating entity node similar to Python test
 	entityNode := &types.Node{
-		ID:         "entity-1", 
+		ID:         "entity-1",
 		Name:       "test_entity_1",
 		Type:       types.EntityNodeType,
 		GroupID:    groupID,
@@ -614,7 +614,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 		}
 
 		// Test Go Add with single episode
-		result, err := client.Add(ctx, []types.Episode{episode})
+		result, err := client.Add(ctx, []types.Episode{episode}, nil)
 		assert.NoError(t, err, "Go Add should succeed with single episode")
 		assert.NotNil(t, result, "Result should not be nil")
 
@@ -703,7 +703,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 
 	t.Run("EmptyEpisodes_HandlesGracefully", func(t *testing.T) {
 		// Test edge case that Python would handle
-		result, err := client.Add(ctx, []types.Episode{})
+		result, err := client.Add(ctx, []types.Episode{}, nil)
 		assert.NoError(t, err, "Empty episodes should not cause error")
 		assert.NotNil(t, result, "Result should not be nil")
 		assert.Empty(t, result.Episodes, "Episodes should be empty")
@@ -722,7 +722,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 			GroupID:   groupID,
 		}
 
-		result, err := client.Add(ctx, []types.Episode{invalidEpisode})
+		result, err := client.Add(ctx, []types.Episode{invalidEpisode}, nil)
 		// The behavior depends on the mock implementation, but we test that errors are handled
 		if err != nil {
 			assert.Nil(t, result, "Result should be nil when error occurs")
@@ -741,7 +741,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 			GroupID:   groupID,
 		}
 
-		result, err := client.Add(ctx, []types.Episode{episode})
+		result, err := client.Add(ctx, []types.Episode{episode}, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 
@@ -772,7 +772,7 @@ func TestClient_Add_PythonCompatibility(t *testing.T) {
 		episodes := []types.Episode{
 			{ID: "seq-001", Name: "First", Content: "First episode", Reference: now, CreatedAt: now, GroupID: groupID},
 			{ID: "seq-002", Name: "Second", Content: "Second episode", Reference: now.Add(time.Minute), CreatedAt: now.Add(time.Minute), GroupID: groupID},
-			{ID: "seq-003", Name: "Third", Content: "Third episode", Reference: now.Add(2*time.Minute), CreatedAt: now.Add(2*time.Minute), GroupID: groupID},
+			{ID: "seq-003", Name: "Third", Content: "Third episode", Reference: now.Add(2 * time.Minute), CreatedAt: now.Add(2 * time.Minute), GroupID: groupID},
 		}
 
 		result, err := client.Add(ctx, episodes, nil)

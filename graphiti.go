@@ -1147,8 +1147,9 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 			MaxDepth:      config.CenterNodeDistance,
 		}
 	} else {
+		// Default: use all search methods for comprehensive results
 		searchConfig.NodeConfig = &search.NodeSearchConfig{
-			SearchMethods: []search.SearchMethod{search.CosineSimilarity},
+			SearchMethods: []search.SearchMethod{search.CosineSimilarity, search.BM25, search.BreadthFirstSearch},
 			Reranker:      search.RRFRerankType,
 			MinScore:      0.0,
 			MMRLambda:     0.5,
@@ -1167,7 +1168,7 @@ func (c *Client) Search(ctx context.Context, query string, config *types.SearchC
 		}
 	} else {
 		searchConfig.EdgeConfig = &search.EdgeSearchConfig{
-			SearchMethods: []search.SearchMethod{search.CosineSimilarity},
+			SearchMethods: []search.SearchMethod{search.CosineSimilarity, search.BM25, search.BreadthFirstSearch},
 			Reranker:      search.RRFRerankType,
 			MinScore:      0.0,
 			MMRLambda:     0.5,
