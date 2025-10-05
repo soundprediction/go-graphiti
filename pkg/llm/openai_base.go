@@ -108,7 +108,8 @@ func (b *BaseOpenAIClient) HandleJSONResponse(response openai.ChatCompletionResp
 
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(content), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON response: %w", err)
+		// JSON parsing failed, return content as a string value
+		return map[string]interface{}{"content": content}, nil
 	}
 
 	return result, nil
