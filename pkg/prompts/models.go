@@ -4,13 +4,13 @@ import "time"
 
 // ExtractedEntity represents an entity extracted from content
 type ExtractedEntity struct {
-	Name         string `json:"name"`
+	Name         string `json:"entity"`
 	EntityTypeID int    `json:"entity_type_id"`
 }
 
 // ExtractedEntities represents a list of extracted entities
 type ExtractedEntities struct {
-	ExtractedEntities []ExtractedEntity `json:"extracted_entities"`
+	ExtractedEntities []ExtractedEntity `json:"entities"`
 }
 
 // MissedEntities represents entities that weren't extracted
@@ -47,7 +47,7 @@ type Edge struct {
 
 // ExtractedEdges represents a list of extracted edges
 type ExtractedEdges struct {
-	Edges []Edge `json:"edges"`
+	Edges []Edge `json:"facts"`
 }
 
 // MissingFacts represents facts that weren't extracted
@@ -139,4 +139,3 @@ type Episode struct {
 	GroupID   string                 `json:"group_id"`
 	Metadata  map[string]interface{} `json:"metadata"`
 }
-

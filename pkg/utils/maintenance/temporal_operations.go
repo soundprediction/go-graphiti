@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	jsonrepair "github.com/RealAlexandreAI/json-repair"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/soundprediction/go-graphiti/pkg/prompts"
 	"github.com/soundprediction/go-graphiti/pkg/types"
@@ -57,8 +58,17 @@ func (to *TemporalOperations) ExtractEdgeDates(ctx context.Context, edge *types.
 		return nil, nil, fmt.Errorf("failed to extract edge dates: %w", err)
 	}
 
+	// Repair JSON before unmarshaling
+	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+	var rawJSON json.RawMessage
+	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	}
+
 	var edgeDates prompts.EdgeDates
-	if err := json.Unmarshal(response, &edgeDates); err != nil {
+	if err := json.Unmarshal(rawJSON, &edgeDates); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal edge dates response: %w", err)
 	}
 
@@ -129,8 +139,17 @@ func (to *TemporalOperations) GetEdgeContradictions(ctx context.Context, newEdge
 		return nil, fmt.Errorf("failed to identify contradictions: %w", err)
 	}
 
+	// Repair JSON before unmarshaling
+	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+	var rawJSON json.RawMessage
+	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	}
+
 	var invalidatedEdges prompts.InvalidatedEdges
-	if err := json.Unmarshal(response, &invalidatedEdges); err != nil {
+	if err := json.Unmarshal(rawJSON, &invalidatedEdges); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal invalidation response: %w", err)
 	}
 

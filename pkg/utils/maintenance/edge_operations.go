@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	jsonrepair "github.com/RealAlexandreAI/json-repair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -115,7 +116,7 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	}
 
 	promptContext := map[string]interface{}{
-		"episode_content":   episode.Summary,
+		"episode_content":   episode.Content,
 		"nodes":             nodeContexts,
 		"previous_episodes": previousEpisodeContents,
 		"reference_time":    episode.ValidFrom,
@@ -135,8 +136,17 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
 
+	// Repair JSON before unmarshaling
+	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+	var rawJSON json.RawMessage
+	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	}
+
 	var extractedEdges prompts.ExtractedEdges
-	if err := json.Unmarshal(response, &extractedEdges); err != nil {
+	if err := json.Unmarshal(rawJSON, &extractedEdges); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
@@ -494,8 +504,18 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
+	// Repair JSON before unmarshaling
+	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+	var rawJSON json.RawMessage
+	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+		log.Printf("Warning: failed to unmarshal repaired response: %v", err)
+		return extractedEdge, []*types.Edge{}, nil
+	}
+
 	var edgeDuplicate prompts.EdgeDuplicate
-	if err := json.Unmarshal(response, &edgeDuplicate); err != nil {
+	if err := json.Unmarshal(rawJSON, &edgeDuplicate); err != nil {
 		log.Printf("Warning: failed to unmarshal dedupe response: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
 	}
