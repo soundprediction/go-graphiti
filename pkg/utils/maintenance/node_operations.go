@@ -108,7 +108,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract entities: %w", err)
 		}
-
+		fmt.Printf("string(response): %v\n", string(response))
 		// Repair JSON before unmarshaling
 		repairedResponse, _ := jsonrepair.RepairJSON(string(response))
 
