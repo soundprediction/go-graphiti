@@ -203,11 +203,6 @@ func validateServerConfig(cfg *config.Config) error {
 	if cfg.Database.URI == "" {
 		return fmt.Errorf("database URI is required")
 	}
-
-	if cfg.LLM.APIKey == "" {
-		return fmt.Errorf("LLM API key is required")
-	}
-
 	return nil
 }
 

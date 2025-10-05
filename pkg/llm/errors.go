@@ -6,18 +6,15 @@ import "errors"
 var (
 	// ErrRateLimit indicates the rate limit has been exceeded
 	ErrRateLimit = errors.New("rate limit exceeded. Please try again later")
-	
+
 	// ErrRefusal indicates the LLM refused to respond to the prompt
 	ErrRefusal = errors.New("the LLM refused to respond to this prompt")
-	
+
 	// ErrEmptyResponse indicates the LLM returned an empty response
 	ErrEmptyResponse = errors.New("the LLM returned an empty response")
-	
+
 	// ErrInvalidModel indicates an invalid model was specified
 	ErrInvalidModel = errors.New("invalid model specified")
-	
-	// ErrAPIKeyMissing indicates the API key is missing
-	ErrAPIKeyMissing = errors.New("API key is required")
 )
 
 // RateLimitError represents a rate limit error with optional custom message
