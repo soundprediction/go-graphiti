@@ -42,12 +42,10 @@ func TestCommonErrors(t *testing.T) {
 		assert.NotNil(t, llm.ErrRefusal)
 		assert.NotNil(t, llm.ErrEmptyResponse)
 		assert.NotNil(t, llm.ErrInvalidModel)
-		assert.NotNil(t, llm.ErrAPIKeyMissing)
 
 		assert.Contains(t, llm.ErrRateLimit.Error(), "rate limit")
 		assert.Contains(t, llm.ErrRefusal.Error(), "refused")
 		assert.Contains(t, llm.ErrEmptyResponse.Error(), "empty")
 		assert.Contains(t, llm.ErrInvalidModel.Error(), "invalid model")
-		assert.Contains(t, llm.ErrAPIKeyMissing.Error(), "API key")
 	})
 }
