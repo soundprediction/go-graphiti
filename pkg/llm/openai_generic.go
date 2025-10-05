@@ -18,37 +18,88 @@ type OpenAIGenericClient struct {
 }
 
 // NewOpenAIGenericClient creates a new OpenAI generic client
-func NewOpenAIGenericClient(config *LLMConfig) (*OpenAIGenericClient, error) {
-	if config == nil {
-		config = NewLLMConfig()
+// Supports both signatures:
+//   - NewOpenAIGenericClient(apiKey string, config Config) - legacy
+//   - NewOpenAIGenericClient(config *LLMConfig) - new
+func NewOpenAIGenericClient(args ...interface{}) (*OpenAIGenericClient, error) {
+	var llmConfig *LLMConfig
+
+	// Handle different signatures
+	switch len(args) {
+	case 1:
+		// New signature: NewOpenAIGenericClient(config *LLMConfig)
+		var ok bool
+		llmConfig, ok = args[0].(*LLMConfig)
+		if !ok {
+			return nil, fmt.Errorf("expected *LLMConfig, got %T", args[0])
+		}
+	case 2:
+		// Legacy signature: NewOpenAIGenericClient(apiKey string, config Config)
+		apiKey, ok := args[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("expected string for apiKey, got %T", args[0])
+		}
+		config, ok := args[1].(Config)
+		if !ok {
+			return nil, fmt.Errorf("expected Config, got %T", args[1])
+		}
+
+		// Convert legacy Config to LLMConfig
+		llmConfig = &LLMConfig{
+			APIKey:  apiKey,
+			Model:   config.Model,
+			BaseURL: config.BaseURL,
+		}
+		if config.Temperature != nil {
+			llmConfig.Temperature = *config.Temperature
+		}
+		if config.MaxTokens != nil {
+			llmConfig.MaxTokens = *config.MaxTokens
+		}
+		if config.TopP != nil {
+			llmConfig.TopP = *config.TopP
+		}
+		if config.TopK != nil {
+			llmConfig.TopK = *config.TopK
+		}
+		if config.MinP != nil {
+			llmConfig.MinP = *config.MinP
+		}
+		// Note: Stop sequences are not supported in LLMConfig yet
+	default:
+		return nil, fmt.Errorf("invalid number of arguments: expected 1 or 2, got %d", len(args))
 	}
 
-	if config.APIKey == "" {
+	if llmConfig == nil {
+		llmConfig = NewLLMConfig()
+	}
+
+	if llmConfig.APIKey == "" {
 		return nil, ErrAPIKeyMissing
 	}
 
-	baseClient := NewBaseOpenAIClient(config, DefaultReasoning, DefaultVerbosity)
+	baseClient := NewBaseOpenAIClient(llmConfig, DefaultReasoning, DefaultVerbosity)
 
 	var client *openai.Client
-	if config.BaseURL != "" {
+	if llmConfig.BaseURL != "" {
 		// Validate and configure custom base URL for OpenAI-compatible services
-		if err := validateBaseURL(config.BaseURL); err != nil {
+		if err := validateBaseURL(llmConfig.BaseURL); err != nil {
 			return nil, fmt.Errorf("invalid base URL: %w", err)
 		}
 
 		// Create OpenAI client configuration with custom base URL
-		clientConfig := openai.DefaultConfig(config.APIKey)
-		clientConfig.BaseURL = config.BaseURL
+		clientConfig := openai.DefaultConfig(llmConfig.APIKey)
+		clientConfig.BaseURL = llmConfig.BaseURL
 
 		// Handle common base URL patterns
-		if !hasAPIPath(config.BaseURL) {
-			clientConfig.BaseURL = config.BaseURL + "/v1"
+		if !hasAPIPath(llmConfig.BaseURL) {
+			clientConfig.BaseURL = llmConfig.BaseURL + "/v1"
 		}
 
 		client = openai.NewClientWithConfig(clientConfig)
 	} else {
 		// Use default OpenAI client
-		client = openai.NewClient(config.APIKey)
+		client = openai.NewClient(llmConfig.APIKey)
 	}
 
 	return &OpenAIGenericClient{

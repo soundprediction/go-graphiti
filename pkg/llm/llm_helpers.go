@@ -76,7 +76,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	maxRetries int,
 ) (string, error) {
 	if maxRetries <= 0 {
-		maxRetries = 3
+		maxRetries = 10
 	}
 
 	// Make a copy of messages to avoid modifying the original slice

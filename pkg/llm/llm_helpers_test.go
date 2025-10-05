@@ -313,6 +313,63 @@ func contains(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
 }
 
+func TestOpenAIGenericClient_LegacySignature(t *testing.T) {
+	// Test that the legacy signature still works
+	apiKey := "test-key"
+	temp := float32(0.7)
+	config := llm.Config{
+		Model:       "gpt-4o-mini",
+		BaseURL:     "https://api.openai.com",
+		Temperature: &temp,
+	}
+
+	client, err := llm.NewOpenAIGenericClient(apiKey, config)
+	if err != nil {
+		t.Fatalf("Expected no error with legacy signature, got: %v", err)
+	}
+
+	if client == nil {
+		t.Fatal("Expected non-nil client")
+	}
+
+	// Verify the client is properly configured
+	if client.GetConfig().APIKey != apiKey {
+		t.Errorf("Expected API key %s, got %s", apiKey, client.GetConfig().APIKey)
+	}
+
+	if client.GetConfig().Model != config.Model {
+		t.Errorf("Expected model %s, got %s", config.Model, client.GetConfig().Model)
+	}
+}
+
+func TestOpenAIGenericClient_NewSignature(t *testing.T) {
+	// Test that the new signature works
+	config := &llm.LLMConfig{
+		APIKey:      "test-key",
+		Model:       "gpt-4o-mini",
+		BaseURL:     "https://api.openai.com",
+		Temperature: 0.7,
+	}
+
+	client, err := llm.NewOpenAIGenericClient(config)
+	if err != nil {
+		t.Fatalf("Expected no error with new signature, got: %v", err)
+	}
+
+	if client == nil {
+		t.Fatal("Expected non-nil client")
+	}
+
+	// Verify the client is properly configured
+	if client.GetConfig().APIKey != config.APIKey {
+		t.Errorf("Expected API key %s, got %s", config.APIKey, client.GetConfig().APIKey)
+	}
+
+	if client.GetConfig().Model != config.Model {
+		t.Errorf("Expected model %s, got %s", config.Model, client.GetConfig().Model)
+	}
+}
+
 func containsMiddle(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
