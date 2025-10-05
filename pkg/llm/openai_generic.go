@@ -74,10 +74,6 @@ func NewOpenAIGenericClient(args ...interface{}) (*OpenAIGenericClient, error) {
 		llmConfig = NewLLMConfig()
 	}
 
-	if llmConfig.APIKey == "" {
-		return nil, ErrAPIKeyMissing
-	}
-
 	baseClient := NewBaseOpenAIClient(llmConfig, DefaultReasoning, DefaultVerbosity)
 
 	var client *openai.Client
