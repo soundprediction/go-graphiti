@@ -171,6 +171,7 @@ func (b *BaseOpenAIClient) BuildChatRequest(messages []openai.ChatCompletionMess
 		Messages:    messages,
 		Temperature: b.config.Temperature,
 		TopP:        b.config.TopP,
+		Stream:      false, // Explicitly disable streaming
 	}
 
 	if maxTokens > 0 {
