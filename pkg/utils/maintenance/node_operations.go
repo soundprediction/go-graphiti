@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	jsonrepair "github.com/RealAlexandreAI/json-repair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -67,7 +68,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 
 	// Prepare context for LLM
 	promptContext := map[string]interface{}{
-		"episode_content":    episode.Summary,
+		"episode_content":    episode.Content,
 		"episode_timestamp":  episode.ValidFrom.Format(time.RFC3339),
 		"previous_episodes":  previousEpisodeContents,
 		"custom_prompt":      "",
@@ -108,7 +109,16 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 			return nil, fmt.Errorf("failed to extract entities: %w", err)
 		}
 
-		if err := json.Unmarshal(response, &extractedEntities); err != nil {
+		// Repair JSON before unmarshaling
+		repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+		// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+		var rawJSON json.RawMessage
+		if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+		}
+
+		if err := json.Unmarshal(rawJSON, &extractedEntities); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal entities response: %w", err)
 		}
 
@@ -175,7 +185,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 			Type:       types.EntityNodeType,
 			GroupID:    episode.GroupID,
 			Name:       extractedEntity.Name,
-			Summary:    "",
+			Summary:    extractedEntity.Name,
 			CreatedAt:  time.Now().UTC(),
 			UpdatedAt:  time.Now().UTC(),
 			ValidFrom:  episode.ValidFrom,
@@ -222,8 +232,17 @@ func (no *NodeOperations) extractNodesReflexion(ctx context.Context, episode *ty
 		return nil, fmt.Errorf("failed to run reflexion: %w", err)
 	}
 
+	// Repair JSON before unmarshaling
+	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+	var rawJSON json.RawMessage
+	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	}
+
 	var missedEntities prompts.MissedEntities
-	if err := json.Unmarshal(response, &missedEntities); err != nil {
+	if err := json.Unmarshal(rawJSON, &missedEntities); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal reflexion response: %w", err)
 	}
 
@@ -302,7 +321,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	promptContext := map[string]interface{}{
 		"extracted_nodes":   extractedNodesContext,
 		"existing_nodes":    existingNodesContext,
-		"episode_content":   episode.Summary,
+		"episode_content":   episode.Content,
 		"previous_episodes": previousEpisodeContents,
 		"ensure_ascii":      true,
 	}
@@ -314,12 +333,22 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	}
 
 	response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.NodeResolutions{})
+	fmt.Printf("string(response): %v\n", string(response))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to resolve nodes: %w", err)
 	}
 
+	// Repair JSON before unmarshaling
+	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+
+	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
+	var rawJSON json.RawMessage
+	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	}
+
 	var nodeResolutions prompts.NodeResolutions
-	if err := json.Unmarshal(response, &nodeResolutions); err != nil {
+	if err := json.Unmarshal(rawJSON, &nodeResolutions); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to unmarshal node resolutions: %w", err)
 	}
 
@@ -450,7 +479,7 @@ func (no *NodeOperations) extractAttributesFromNode(ctx context.Context, node *t
 		if entityTypeName != "" && entityTypes[entityTypeName] != nil {
 			attributesContext := map[string]interface{}{
 				"node":              nodeContext,
-				"episode_content":   episode.Summary,
+				"episode_content":   episode.Content,
 				"previous_episodes": previousEpisodeContents,
 				"ensure_ascii":      true,
 			}

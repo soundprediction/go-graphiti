@@ -57,6 +57,8 @@ type Config struct {
 	Temperature *float32 `json:"temperature,omitempty"`
 	MaxTokens   *int     `json:"max_tokens,omitempty"`
 	TopP        *float32 `json:"top_p,omitempty"`
+	TopK        *int     `json:"top_k,omitempty"`
+	MinP        *float32 `json:"min_p,omitempty"`
 	Stop        []string `json:"stop,omitempty"`
 	BaseURL     string   `json:"base_url,omitempty"`    // Custom base URL for OpenAI-compatible services
 }
