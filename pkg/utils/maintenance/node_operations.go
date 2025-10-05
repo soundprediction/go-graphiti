@@ -321,7 +321,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	promptContext := map[string]interface{}{
 		"extracted_nodes":   extractedNodesContext,
 		"existing_nodes":    existingNodesContext,
-		"episode_content":   episode.Summary,
+		"episode_content":   episode.Content,
 		"previous_episodes": previousEpisodeContents,
 		"ensure_ascii":      true,
 	}
@@ -333,6 +333,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	}
 
 	response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.NodeResolutions{})
+	fmt.Printf("string(response): %v\n", string(response))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to resolve nodes: %w", err)
 	}
@@ -478,7 +479,7 @@ func (no *NodeOperations) extractAttributesFromNode(ctx context.Context, node *t
 		if entityTypeName != "" && entityTypes[entityTypeName] != nil {
 			attributesContext := map[string]interface{}{
 				"node":              nodeContext,
-				"episode_content":   episode.Summary,
+				"episode_content":   episode.Content,
 				"previous_episodes": previousEpisodeContents,
 				"ensure_ascii":      true,
 			}

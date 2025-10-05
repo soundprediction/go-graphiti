@@ -169,6 +169,7 @@ func (b *BaseOpenAIClient) BuildChatRequest(messages []openai.ChatCompletionMess
 		Model:       model,
 		Messages:    messages,
 		Temperature: b.config.Temperature,
+		TopP:        b.config.TopP,
 	}
 
 	if maxTokens > 0 {

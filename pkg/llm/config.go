@@ -28,10 +28,23 @@ type LLMConfig struct {
 	BaseURL string `json:"base_url,omitempty"`
 
 	// Temperature controls randomness in generation (0.0 to 2.0)
+	// Recommended: 0.7 for non-thinking mode
 	Temperature float32 `json:"temperature,omitempty"`
 
 	// MaxTokens is the maximum number of tokens to generate
 	MaxTokens int `json:"max_tokens,omitempty"`
+
+	// TopP controls nucleus sampling (0.0 to 1.0)
+	// Recommended: 0.8 for non-thinking mode
+	TopP float32 `json:"top_p,omitempty"`
+
+	// TopK controls top-k sampling (provider-specific, e.g., LM Studio)
+	// Recommended: 20 for non-thinking mode
+	TopK int `json:"top_k,omitempty"`
+
+	// MinP controls minimum probability threshold (provider-specific, e.g., LM Studio)
+	// Recommended: 0.0 for non-thinking mode
+	MinP float32 `json:"min_p,omitempty"`
 
 	// SmallModel is the model to use for simpler prompts
 	SmallModel string `json:"small_model,omitempty"`
@@ -78,5 +91,23 @@ func (c *LLMConfig) WithMaxTokens(maxTokens int) *LLMConfig {
 // WithSmallModel sets the small model
 func (c *LLMConfig) WithSmallModel(smallModel string) *LLMConfig {
 	c.SmallModel = smallModel
+	return c
+}
+
+// WithTopP sets the top-p value
+func (c *LLMConfig) WithTopP(topP float32) *LLMConfig {
+	c.TopP = topP
+	return c
+}
+
+// WithTopK sets the top-k value
+func (c *LLMConfig) WithTopK(topK int) *LLMConfig {
+	c.TopK = topK
+	return c
+}
+
+// WithMinP sets the min-p value
+func (c *LLMConfig) WithMinP(minP float32) *LLMConfig {
+	c.MinP = minP
 	return c
 }
