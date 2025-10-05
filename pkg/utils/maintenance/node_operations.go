@@ -333,7 +333,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	}
 
 	response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.NodeResolutions{})
-	fmt.Printf("string(response): %v\n", string(response))
+
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to resolve nodes: %w", err)
 	}
