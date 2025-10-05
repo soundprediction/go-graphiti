@@ -87,18 +87,13 @@ func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []Message) (*Re
 
 // ChatWithStructuredOutput implements the Client interface
 func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema interface{}) (json.RawMessage, error) {
-	responseMap, err := c.GenerateResponseWithRetry(ctx, c.client, messages, schema, 0, ModelSizeMedium)
+	// Use continuation-based JSON generation for more robust handling
+	jsonStr, err := GenerateJSONResponseWithContinuationMessages(ctx, c, messages, schema, c.maxRetries)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert response map to JSON
-	responseBytes, err := json.Marshal(responseMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal structured response: %w", err)
-	}
-
-	return json.RawMessage(responseBytes), nil
+	return json.RawMessage(jsonStr), nil
 }
 
 // generateResponseWithEnhancedRetry implements the Python-style retry logic with error feedback
@@ -145,8 +140,8 @@ func (c *OpenAIGenericClient) generateResponseWithEnhancedRetry(
 
 			// Check for OpenAI-specific errors that shouldn't be retried
 			if strings.Contains(err.Error(), "timeout") ||
-			   strings.Contains(err.Error(), "connection") ||
-			   strings.Contains(err.Error(), "internal server error") {
+				strings.Contains(err.Error(), "connection") ||
+				strings.Contains(err.Error(), "internal server error") {
 				return nil, fmt.Errorf("openai API error: %w", err)
 			}
 
