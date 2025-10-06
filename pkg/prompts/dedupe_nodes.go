@@ -179,7 +179,7 @@ Do NOT mark entities as duplicates if:
 - They have similar names or purposes but refer to separate instances or concepts.
 
 Task:
-Your response will be a list called entity_resolutions which contains one entry for each entity.
+Your response will be json called entity_resolutions with a list that contains one entry for each entity.
 
 For each entity, return the id of the entity as id, the name of the entity as name, and the duplicate_idx
 as an integer.
@@ -187,6 +187,15 @@ as an integer.
 - If an entity is a duplicate of one of the EXISTING ENTITIES, return the idx of the candidate it is a 
 duplicate of.
 - If an entity is not a duplicate of one of the EXISTING ENTITIES, return the -1 as the duplication_idx
+
+Response using valid json like in the example:
+
+"entity_resolutions" : [
+  {"id": 0, "name": "anterior compartment of the lower leg", "duplicate_idx": -1},
+  {"id": 1, "name": "tibialis anterior", "duplicate_idx": -1},
+  {"id": 2, "name": "extensor hallucis longus", "duplicate_idx": -1}
+  {"id": 3, "name": "anterior tibialis", "duplicate_idx": 1, "duplicates": },
+  ]
 `, previousEpisodesJSON, episodeContent, extractedNodesJSON, existingNodesJSON)
 
 	return []llm.Message{

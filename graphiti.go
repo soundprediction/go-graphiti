@@ -106,6 +106,8 @@ type Config struct {
 	TimeZone *time.Location
 	// Search configuration
 	SearchConfig *types.SearchConfig
+	// DefaultEntityTypes defines the default entity types to use when AddEpisodeOptions.EntityTypes is nil
+	DefaultEntityTypes map[string]interface{}
 }
 
 // AddEpisodeOptions holds options for adding a single episode.
@@ -198,6 +200,11 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	if options == nil {
 		options = &AddEpisodeOptions{}
+	}
+
+	// Use default entity types from config if not provided in options
+	if options.EntityTypes == nil && c.config.DefaultEntityTypes != nil {
+		options.EntityTypes = c.config.DefaultEntityTypes
 	}
 
 	now := time.Now()
@@ -464,7 +471,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	result.EpisodicEdges = episodicEdges
 
 	// PHASE 10: COMMUNITY UPDATE
-	if options.UpdateCommunities {
+ 	if options.UpdateCommunities {
 		c.logger.Info("Starting community update",
 			"episode_id", episodeNode.ID,
 			"group_id", episode.GroupID)

@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -82,12 +83,16 @@ func GenerateJSONResponseWithContinuationMessages(
 	// Make a copy of messages to avoid modifying the original slice
 	workingMessages := make([]Message, len(messages))
 	copy(workingMessages, messages)
-
 	var accumulatedResponse string
 	var lastError error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
+		if attempt > 0 {
+			workingMessages[1].Content += messages[1].Content + "\n Continue the output:\n" + accumulatedResponse
+		}
+
+		fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
 		response, err := llmClient.Chat(ctx, workingMessages)
 		if err != nil {
 			lastError = fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
@@ -134,8 +139,24 @@ func GenerateJSONResponseWithContinuationMessages(
 		}
 
 		// Try to unmarshal into target struct for validation
+		// Handle both single objects and arrays
 		err = json.Unmarshal(rawJSON, targetStruct)
 		if err != nil {
+			// Check if rawJSON is an array - try to extract first element if targetStruct is not an array
+			trimmed := bytes.TrimSpace(rawJSON)
+			if len(trimmed) > 0 && trimmed[0] == '[' && trimmed[len(trimmed)-1] == ']' {
+				// It's an array, try to extract first element
+				var arrayJSON []json.RawMessage
+				if json.Unmarshal(rawJSON, &arrayJSON) == nil && len(arrayJSON) > 0 {
+					// Try unmarshaling first element
+					if json.Unmarshal(arrayJSON[0], targetStruct) == nil {
+						// Success with first element - repair and return it
+						repairedJSON, _ := jsonrepair.RepairJSON(string(arrayJSON[0]))
+						return repairedJSON, nil
+					}
+				}
+			}
+
 			// JSON structure doesn't match expected schema
 			lastError = fmt.Errorf("JSON schema mismatch on attempt %d: %w", attempt+1, err)
 
