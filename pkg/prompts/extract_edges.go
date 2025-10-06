@@ -15,13 +15,13 @@ type ExtractEdgesPrompt interface {
 
 // ExtractEdgesVersions holds all versions of extract edges prompts.
 type ExtractEdgesVersions struct {
-	EdgePrompt            PromptVersion
-	ReflexionPrompt       PromptVersion
+	EdgePrompt              PromptVersion
+	ReflexionPrompt         PromptVersion
 	ExtractAttributesPrompt PromptVersion
 }
 
-func (e *ExtractEdgesVersions) Edge() PromptVersion            { return e.EdgePrompt }
-func (e *ExtractEdgesVersions) Reflexion() PromptVersion      { return e.ReflexionPrompt }
+func (e *ExtractEdgesVersions) Edge() PromptVersion              { return e.EdgePrompt }
+func (e *ExtractEdgesVersions) Reflexion() PromptVersion         { return e.ReflexionPrompt }
 func (e *ExtractEdgesVersions) ExtractAttributes() PromptVersion { return e.ExtractAttributesPrompt }
 
 // edgePrompt extracts fact triples from text.
@@ -86,6 +86,15 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 
 %v
 
+# DATETIME RULES
+
+- Use ISO 8601 with "Z" suffix (UTC) (e.g., 2025-04-30T00:00:00Z).
+- If the fact is ongoing (present tense), set 'valid_at' to REFERENCE_TIME.
+- If a change/termination is expressed, set 'invalid_at' to the relevant timestamp.
+- Leave both fields 'null' if no explicit or resolvable time is stated.
+- If only a date is mentioned (no time), assume 00:00:00.
+- If only a year is mentioned, use January 1st at 00:00:00.
+
 # EXTRACTION RULES
 
 1. Only emit facts where both the subject and object match IDs in ENTITIES.
@@ -95,15 +104,26 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 5. The 'fact_text' should quote or closely paraphrase the original source sentence(s).
 6. Use 'REFERENCE_TIME' to resolve vague or relative temporal expressions (e.g., "last week").
 7. Do **not** hallucinate or infer temporal bounds from unrelated events.
+8. Format your response as valid JSON, following the following example:
 
-# DATETIME RULES
+"facts": [
+	{
+	"relation_type": "",
+	"source_entity_id": "",
+	"target_entity_id": "",
+	"fact": "",
+	"valid_at": ""
+	},
+	{
+	"relation_type": "",
+	"source_entity_id": "",
+	"target_entity_id": "",
+	"fact": "",
+	"valid_at": ""
+	},
+]
 
-- Use ISO 8601 with "Z" suffix (UTC) (e.g., 2025-04-30T00:00:00Z).
-- If the fact is ongoing (present tense), set 'valid_at' to REFERENCE_TIME.
-- If a change/termination is expressed, set 'invalid_at' to the relevant timestamp.
-- Leave both fields 'null' if no explicit or resolvable time is stated.
-- If only a date is mentioned (no time), assume 00:00:00.
-- If only a year is mentioned, use January 1st at 00:00:00.
+
 `, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
 
 	return []llm.Message{
@@ -208,8 +228,8 @@ Guidelines:
 // NewExtractEdgesVersions creates a new ExtractEdgesVersions instance.
 func NewExtractEdgesVersions() *ExtractEdgesVersions {
 	return &ExtractEdgesVersions{
-		EdgePrompt:            NewPromptVersion(edgePrompt),
-		ReflexionPrompt:       NewPromptVersion(extractEdgesReflexionPrompt),
+		EdgePrompt:              NewPromptVersion(edgePrompt),
+		ReflexionPrompt:         NewPromptVersion(extractEdgesReflexionPrompt),
 		ExtractAttributesPrompt: NewPromptVersion(extractEdgesAttributesPrompt),
 	}
 }

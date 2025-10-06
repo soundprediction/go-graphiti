@@ -377,7 +377,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 		}
 
 		extractedEdges, err = edgeOps.ExtractEdges(ctx, episodeNode, resolvedNodes,
-			previousEpisodes, edgeTypeMap, episode.GroupID)
+			previousEpisodes, edgeTypeMap, options.EdgeTypes, episode.GroupID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract edges: %w", err)
 		}
@@ -471,7 +471,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	result.EpisodicEdges = episodicEdges
 
 	// PHASE 10: COMMUNITY UPDATE
- 	if options.UpdateCommunities {
+	if options.UpdateCommunities {
 		c.logger.Info("Starting community update",
 			"episode_id", episodeNode.ID,
 			"group_id", episode.GroupID)
