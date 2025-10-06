@@ -1,7 +1,6 @@
 package llm
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -56,6 +55,12 @@ func GenerateJSONResponseWithContinuation(
 	return GenerateJSONResponseWithContinuationMessages(ctx, llmClient, messages, targetStruct, maxRetries)
 }
 
+func isValidJson(s string) (bool, error) {
+	var js json.RawMessage
+	err := json.Unmarshal([]byte(s), &js)
+	return err != nil, err
+}
+
 // GenerateJSONResponseWithContinuationMessages makes repeated LLM calls with continuation prompts
 // until valid JSON is received or max retries is reached. This version accepts pre-built messages.
 //
@@ -77,7 +82,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	maxRetries int,
 ) (string, error) {
 	if maxRetries <= 0 {
-		maxRetries = 10
+		maxRetries = 20
 	}
 
 	// Make a copy of messages to avoid modifying the original slice
@@ -101,6 +106,7 @@ func GenerateJSONResponseWithContinuationMessages(
 
 		if response == nil || response.Content == "" {
 			lastError = fmt.Errorf("empty response from LLM on attempt %d", attempt+1)
+			// ask the LLM to fix the output
 			continue
 		}
 
@@ -114,73 +120,19 @@ func GenerateJSONResponseWithContinuationMessages(
 		fmt.Printf("accumulatedResponse: %v\n", accumulatedResponse)
 		// Try to validate JSON without repair (don't repair during continuation)
 		// First unmarshal to handle potential quoted JSON
-		var rawJSON json.RawMessage
-		err = json.Unmarshal([]byte(accumulatedResponse), &rawJSON)
+
+		// check if the response is a full json
+		ok, err := isValidJson(response.Content)
 		if err != nil {
-			// JSON is invalid or incomplete, try continuation
-			lastError = fmt.Errorf("invalid JSON on attempt %d: %w", attempt+1, err)
-
-			if attempt < maxRetries {
-				// Add continuation prompt
-				workingMessages = append(workingMessages, Message{
-					Role:    "assistant",
-					Content: accumulatedResponse,
-				})
-				workingMessages = append(workingMessages, Message{
-					Role: "user",
-					Content: fmt.Sprintf(
-						"The JSON response was incomplete or invalid. Please continue from where you left off. "+
-							"Error: %v. Continue the JSON output:",
-						err,
-					),
-				})
+			if ok {
+				repairedJSON, _ := jsonrepair.RepairJSON(accumulatedResponse)
+				return repairedJSON, nil
 			}
-			continue
-		}
-
-		// Try to unmarshal into target struct for validation
-		// Handle both single objects and arrays
-		err = json.Unmarshal(rawJSON, targetStruct)
-		if err != nil {
-			// Check if rawJSON is an array - try to extract first element if targetStruct is not an array
-			trimmed := bytes.TrimSpace(rawJSON)
-			if len(trimmed) > 0 && trimmed[0] == '[' && trimmed[len(trimmed)-1] == ']' {
-				// It's an array, try to extract first element
-				var arrayJSON []json.RawMessage
-				if json.Unmarshal(rawJSON, &arrayJSON) == nil && len(arrayJSON) > 0 {
-					// Try unmarshaling first element
-					if json.Unmarshal(arrayJSON[0], targetStruct) == nil {
-						// Success with first element - repair and return it
-						repairedJSON, _ := jsonrepair.RepairJSON(string(arrayJSON[0]))
-						return repairedJSON, nil
-					}
-				}
-			}
-
-			// JSON structure doesn't match expected schema
-			lastError = fmt.Errorf("JSON schema mismatch on attempt %d: %w", attempt+1, err)
-
-			if attempt < maxRetries {
-				// Add continuation prompt with schema feedback
-				workingMessages = append(workingMessages, Message{
-					Role:    "assistant",
-					Content: accumulatedResponse,
-				})
-				workingMessages = append(workingMessages, Message{
-					Role: "user",
-					Content: fmt.Sprintf(
-						"The JSON structure doesn't match the expected schema. "+
-							"Error: %v. Please provide the complete JSON in the correct format:",
-						err,
-					),
-				})
-			}
-			continue
 		}
 
 		// Success! Valid JSON that matches the schema
 		// Now repair the JSON before returning
-		repairedJSON, _ := jsonrepair.RepairJSON(string(rawJSON))
+		repairedJSON, _ := jsonrepair.RepairJSON(string(accumulatedResponse))
 		return repairedJSON, nil
 	}
 
