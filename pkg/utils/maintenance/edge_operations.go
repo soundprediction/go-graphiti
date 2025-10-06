@@ -93,12 +93,14 @@ func (eo *EdgeOperations) BuildDuplicateOfEdges(ctx context.Context, episode *ty
 }
 
 // ExtractEdges extracts relationship edges from episode content using LLM
-func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node, nodes []*types.Node, previousEpisodes []*types.Node, edgeTypeMap map[string][]string, groupID string) ([]*types.Edge, error) {
+func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node, nodes []*types.Node, previousEpisodes []*types.Node, edgeTypeMap map[string][][]string, edgeTypes map[string]interface{}, groupID string) ([]*types.Edge, error) {
 	start := time.Now()
 
 	if len(nodes) == 0 {
 		return []*types.Edge{}, nil
 	}
+
+	edgeTypeMapJson, _ := json.Marshal(edgeTypeMap)
 
 	// Prepare context for LLM
 	nodeContexts := make([]map[string]interface{}, len(nodes))
@@ -106,21 +108,24 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		nodeContexts[i] = map[string]interface{}{
 			"id":           i,
 			"name":         node.Name,
-			"entity_types": []string{string(node.Type)}, // Simplified for now
+			"entity_types": []string{string(node.EntityType)}, // Simplified for now
 		}
 	}
+
+	nodeContextsJson, _ := json.Marshal(nodeContexts)
 
 	previousEpisodeContents := make([]string, len(previousEpisodes))
 	for i, ep := range previousEpisodes {
 		previousEpisodeContents[i] = ep.Summary
 	}
+	previousEpisodeContentsJson, _ := json.Marshal(previousEpisodeContents)
 
 	promptContext := map[string]interface{}{
 		"episode_content":   episode.Content,
-		"nodes":             nodeContexts,
-		"previous_episodes": previousEpisodeContents,
+		"nodes":             string(nodeContextsJson),
+		"previous_episodes": string(previousEpisodeContentsJson),
 		"reference_time":    episode.ValidFrom,
-		"edge_types":        []map[string]interface{}{}, // Simplified for now
+		"edge_types":        string(edgeTypeMapJson),
 		"custom_prompt":     "",
 		"ensure_ascii":      true,
 	}
@@ -160,14 +165,14 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	edges := make([]*types.Edge, 0, len(extractedEdges.Edges))
 	for _, edgeData := range extractedEdges.Edges {
 		// Validate node indices
-		if edgeData.SourceEntityID < 0 || edgeData.SourceEntityID >= len(nodes) ||
-			edgeData.TargetEntityID < 0 || edgeData.TargetEntityID >= len(nodes) {
-			log.Printf("Warning: invalid node indices for edge %s", edgeData.RelationType)
+		if edgeData.SourceID < 0 || edgeData.SourceID >= len(nodes) ||
+			edgeData.TargetID < 0 || edgeData.TargetID >= len(nodes) {
+			log.Printf("Warning: invalid node indices for edge %s", edgeData.Name)
 			continue
 		}
 
-		sourceNode := nodes[edgeData.SourceEntityID]
-		targetNode := nodes[edgeData.TargetEntityID]
+		sourceNode := nodes[edgeData.SourceID]
+		targetNode := nodes[edgeData.TargetID]
 
 		// Parse temporal information
 		var validAt time.Time
@@ -198,10 +203,10 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 			sourceNode.ID,
 			targetNode.ID,
 			groupID,
-			edgeData.RelationType,
+			edgeData.Name,
 			types.EntityEdgeType,
 		)
-		edge.Summary = edgeData.Fact
+		edge.Summary = *edgeData.Summary
 		edge.Fact = edgeData.Fact
 		edge.UpdatedAt = time.Now().UTC()
 		edge.ValidFrom = validAt
@@ -483,11 +488,30 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		}
 	}
 
+	// Build edge_types_context for deduplication prompt
+	// Note: This context is simpler than the extraction context - it only includes name and description
+	// Equivalent to Python (lines 497-507):
+	// edge_types_context = (
+	//     [
+	//         {
+	//             'fact_type_name': type_name,
+	//             'fact_type_description': type_model.__doc__,
+	//         }
+	//         for type_name, type_model in edge_type_candidates.items()
+	//     ]
+	//     if edge_type_candidates is not None
+	//     else []
+	// )
+	edgeTypesContext := []map[string]interface{}{}
+	// For now, we don't have edge_type_candidates in this function
+	// This would need to be passed from the calling code if custom edge types are used
+	// TODO: Add edge_type_candidates parameter to this function if custom edge types are needed
+
 	promptContext := map[string]interface{}{
 		"existing_edges":               relatedEdgesContext,
 		"new_edge":                     extractedEdge.Summary,
 		"edge_invalidation_candidates": invalidationCandidatesContext,
-		"edge_types":                   []map[string]interface{}{}, // Simplified
+		"edge_types":                   edgeTypesContext,
 		"ensure_ascii":                 true,
 	}
 

@@ -26,14 +26,14 @@ type EdgeOperations interface {
 
 // BaseEdge represents the abstract base class for all edges (equivalent to Python Edge class)
 type BaseEdge struct {
-	ID           string                 `json:"uuid"`              // matches Python uuid field
-	GroupID      string                 `json:"group_id"`          // matches Python group_id
-	SourceNodeID string                 `json:"source_node_uuid"`  // matches Python source_node_uuid  
-	TargetNodeID string                 `json:"target_node_uuid"`  // matches Python target_node_uuid
-	CreatedAt    time.Time              `json:"created_at"`        // matches Python created_at
-	
+	ID           string    `json:"uuid"`             // matches Python uuid field
+	GroupID      string    `json:"group_id"`         // matches Python group_id
+	SourceNodeID string    `json:"source_node_uuid"` // matches Python source_node_uuid
+	TargetNodeID string    `json:"target_node_uuid"` // matches Python target_node_uuid
+	CreatedAt    time.Time `json:"created_at"`       // matches Python created_at
+
 	// Metadata and common fields
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // EdgeInterface defines the interface that all edge types must implement (equivalent to Python ABC methods)
@@ -47,11 +47,11 @@ type EdgeInterface interface {
 }
 
 // Implement EdgeInterface for BaseEdge
-func (e *BaseEdge) GetUUID() string { return e.ID }
-func (e *BaseEdge) GetGroupID() string { return e.GroupID }
+func (e *BaseEdge) GetUUID() string           { return e.ID }
+func (e *BaseEdge) GetGroupID() string        { return e.GroupID }
 func (e *BaseEdge) GetSourceNodeUUID() string { return e.SourceNodeID }
 func (e *BaseEdge) GetTargetNodeUUID() string { return e.TargetNodeID }
-func (e *BaseEdge) GetCreatedAt() time.Time { return e.CreatedAt }
+func (e *BaseEdge) GetCreatedAt() time.Time   { return e.CreatedAt }
 
 // Delete replicates the Python Edge.delete() method
 func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
@@ -82,10 +82,10 @@ func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
 		`, map[string]interface{}{
 			"uuid": e.ID,
 		})
-		
+
 		// TODO: Add AOSS client support if needed
 		// if driver.GetAossClient() != nil { ... }
-		
+
 		return err
 	}
 }
@@ -126,10 +126,10 @@ func DeleteEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []stri
 		`, map[string]interface{}{
 			"uuids": uuids,
 		})
-		
+
 		// TODO: Add AOSS client support if needed
 		// if driver.GetAossClient() != nil { ... }
-		
+
 		return err
 	}
 }
@@ -223,36 +223,36 @@ func GetEpisodicEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids [
 // EntityEdge represents relationships between entities (equivalent to Python EntityEdge)
 type EntityEdge struct {
 	BaseEdge
-	
+
 	// EntityEdge-specific fields (from Python EntityEdge class)
-	Name          string                 `json:"name"`                    // matches Python name
-	Fact          string                 `json:"fact"`                    // matches Python fact
-	FactEmbedding []float32              `json:"fact_embedding"`          // matches Python fact_embedding
-	Episodes      []string               `json:"episodes"`                // matches Python episodes
-	ExpiredAt     *time.Time             `json:"expired_at,omitempty"`    // matches Python expired_at
-	ValidAt       *time.Time             `json:"valid_at,omitempty"`      // matches Python valid_at
-	InvalidAt     *time.Time             `json:"invalid_at,omitempty"`    // matches Python invalid_at
-	Attributes    map[string]interface{} `json:"attributes"`              // matches Python attributes
-	
+	Name          string                 `json:"name"`                 // matches Python name
+	Fact          string                 `json:"fact"`                 // matches Python fact
+	FactEmbedding []float32              `json:"fact_embedding"`       // matches Python fact_embedding
+	Episodes      []string               `json:"episodes"`             // matches Python episodes
+	ExpiredAt     *time.Time             `json:"expired_at,omitempty"` // matches Python expired_at
+	ValidAt       *time.Time             `json:"valid_at,omitempty"`   // matches Python valid_at
+	InvalidAt     *time.Time             `json:"invalid_at,omitempty"` // matches Python invalid_at
+	Attributes    map[string]interface{} `json:"attributes"`           // matches Python attributes
+
 	// Backward compatibility fields (from old Go Edge type)
-	Type         EdgeType               `json:"type"`
-	SourceID     string                 `json:"source_id"`               // alias for SourceNodeID
-	TargetID     string                 `json:"target_id"`               // alias for TargetNodeID
-	UpdatedAt    time.Time              `json:"updated_at"`
-	Summary      string                 `json:"summary,omitempty"`       // alias for Fact
-	Strength     float64                `json:"strength,omitempty"`
-	Embedding    []float32              `json:"embedding,omitempty"`     // general embedding field
-	ValidFrom    time.Time              `json:"valid_from"`
-	ValidTo      *time.Time             `json:"valid_to,omitempty"`
-	SourceIDs    []string               `json:"source_ids,omitempty"`
+	Type      EdgeType   `json:"type"`
+	SourceID  string     `json:"source_id"` // alias for SourceNodeID uuid
+	TargetID  string     `json:"target_id"` // alias for TargetNodeID uuid
+	UpdatedAt time.Time  `json:"updated_at"`
+	Summary   string     `json:"summary,omitempty"` // alias for Fact
+	Strength  float64    `json:"strength,omitempty"`
+	Embedding []float32  `json:"embedding,omitempty"` // general embedding field
+	ValidFrom time.Time  `json:"valid_from"`
+	ValidTo   *time.Time `json:"valid_to,omitempty"`
+	SourceIDs []string   `json:"source_ids,omitempty"`
 }
 
 // EdgeType represents the type of an edge for backward compatibility
 type EdgeType string
 
 const (
-	EntityEdgeType   EdgeType = "entity"
-	EpisodicEdgeType EdgeType = "episodic" 
+	EntityEdgeType    EdgeType = "entity"
+	EpisodicEdgeType  EdgeType = "episodic"
 	CommunityEdgeType EdgeType = "community"
 )
 
@@ -321,25 +321,25 @@ func NewEntityEdge(id, sourceID, targetID, groupID, name string, edgeType EdgeTy
 // Save implements the Python EntityEdge.save() method
 func (e *EntityEdge) Save(ctx context.Context, driver EdgeOperations) error {
 	edgeData := map[string]interface{}{
-		"source_uuid":     e.SourceNodeID,
-		"target_uuid":     e.TargetNodeID,
-		"uuid":            e.ID,
-		"name":            e.Name,
-		"group_id":        e.GroupID,
-		"fact":            e.Fact,
-		"fact_embedding":  e.FactEmbedding,
-		"episodes":        e.Episodes,
-		"created_at":      e.CreatedAt,
-		"expired_at":      e.ExpiredAt,
-		"valid_at":        e.ValidAt,
-		"invalid_at":      e.InvalidAt,
+		"source_uuid":    e.SourceNodeID,
+		"target_uuid":    e.TargetNodeID,
+		"uuid":           e.ID,
+		"name":           e.Name,
+		"group_id":       e.GroupID,
+		"fact":           e.Fact,
+		"fact_embedding": e.FactEmbedding,
+		"episodes":       e.Episodes,
+		"created_at":     e.CreatedAt,
+		"expired_at":     e.ExpiredAt,
+		"valid_at":       e.ValidAt,
+		"invalid_at":     e.InvalidAt,
 	}
 
 	if driver.Provider() == GraphProviderKuzu {
 		// Kuzu-specific logic (lines 320-325 in Python)
 		attributesJSON, _ := json.Marshal(e.Attributes)
 		edgeData["attributes"] = string(attributesJSON)
-		
+
 		_, _, _, err := driver.ExecuteQuery("ENTITY_EDGE_SAVE_QUERY_KUZU", edgeData)
 		return err
 	} else {
@@ -347,10 +347,10 @@ func (e *EntityEdge) Save(ctx context.Context, driver EdgeOperations) error {
 		for k, v := range e.Attributes {
 			edgeData[k] = v
 		}
-		
+
 		// TODO: Add AOSS client support if needed
 		// if driver.GetAossClient() != nil { ... }
-		
+
 		_, _, _, err := driver.ExecuteQuery("ENTITY_EDGE_SAVE_QUERY", map[string]interface{}{
 			"edge_data": edgeData,
 		})
@@ -570,7 +570,7 @@ func GetCommunityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids 
 // Helper function to build EntityEdge from database record (equivalent to Python get_entity_edge_from_record)
 func buildEntityEdgeFromRecord(record map[string]interface{}, provider GraphProvider) *EntityEdge {
 	var attributes map[string]interface{}
-	
+
 	if provider == GraphProviderKuzu {
 		// Kuzu stores attributes as JSON string
 		if attrStr, ok := record["attributes"].(string); ok && attrStr != "" {
@@ -583,8 +583,8 @@ func buildEntityEdgeFromRecord(record map[string]interface{}, provider GraphProv
 			for k, v := range attrMap {
 				// Filter out standard edge fields (matching Python logic lines 603-615)
 				switch k {
-				case "uuid", "source_node_uuid", "target_node_uuid", "fact", "fact_embedding", 
-				     "name", "group_id", "episodes", "created_at", "expired_at", "valid_at", "invalid_at":
+				case "uuid", "source_node_uuid", "target_node_uuid", "fact", "fact_embedding",
+					"name", "group_id", "episodes", "created_at", "expired_at", "valid_at", "invalid_at":
 					// Skip standard fields
 				default:
 					attributes[k] = v
@@ -638,7 +638,7 @@ func convertToFloat32Array(embedding interface{}) []float32 {
 	if embedding == nil {
 		return nil
 	}
-	
+
 	if floatList, ok := embedding.([]interface{}); ok {
 		result := make([]float32, len(floatList))
 		for i, f := range floatList {
@@ -648,6 +648,6 @@ func convertToFloat32Array(embedding interface{}) []float32 {
 		}
 		return result
 	}
-	
+
 	return nil
 }

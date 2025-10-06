@@ -194,7 +194,7 @@ Response using valid json like in the example:
   {"id": 0, "name": "anterior compartment of the lower leg", "duplicate_idx": -1},
   {"id": 1, "name": "tibialis anterior", "duplicate_idx": -1},
   {"id": 2, "name": "extensor hallucis longus", "duplicate_idx": -1}
-  {"id": 3, "name": "anterior tibialis", "duplicate_idx": 1, "duplicates": },
+  {"id": 3, "name": "anterior tibialis", "duplicate_idx": 1, "duplicates": [1]},
   ]
 `, previousEpisodesJSON, episodeContent, extractedNodesJSON, existingNodesJSON)
 
