@@ -44,7 +44,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		{
 			"entity_type_id":          0,
 			"entity_type_name":        "Entity",
-			"entity_type_description": "Default entity classification. Use this entity type if the entity is not one of the other listed types.",
+			"entity_type_description": "Default classification. Use this entity type if the entity is not one of the other listed types.",
 		},
 	}
 
@@ -54,7 +54,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 			entityTypesContext = append(entityTypesContext, map[string]interface{}{
 				"entity_type_id":          id,
 				"entity_type_name":        typeName,
-				"entity_type_description": fmt.Sprintf("Custom entity type: %s", typeName),
+				"entity_type_description": fmt.Sprintf("custom type: %s", typeName),
 			})
 			id++
 		}
@@ -66,13 +66,16 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		previousEpisodeContents[i] = ep.Summary
 	}
 
+	// Convert entity types context to JSON string
+	entityTypesJson, _ := json.Marshal(entityTypesContext)
+	entityTypesStr := string(entityTypesJson)
 	// Prepare context for LLM
 	promptContext := map[string]interface{}{
 		"episode_content":    episode.Content,
 		"episode_timestamp":  episode.ValidFrom.Format(time.RFC3339),
 		"previous_episodes":  previousEpisodeContents,
 		"custom_prompt":      "",
-		"entity_types":       entityTypesContext,
+		"entity_types":       entityTypesStr,
 		"source_description": string(episode.EpisodeType),
 		"ensure_ascii":       true,
 	}
@@ -108,7 +111,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract entities: %w", err)
 		}
-		fmt.Printf("string(response): %v\n", string(response))
+		// fmt.Printf("string(response): %v\n", string(response))
 		// Repair JSON before unmarshaling
 		repairedResponse, _ := jsonrepair.RepairJSON(string(response))
 

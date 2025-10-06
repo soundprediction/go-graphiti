@@ -29,12 +29,12 @@ type ExtractNodesVersions struct {
 }
 
 func (e *ExtractNodesVersions) ExtractMessage() PromptVersion    { return e.extractMessagePrompt }
-func (e *ExtractNodesVersions) ExtractJSON() PromptVersion      { return e.extractJSONPrompt }
-func (e *ExtractNodesVersions) ExtractText() PromptVersion      { return e.extractTextPrompt }
-func (e *ExtractNodesVersions) Reflexion() PromptVersion        { return e.reflexionPrompt }
-func (e *ExtractNodesVersions) ClassifyNodes() PromptVersion    { return e.classifyNodesPrompt }
+func (e *ExtractNodesVersions) ExtractJSON() PromptVersion       { return e.extractJSONPrompt }
+func (e *ExtractNodesVersions) ExtractText() PromptVersion       { return e.extractTextPrompt }
+func (e *ExtractNodesVersions) Reflexion() PromptVersion         { return e.reflexionPrompt }
+func (e *ExtractNodesVersions) ClassifyNodes() PromptVersion     { return e.classifyNodesPrompt }
 func (e *ExtractNodesVersions) ExtractAttributes() PromptVersion { return e.extractAttributesPrompt }
-func (e *ExtractNodesVersions) ExtractSummary() PromptVersion   { return e.extractSummaryPrompt }
+func (e *ExtractNodesVersions) ExtractSummary() PromptVersion    { return e.extractSummaryPrompt }
 
 // extractMessagePrompt extracts entity nodes from conversational messages.
 func extractMessagePrompt(context map[string]interface{}) ([]llm.Message, error) {
@@ -46,7 +46,7 @@ Your primary task is to extract and classify the speaker and other significant e
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
 	customPrompt := context["custom_prompt"]
-	
+
 	ensureASCII := true
 	if val, ok := context["ensure_ascii"]; ok {
 		if b, ok := val.(bool); ok {
@@ -166,11 +166,25 @@ Indicate the classified entity type by providing its entity_type_id.
 
 %v
 
+
 Guidelines:
 1. Extract significant entities, concepts, or actors mentioned in the conversation.
 2. Avoid creating nodes for relationships or actions.
 3. Avoid creating nodes for temporal information like dates, times or years (these will be added to edges later).
 4. Be as explicit as possible in your node names, using full names and avoiding abbreviations.
+5. Format your response as valid JSON, following the following example:
+
+"entities": [
+{
+	"entity": "phlebotomist",
+	"entity_type_id": 34
+},
+{
+	"entity": "cognitive behavioral therapy",
+	"entity_type_id": 30
+	
+}
+]
 `, entityTypes, episodeContent, customPrompt)
 
 	return []llm.Message{
