@@ -236,8 +236,8 @@ type EntityEdge struct {
 
 	// Backward compatibility fields (from old Go Edge type)
 	Type      EdgeType   `json:"type"`
-	SourceID  string     `json:"source_id"` // alias for SourceNodeID
-	TargetID  string     `json:"target_id"` // alias for TargetNodeID
+	SourceID  string     `json:"source_id"` // alias for SourceNodeID uuid
+	TargetID  string     `json:"target_id"` // alias for TargetNodeID uuid
 	UpdatedAt time.Time  `json:"updated_at"`
 	Summary   string     `json:"summary,omitempty"` // alias for Fact
 	Strength  float64    `json:"strength,omitempty"`

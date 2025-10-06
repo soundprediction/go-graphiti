@@ -112,7 +112,7 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
     "name": "CAUSES",
     "target_id": 11,
     "fact": "acute compartment syndrome, a medical emergency requiring fasciotomy, with causes including trauma, fractures, and swelling.",
-	"summary": "trauma causes acute compartment syndrome"
+	"summary": "trauma causes acute compartment syndrome",
     "valid_at": 2025-04-30T00:00:00Z,
     "invalid_at": null
   },

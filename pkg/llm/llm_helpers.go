@@ -89,7 +89,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
 		if attempt > 0 {
-			workingMessages[1].Content += messages[1].Content + "\n Continue the output:\n" + accumulatedResponse
+			workingMessages[1].Content += messages[1].Content + "\n Continue from below, making sure your output can append to it and form valid json :\n" + accumulatedResponse
 		}
 
 		fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
@@ -111,7 +111,7 @@ func GenerateJSONResponseWithContinuationMessages(
 			// For continuation, append the new content
 			accumulatedResponse += response.Content
 		}
-
+		fmt.Printf("accumulatedResponse: %v\n", accumulatedResponse)
 		// Try to validate JSON without repair (don't repair during continuation)
 		// First unmarshal to handle potential quoted JSON
 		var rawJSON json.RawMessage

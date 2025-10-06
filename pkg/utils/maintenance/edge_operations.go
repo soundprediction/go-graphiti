@@ -165,14 +165,14 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	edges := make([]*types.Edge, 0, len(extractedEdges.Edges))
 	for _, edgeData := range extractedEdges.Edges {
 		// Validate node indices
-		if edgeData.SourceEntityID < 0 || edgeData.SourceEntityID >= len(nodes) ||
-			edgeData.TargetEntityID < 0 || edgeData.TargetEntityID >= len(nodes) {
-			log.Printf("Warning: invalid node indices for edge %s", edgeData.RelationType)
+		if edgeData.SourceID < 0 || edgeData.SourceID >= len(nodes) ||
+			edgeData.TargetID < 0 || edgeData.TargetID >= len(nodes) {
+			log.Printf("Warning: invalid node indices for edge %s", edgeData.Name)
 			continue
 		}
 
-		sourceNode := nodes[edgeData.SourceEntityID]
-		targetNode := nodes[edgeData.TargetEntityID]
+		sourceNode := nodes[edgeData.SourceID]
+		targetNode := nodes[edgeData.TargetID]
 
 		// Parse temporal information
 		var validAt time.Time
@@ -203,10 +203,10 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 			sourceNode.ID,
 			targetNode.ID,
 			groupID,
-			edgeData.RelationType,
+			edgeData.Name,
 			types.EntityEdgeType,
 		)
-		edge.Summary = edgeData.Fact
+		edge.Summary = *edgeData.Summary
 		edge.Fact = edgeData.Fact
 		edge.UpdatedAt = time.Now().UTC()
 		edge.ValidFrom = validAt

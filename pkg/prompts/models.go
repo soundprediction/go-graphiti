@@ -1,6 +1,8 @@
 package prompts
 
-import "time"
+import (
+	"time"
+)
 
 // ExtractedEntity represents an entity extracted from content
 type ExtractedEntity struct {
@@ -34,20 +36,21 @@ type EntityClassification struct {
 type EntitySummary struct {
 	Summary string `json:"summary"`
 }
-
-// Edge represents an extracted edge/relationship
-type Edge struct {
-	RelationType   string  `json:"relation_type"`
-	SourceEntityID int     `json:"source_entity_id"`
-	TargetEntityID int     `json:"target_entity_id"`
-	Fact           string  `json:"fact"`
-	ValidAt        *string `json:"valid_at"`
-	InvalidAt      *string `json:"invalid_at"`
+type ExtractedEdge struct {
+	Name      string    `json:"name"` // matches Python name
+	Fact      string    `json:"fact"`
+	SourceID  int       `json:"source_id"` // alias for SourceNodeID uuid
+	TargetID  int       `json:"target_id"` // alias for TargetNodeID uuid
+	UpdatedAt time.Time `json:"updated_at"`
+	Summary   *string   `json:"summary,omitempty"`
+	ValidAt   *string   `json:"valid_at,omitempty"`   // matches Python valid_at
+	InvalidAt *string   `json:"invalid_at,omitempty"` // matches Python invalid_at
+	// alias for Fact
 }
 
 // ExtractedEdges represents a list of extracted edges
 type ExtractedEdges struct {
-	Edges []Edge `json:"facts"`
+	Edges []ExtractedEdge `json:"facts"`
 }
 
 // MissingFacts represents facts that weren't extracted
