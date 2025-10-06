@@ -107,7 +107,9 @@ type Config struct {
 	// Search configuration
 	SearchConfig *types.SearchConfig
 	// DefaultEntityTypes defines the default entity types to use when AddEpisodeOptions.EntityTypes is nil
-	DefaultEntityTypes map[string]interface{}
+	EntityTypes map[string]interface{}
+	EdgeTypes   map[string]interface{}
+	EdgeMap     map[string]map[string][]interface{}
 }
 
 // AddEpisodeOptions holds options for adding a single episode.
@@ -124,7 +126,7 @@ type AddEpisodeOptions struct {
 	// EdgeTypes custom edge type definitions
 	EdgeTypes map[string]interface{}
 	// EdgeTypeMap mapping of entity pairs to edge types
-	EdgeTypeMap map[string][]string
+	EdgeTypeMap map[string]map[string][]interface{}
 	// OverwriteExisting whether to overwrite an existing episode with the same UUID
 	// Default behavior is false (skip if exists)
 	OverwriteExisting  bool
@@ -203,8 +205,8 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	}
 
 	// Use default entity types from config if not provided in options
-	if options.EntityTypes == nil && c.config.DefaultEntityTypes != nil {
-		options.EntityTypes = c.config.DefaultEntityTypes
+	if options.EntityTypes == nil && c.config.EntityTypes != nil {
+		options.EntityTypes = c.config.EntityTypes
 	}
 
 	now := time.Now()
@@ -366,14 +368,20 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 			"entity_count", len(resolvedNodes))
 
 		// Create edge type map if needed
-		edgeTypeMap := options.EdgeTypeMap
-		if edgeTypeMap == nil && options.EdgeTypes != nil {
-			edgeTypeMap = make(map[string][]string)
-			edgeTypeNames := make([]string, 0, len(options.EdgeTypes))
-			for edgeType := range options.EdgeTypes {
-				edgeTypeNames = append(edgeTypeNames, edgeType)
+		edgeTypeMapInterface := options.EdgeTypeMap
+		if edgeTypeMapInterface == nil && c.config.EdgeTypes != nil {
+			edgeTypeMapInterface = c.config.EdgeMap
+		}
+
+		edgeTypeMap := make(map[string][][]string)
+
+		for outerEntity, innerMap := range edgeTypeMapInterface {
+			for innerEntity, relationships := range innerMap {
+				for _, relation := range relationships {
+					edgeTypeMap[relation.(string)] = append(edgeTypeMap[relation.(string)], []string{outerEntity, innerEntity})
+				}
 			}
-			edgeTypeMap["Entity_Entity"] = edgeTypeNames
+
 		}
 
 		extractedEdges, err = edgeOps.ExtractEdges(ctx, episodeNode, resolvedNodes,

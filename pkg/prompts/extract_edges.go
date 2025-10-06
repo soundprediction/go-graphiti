@@ -108,19 +108,21 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 
 "facts": [
 	{
-	"relation_type": "",
-	"source_entity_id": "",
-	"target_entity_id": "",
-	"fact": "",
-	"valid_at": ""
-	},
-	{
-	"relation_type": "",
-	"source_entity_id": "",
-	"target_entity_id": "",
-	"fact": "",
-	"valid_at": ""
-	},
+    "subject_id": 13,
+    "relation_type": "CAUSES",
+    "object_id": 11,
+    "fact_text": "acute compartment syndrome, a medical emergency requiring fasciotomy, with causes including trauma, fractures, and swelling.",
+    "valid_at": 2025-04-30T00:00:00Z,
+    "invalid_at": null
+  },
+  {
+    "subject_id": 14,
+    "relation_type": "CAUSES",
+    "object_id": 11,
+    "fact_text": "acute compartment syndrome, a medical emergency requiring fasciotomy, with causes including trauma, fractures, and swelling.",
+    "valid_at": 2025-04-30T00:00:00Z,
+    "invalid_at": null
+  },
 ]
 
 

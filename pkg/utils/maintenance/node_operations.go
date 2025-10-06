@@ -197,7 +197,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		}
 
 		extractedNodes = append(extractedNodes, node)
-		log.Printf("Created entity node: %s (UUID: %s)", node.Name, node.ID)
+		log.Printf("Created entity node: %s of type: %s (UUID: %s)", node.Name, node.EntityType, node.ID)
 	}
 
 	return extractedNodes, nil
