@@ -409,7 +409,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 
 		// Resolve extracted edges (dedupe + invalidation)
 		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
-			extractedEdges, episodeNode, resolvedNodes)
+			extractedEdges, episodeNode, resolvedNodes, options.GenerateEmbeddings)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve edges: %w", err)
 		}
@@ -1067,7 +1067,7 @@ func (c *Client) Close(ctx context.Context) error {
 
 // AddTriplet adds a triplet (subject-predicate-object) directly to the knowledge graph.
 // This is an exact translation of the Python Graphiti.add_triplet() method.
-func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *types.Edge, targetNode *types.Node) (*types.AddTripletResults, error) {
+func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *types.Edge, targetNode *types.Node, createEmbeddings bool) (*types.AddTripletResults, error) {
 	if sourceNode == nil || edge == nil || targetNode == nil {
 		return nil, fmt.Errorf("source node, edge, and target node must not be nil")
 	}
@@ -1171,7 +1171,7 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 	}
 
 	// Step 9: Resolve extracted edge (lines 1061-1077)
-	resolvedEdge, invalidatedEdges, err := c.resolveExtractedEdgeExact(ctx, updatedEdge, relatedEdges, existingEdges, episodicNode)
+	resolvedEdge, invalidatedEdges, err := c.resolveExtractedEdgeExact(ctx, updatedEdge, relatedEdges, existingEdges, episodicNode, createEmbeddings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve extracted edge: %w", err)
 	}
@@ -1206,13 +1206,13 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 }
 
 // resolveExtractedEdgeExact is an exact translation of Python's resolve_extracted_edge function
-func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node) (*types.Edge, []*types.Edge, error) {
+func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node, createEmbeddings bool) (*types.Edge, []*types.Edge, error) {
 	// Use the EdgeOperations to resolve the edge exactly as in Python
 	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
 
 	// The Go implementation wraps the private resolveExtractedEdge method
 	// We'll use ResolveExtractedEdges which internally calls the same logic
-	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{})
+	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{}, createEmbeddings)
 	if err != nil {
 		return nil, nil, err
 	}

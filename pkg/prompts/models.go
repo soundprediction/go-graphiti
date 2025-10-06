@@ -42,9 +42,9 @@ type ExtractedEdge struct {
 	SourceID  int       `json:"source_id"` // alias for SourceNodeID uuid
 	TargetID  int       `json:"target_id"` // alias for TargetNodeID uuid
 	UpdatedAt time.Time `json:"updated_at"`
-	Summary   *string   `json:"summary,omitempty"`
-	ValidAt   *string   `json:"valid_at,omitempty"`   // matches Python valid_at
-	InvalidAt *string   `json:"invalid_at,omitempty"` // matches Python invalid_at
+	Summary   string    `json:"summary,omitempty"`
+	ValidAt   string    `json:"valid_at,omitempty"`   // matches Python valid_at
+	InvalidAt string    `json:"invalid_at,omitempty"` // matches Python invalid_at
 	// alias for Fact
 }
 
