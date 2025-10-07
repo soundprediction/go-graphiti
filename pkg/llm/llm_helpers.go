@@ -61,6 +61,35 @@ func isValidJson(s string) (bool, error) {
 	return err != nil, err
 }
 
+// AppendOverlap appends s2 to s1, removing any overlapping part.
+// It finds the longest suffix of s1 that is also a prefix of s2 and
+// combines them to avoid duplicating the overlapping section.
+func AppendOverlap(s1, s2 string) string {
+	len1 := len(s1)
+	len2 := len(s2)
+
+	// Determine the maximum possible overlap length to check.
+	// This can't be longer than the shorter of the two strings.
+	maxOverlap := len1
+	if len2 < len1 {
+		maxOverlap = len2
+	}
+
+	// Iterate backwards from the longest possible overlap.
+	// The first match found will be the longest one.
+	for i := maxOverlap; i > 0; i-- {
+		// Check if the suffix of s1 matches the prefix of s2.
+		if s1[len1-i:] == s2[:i] {
+			// If a match is found, append the non-overlapping part of s2 and return.
+			return s1 + s2[i:]
+		}
+	}
+
+	// If no overlap is found after checking all possibilities,
+	// simply concatenate the two strings.
+	return s1 + s2
+}
+
 // GenerateJSONResponseWithContinuationMessages makes repeated LLM calls with continuation prompts
 // until valid JSON is received or max retries is reached. This version accepts pre-built messages.
 //
@@ -115,7 +144,7 @@ func GenerateJSONResponseWithContinuationMessages(
 			accumulatedResponse = response.Content
 		} else {
 			// For continuation, append the new content
-			accumulatedResponse += response.Content
+			accumulatedResponse = AppendOverlap(accumulatedResponse, response.Content)
 		}
 		// fmt.Printf("accumulatedResponse: %v\n", accumulatedResponse)
 		// Try to validate JSON without repair (don't repair during continuation)
@@ -125,15 +154,17 @@ func GenerateJSONResponseWithContinuationMessages(
 		ok, err := isValidJson(response.Content)
 		if err != nil {
 			if ok {
-				repairedJSON, _ := jsonrepair.RepairJSON(accumulatedResponse)
-				return repairedJSON, nil
+				return response.Content, nil
 			}
 		}
 
-		// Success! Valid JSON that matches the schema
-		// Now repair the JSON before returning
-		repairedJSON, _ := jsonrepair.RepairJSON(string(accumulatedResponse))
-		return repairedJSON, nil
+		ok, err = isValidJson(accumulatedResponse)
+		if err != nil {
+			if ok {
+				return accumulatedResponse, nil
+			}
+		}
+
 	}
 
 	// All retries exhausted - try to repair what we have
