@@ -21,9 +21,9 @@ import (
 
 // Default configuration values for MCP server
 const (
-	DefaultMCPLLMModel      = "gpt-4o-mini"
-	DefaultMCPSmallModel    = "gpt-4o-mini"
-	DefaultMCPEmbedderModel = "text-embedding-3-small"
+	DefaultMCPLLMModel       = "gpt-4o-mini"
+	DefaultMCPSmallModel     = "gpt-4o-mini"
+	DefaultMCPEmbedderModel  = "text-embedding-3-small"
 	DefaultMCPSemaphoreLimit = 10
 )
 
@@ -46,14 +46,14 @@ to work with MCP clients like Claude Desktop or other compatible applications.`,
 var (
 	mcpGroupID           string
 	mcpTransport         string
-	mcpHost             string
-	mcpPort             int
-	mcpModel            string
-	mcpSmallModel       string
-	mcpTemperature      float64
+	mcpHost              string
+	mcpPort              int
+	mcpModel             string
+	mcpSmallModel        string
+	mcpTemperature       float64
 	mcpUseCustomEntities bool
-	mcpDestroyGraph     bool
-	mcpSemaphoreLimit   int
+	mcpDestroyGraph      bool
+	mcpSemaphoreLimit    int
 )
 
 func init() {
@@ -143,11 +143,11 @@ func init() {
 // MCPConfig holds all configuration for the MCP server
 type MCPConfig struct {
 	// LLM Configuration
-	LLMModel         string
-	SmallLLMModel    string
-	LLMTemperature   float64
-	OpenAIAPIKey     string
-	LLMBaseURL      string
+	LLMModel       string
+	SmallLLMModel  string
+	LLMTemperature float64
+	OpenAIAPIKey   string
+	LLMBaseURL     string
 
 	// Embedder Configuration
 	EmbedderModel    string
@@ -162,22 +162,22 @@ type MCPConfig struct {
 	DatabaseName     string
 
 	// MCP Server Configuration
-	GroupID          string
+	GroupID           string
 	UseCustomEntities bool
-	DestroyGraph     bool
-	Transport        string
-	Host             string
-	Port             int
+	DestroyGraph      bool
+	Transport         string
+	Host              string
+	Port              int
 
 	// Concurrency limits
-	SemaphoreLimit   int
+	SemaphoreLimit int
 }
 
 // MCPServer wraps the Graphiti client for MCP operations
 type MCPServer struct {
-	config  *MCPConfig
-	client  *graphiti.Client
-	logger  *slog.Logger
+	config *MCPConfig
+	client *graphiti.Client
+	logger *slog.Logger
 }
 
 // EntityTypes represents custom entity types for extraction
@@ -199,12 +199,12 @@ var EntityTypes = map[string]interface{}{
 
 // AddMemoryRequest represents the parameters for adding memory
 type AddMemoryRequest struct {
-	Name               string `json:"name"`
-	EpisodeBody        string `json:"episode_body"`
-	GroupID            string `json:"group_id,omitempty"`
-	Source             string `json:"source,omitempty"`
-	SourceDescription  string `json:"source_description,omitempty"`
-	UUID               string `json:"uuid,omitempty"`
+	Name              string `json:"name"`
+	EpisodeBody       string `json:"episode_body"`
+	GroupID           string `json:"group_id,omitempty"`
+	Source            string `json:"source,omitempty"`
+	SourceDescription string `json:"source_description,omitempty"`
+	UUID              string `json:"uuid,omitempty"`
 }
 
 // SearchRequest represents search parameters
@@ -254,16 +254,16 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 	// Create configuration using viper (supports config files, env vars, and flags)
 	config := &MCPConfig{
 		// MCP Server configuration
-		GroupID:          getViperStringWithFallback("mcp.group_id", mcpGroupID),
-		Transport:        getViperStringWithFallback("mcp.transport", mcpTransport),
-		Host:             getViperStringWithFallback("mcp.host", mcpHost),
-		Port:             getViperIntWithFallback("mcp.port", mcpPort),
-		LLMModel:         getViperStringWithFallback("mcp.model", mcpModel),
-		SmallLLMModel:    getViperStringWithFallback("mcp.small_model", mcpSmallModel),
-		LLMTemperature:   getViperFloat64WithFallback("mcp.temperature", mcpTemperature),
+		GroupID:           getViperStringWithFallback("mcp.group_id", mcpGroupID),
+		Transport:         getViperStringWithFallback("mcp.transport", mcpTransport),
+		Host:              getViperStringWithFallback("mcp.host", mcpHost),
+		Port:              getViperIntWithFallback("mcp.port", mcpPort),
+		LLMModel:          getViperStringWithFallback("mcp.model", mcpModel),
+		SmallLLMModel:     getViperStringWithFallback("mcp.small_model", mcpSmallModel),
+		LLMTemperature:    getViperFloat64WithFallback("mcp.temperature", mcpTemperature),
 		UseCustomEntities: getViperBoolWithFallback("mcp.use_custom_entities", mcpUseCustomEntities),
-		DestroyGraph:     getViperBoolWithFallback("mcp.destroy_graph", mcpDestroyGraph),
-		SemaphoreLimit:   getViperIntWithFallback("mcp.semaphore_limit", mcpSemaphoreLimit),
+		DestroyGraph:      getViperBoolWithFallback("mcp.destroy_graph", mcpDestroyGraph),
+		SemaphoreLimit:    getViperIntWithFallback("mcp.semaphore_limit", mcpSemaphoreLimit),
 
 		// Database configuration - viper handles env vars automatically
 		DatabaseDriver:   getViperStringWithFallback("database.driver", "kuzu"),
@@ -273,12 +273,12 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 		DatabaseName:     getViperStringWithFallback("database.database", ""),
 
 		// LLM configuration - now optional
-		OpenAIAPIKey:  viper.GetString("llm.api_key"), // No fallback - truly optional
-		LLMBaseURL:    viper.GetString("llm.base_url"),
+		OpenAIAPIKey: viper.GetString("llm.api_key"), // No fallback - truly optional
+		LLMBaseURL:   viper.GetString("llm.base_url"),
 
 		// Embedder configuration
 		EmbedderModel:    getViperStringWithFallback("embedder.model", DefaultMCPEmbedderModel),
-		EmbeddingAPIKey:  viper.GetString("embedder.api_key"),    // No fallback - truly optional
+		EmbeddingAPIKey:  viper.GetString("embedder.api_key"), // No fallback - truly optional
 		EmbeddingBaseURL: viper.GetString("embedder.base_url"),
 	}
 
@@ -412,7 +412,7 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig)
+	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig, logger)
 
 	return &MCPServer{
 		config: config,

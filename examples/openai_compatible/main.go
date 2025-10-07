@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -48,7 +49,7 @@ func main() {
 
 func runOllamaExample() error {
 	fmt.Println("Creating Ollama client...")
-	
+
 	// Create Ollama client (assumes Ollama is running on localhost:11434)
 	client, err := llm.NewOpenAIClient(
 		"", // No API key needed for Ollama
@@ -87,7 +88,7 @@ func runOllamaExample() error {
 
 func runLocalAIExample() error {
 	fmt.Println("Creating LocalAI client...")
-	
+
 	// Create LocalAI client
 	client, err := llm.NewOpenAIClient(
 		"", // No API key needed for LocalAI
@@ -121,12 +122,12 @@ func runLocalAIExample() error {
 
 func runVLLMExample() error {
 	fmt.Println("Creating vLLM client...")
-	
+
 	// Create vLLM client
 	client, err := llm.NewOpenAIClient(
 		"", // No API key needed for vLLM
 		llm.Config{
-			BaseURL:   "http://vllm-server:8000", // vLLM server URL
+			BaseURL:   "http://vllm-server:8000",   // vLLM server URL
 			Model:     "microsoft/DialoGPT-medium", // Model name
 			MaxTokens: &[]int{150}[0],
 		},
@@ -154,13 +155,13 @@ func runVLLMExample() error {
 
 func runCustomServiceExample() error {
 	fmt.Println("Creating custom OpenAI-compatible client...")
-	
+
 	// Create client for a custom OpenAI-compatible service
 	client, err := llm.NewOpenAIClient(
-		"your-api-key",                     // API key
+		"your-api-key", // API key
 		llm.Config{
-			BaseURL:     "https://api.your-service.com",     // Your service URL
-			Model:       "your-model-name",                  // Model identifier
+			BaseURL:     "https://api.your-service.com", // Your service URL
+			Model:       "your-model-name",              // Model identifier
 			Temperature: &[]float32{0.5}[0],
 			MaxTokens:   &[]int{200}[0],
 			Stop:        []string{"</s>", "\n\n"},
@@ -194,7 +195,7 @@ func runCustomServiceExample() error {
 	if err != nil {
 		// Fallback to regular chat if structured output fails
 		fmt.Printf("Structured output not supported, falling back to regular chat: %v\n", err)
-		
+
 		response, err := client.Chat(ctx, messages)
 		if err != nil {
 			return fmt.Errorf("chat failed: %w", err)
@@ -218,12 +219,12 @@ func runGraphitiIntegrationExample() error {
 	if neo4jURI == "" {
 		neo4jURI = "bolt://localhost:7687"
 	}
-	
+
 	neo4jUser := os.Getenv("NEO4J_USER")
 	if neo4jUser == "" {
 		neo4jUser = "neo4j"
 	}
-	
+
 	neo4jPassword := os.Getenv("NEO4J_PASSWORD")
 	if neo4jPassword == "" {
 		fmt.Println("Warning: NEO4J_PASSWORD not set, using 'password'")
@@ -272,7 +273,10 @@ func runGraphitiIntegrationExample() error {
 		TimeZone: time.UTC,
 	}
 
-	graphitiClient := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	graphitiClient := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config, logger)
 	defer graphitiClient.Close(context.Background())
 
 	// Add some sample data
@@ -335,7 +339,7 @@ func init() {
 	fmt.Println()
 	fmt.Println("Set these environment variables:")
 	fmt.Println("- NEO4J_URI (default: bolt://localhost:7687)")
-	fmt.Println("- NEO4J_USER (default: neo4j)")  
+	fmt.Println("- NEO4J_USER (default: neo4j)")
 	fmt.Println("- NEO4J_PASSWORD (required for Graphiti integration)")
 	fmt.Println("- OPENAI_API_KEY (optional, for embeddings)")
 	fmt.Println()

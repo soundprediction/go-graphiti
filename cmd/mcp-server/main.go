@@ -19,9 +19,9 @@ import (
 
 // Default configuration values
 const (
-	DefaultLLMModel      = "gpt-4o-mini"
-	DefaultSmallModel    = "gpt-4o-mini"
-	DefaultEmbedderModel = "text-embedding-3-small"
+	DefaultLLMModel       = "gpt-4o-mini"
+	DefaultSmallModel     = "gpt-4o-mini"
+	DefaultEmbedderModel  = "text-embedding-3-small"
 	DefaultSemaphoreLimit = 10
 )
 
@@ -43,60 +43,60 @@ var EntityTypes = map[string]interface{}{
 // Config holds all configuration for the MCP server
 type Config struct {
 	// LLM Configuration
-	LLMModel         string
-	SmallLLMModel    string
-	LLMTemperature   float64
-	OpenAIAPIKey     string
-	
+	LLMModel       string
+	SmallLLMModel  string
+	LLMTemperature float64
+	OpenAIAPIKey   string
+
 	// Embedder Configuration
-	EmbedderModel    string
-	
+	EmbedderModel string
+
 	// Database Configuration
 	DatabaseDriver   string
 	DatabaseURI      string
 	DatabaseUser     string
 	DatabasePassword string
-	
+
 	// MCP Server Configuration
-	GroupID          string
+	GroupID           string
 	UseCustomEntities bool
-	DestroyGraph     bool
-	Transport        string
-	Host             string
-	Port             int
-	
+	DestroyGraph      bool
+	Transport         string
+	Host              string
+	Port              int
+
 	// Concurrency limits
-	SemaphoreLimit   int
+	SemaphoreLimit int
 }
 
 // MCPServer wraps the Graphiti client for MCP operations
 type MCPServer struct {
-	config  *Config
-	client  *graphiti.Client
-	logger  *slog.Logger
+	config *Config
+	client *graphiti.Client
+	logger *slog.Logger
 }
 
 // NewConfig creates a new configuration from environment variables and command line flags
 func NewConfig() *Config {
 	config := &Config{
-		LLMModel:         getEnv("MODEL_NAME", DefaultLLMModel),
-		SmallLLMModel:    getEnv("SMALL_MODEL_NAME", DefaultSmallModel),
-		LLMTemperature:   getEnvFloat("LLM_TEMPERATURE", 0.0),
-		OpenAIAPIKey:     getEnv("OPENAI_API_KEY", ""),
-		EmbedderModel:    getEnv("EMBEDDER_MODEL_NAME", DefaultEmbedderModel),
-		DatabaseDriver:   getEnv("DB_DRIVER", "kuzu"),
-		DatabaseURI:      getEnv("DB_URI", getEnv("KUZU_DB_PATH", "./kuzu_db")),
-		DatabaseUser:     getEnv("NEO4J_USER", ""),
-		DatabasePassword: getEnv("NEO4J_PASSWORD", ""),
-		GroupID:          getEnv("GROUP_ID", "default"),
+		LLMModel:          getEnv("MODEL_NAME", DefaultLLMModel),
+		SmallLLMModel:     getEnv("SMALL_MODEL_NAME", DefaultSmallModel),
+		LLMTemperature:    getEnvFloat("LLM_TEMPERATURE", 0.0),
+		OpenAIAPIKey:      getEnv("OPENAI_API_KEY", ""),
+		EmbedderModel:     getEnv("EMBEDDER_MODEL_NAME", DefaultEmbedderModel),
+		DatabaseDriver:    getEnv("DB_DRIVER", "kuzu"),
+		DatabaseURI:       getEnv("DB_URI", getEnv("KUZU_DB_PATH", "./kuzu_db")),
+		DatabaseUser:      getEnv("NEO4J_USER", ""),
+		DatabasePassword:  getEnv("NEO4J_PASSWORD", ""),
+		GroupID:           getEnv("GROUP_ID", "default"),
 		UseCustomEntities: getEnvBool("USE_CUSTOM_ENTITIES", false),
-		DestroyGraph:     getEnvBool("DESTROY_GRAPH", false),
-		Transport:        getEnv("MCP_TRANSPORT", "stdio"),
-		Host:             getEnv("MCP_HOST", "localhost"),
-		Port:             getEnvInt("MCP_PORT", 3000),
-		SemaphoreLimit:   getEnvInt("SEMAPHORE_LIMIT", DefaultSemaphoreLimit),
+		DestroyGraph:      getEnvBool("DESTROY_GRAPH", false),
+		Transport:         getEnv("MCP_TRANSPORT", "stdio"),
+		Host:              getEnv("MCP_HOST", "localhost"),
+		Port:              getEnvInt("MCP_PORT", 3000),
+		SemaphoreLimit:    getEnvInt("SEMAPHORE_LIMIT", DefaultSemaphoreLimit),
 	}
-	
+
 	return config
 }
 
@@ -192,8 +192,8 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 		GroupID:  config.GroupID,
 		TimeZone: time.UTC,
 	}
-	
-	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig)
+
+	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig, logger)
 
 	return &MCPServer{
 		config: config,
@@ -205,7 +205,7 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 // Initialize sets up the MCP server and Graphiti client
 func (s *MCPServer) Initialize(ctx context.Context) error {
 	s.logger.Info("Initializing Graphiti MCP server...")
-	
+
 	// Verify the client is ready
 	if s.client == nil {
 		return fmt.Errorf("graphiti client not initialized")
@@ -234,7 +234,7 @@ func (s *MCPServer) Initialize(ctx context.Context) error {
 	}
 
 	s.logger.Info("Graphiti client initialized successfully")
-	s.logger.Info("MCP server configuration", 
+	s.logger.Info("MCP server configuration",
 		"llm_model", s.config.LLMModel,
 		"temperature", s.config.LLMTemperature,
 		"group_id", s.config.GroupID,
@@ -248,12 +248,12 @@ func (s *MCPServer) Initialize(ctx context.Context) error {
 // RegisterTools registers all MCP tools with Genkit
 func (s *MCPServer) RegisterTools(g *genkit.Genkit) {
 	// Register add_memory tool
-	genkit.DefineTool(g, "add_memory", 
+	genkit.DefineTool(g, "add_memory",
 		"Add an episode to memory. This is the primary way to add information to the graph.",
 		s.AddMemoryTool)
 
 	// Register search_memory_nodes tool
-	genkit.DefineTool(g, "search_memory_nodes", 
+	genkit.DefineTool(g, "search_memory_nodes",
 		"Search the graph memory for relevant node summaries.",
 		s.SearchMemoryNodesTool)
 
@@ -278,7 +278,7 @@ func (s *MCPServer) RegisterTools(g *genkit.Genkit) {
 		s.GetEntityEdgeTool)
 
 	// Register get_episodes tool
-	genkit.DefineTool(g, "get_episodes", 
+	genkit.DefineTool(g, "get_episodes",
 		"Get the most recent memory episodes for a specific group.",
 		s.GetEpisodesTool)
 
@@ -291,7 +291,7 @@ func (s *MCPServer) RegisterTools(g *genkit.Genkit) {
 // Run starts the MCP server
 func (s *MCPServer) Run(ctx context.Context) error {
 	s.logger.Info("Starting Genkit MCP server", "transport", s.config.Transport)
-	
+
 	// Initialize Genkit
 	g := genkit.Init(ctx)
 
@@ -300,7 +300,7 @@ func (s *MCPServer) Run(ctx context.Context) error {
 
 	// Start the server (this would typically be handled by Genkit's runtime)
 	s.logger.Info("MCP server is ready to accept requests")
-	
+
 	// Keep the server running
 	select {
 	case <-ctx.Done():

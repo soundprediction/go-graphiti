@@ -3,6 +3,7 @@ package graphiti
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -210,7 +211,9 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 	// Initialize database driver
 	var graphDriver driver.GraphDriver
 	var err error
-
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 	switch cfg.Database.Driver {
 	case "kuzu":
 		graphDriver, err = driver.NewKuzuDriver(cfg.Database.URI, 16)
@@ -275,7 +278,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 	}
 
 	// Create and return Graphiti client
-	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig)
+	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig, logger)
 
 	fmt.Printf("Graphiti initialized successfully with driver: %s\n", cfg.Database.Driver)
 	if llmClient != nil {
