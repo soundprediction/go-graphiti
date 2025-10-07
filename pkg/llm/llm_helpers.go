@@ -97,7 +97,7 @@ func GenerateJSONResponseWithContinuationMessages(
 			workingMessages[1].Content += messages[1].Content + "\n Continue from below, making sure your output can append to it and form valid json :\n" + accumulatedResponse
 		}
 
-		fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
+		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
 		response, err := llmClient.Chat(ctx, workingMessages)
 		if err != nil {
 			lastError = fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
@@ -117,7 +117,7 @@ func GenerateJSONResponseWithContinuationMessages(
 			// For continuation, append the new content
 			accumulatedResponse += response.Content
 		}
-		fmt.Printf("accumulatedResponse: %v\n", accumulatedResponse)
+		// fmt.Printf("accumulatedResponse: %v\n", accumulatedResponse)
 		// Try to validate JSON without repair (don't repair during continuation)
 		// First unmarshal to handle potential quoted JSON
 
