@@ -94,7 +94,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
 		if attempt > 0 {
-			workingMessages[1].Content += messages[1].Content + "\n Continue from below, making sure your output can append to it and form valid json :\n" + accumulatedResponse
+			workingMessages[1].Content += messages[1].Content + "\n Resume, do not replicate:\n" + accumulatedResponse
 		}
 
 		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
