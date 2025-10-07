@@ -154,15 +154,17 @@ func GenerateJSONResponseWithContinuationMessages(
 		ok, err := isValidJson(response.Content)
 		if err != nil {
 			if ok {
-				repairedJSON, _ := jsonrepair.RepairJSON(accumulatedResponse)
-				return repairedJSON, nil
+				return response.Content, nil
 			}
 		}
 
-		// Success! Valid JSON that matches the schema
-		// Now repair the JSON before returning
-		repairedJSON, _ := jsonrepair.RepairJSON(string(accumulatedResponse))
-		return repairedJSON, nil
+		ok, err = isValidJson(accumulatedResponse)
+		if err != nil {
+			if ok {
+				return accumulatedResponse, nil
+			}
+		}
+
 	}
 
 	// All retries exhausted - try to repair what we have
