@@ -407,7 +407,9 @@ func (eo *EdgeOperations) createEdgeEmbedding(ctx context.Context, edge *types.E
 	if edge.Summary == "" {
 		return nil
 	}
-
+	if eo.embedder == nil {
+		return nil
+	}
 	embedding, err := eo.embedder.EmbedSingle(ctx, edge.Summary)
 	if err != nil {
 		return fmt.Errorf("failed to create embedding: %w", err)
