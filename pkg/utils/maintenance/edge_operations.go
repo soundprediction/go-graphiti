@@ -178,8 +178,8 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		var validAt time.Time
 		var validTo *time.Time
 
-		if edgeData.ValidAt != nil && *edgeData.ValidAt != "" {
-			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(*edgeData.ValidAt, "Z", "+00:00")); err == nil {
+		if edgeData.ValidAt != "" {
+			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(edgeData.ValidAt, "Z", "+00:00")); err == nil {
 				validAt = parsed.UTC()
 			} else {
 				log.Printf("Warning: failed to parse valid_at date: %v", err)
@@ -189,8 +189,8 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 			validAt = episode.ValidFrom
 		}
 
-		if edgeData.InvalidAt != nil && *edgeData.InvalidAt != "" {
-			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(*edgeData.InvalidAt, "Z", "+00:00")); err == nil {
+		if edgeData.InvalidAt != "" {
+			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(edgeData.InvalidAt, "Z", "+00:00")); err == nil {
 				parsedUTC := parsed.UTC()
 				validTo = &parsedUTC
 			} else {
@@ -206,7 +206,7 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 			edgeData.Name,
 			types.EntityEdgeType,
 		)
-		edge.Summary = *edgeData.Summary
+		edge.Summary = edgeData.Summary
 		edge.Fact = edgeData.Fact
 		edge.UpdatedAt = time.Now().UTC()
 		edge.ValidFrom = validAt
@@ -325,7 +325,7 @@ func (eo *EdgeOperations) convertRecordToEdge(record map[string]interface{}) (*t
 }
 
 // ResolveExtractedEdges resolves newly extracted edges with existing ones in the graph
-func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEdges []*types.Edge, episode *types.Node, entities []*types.Node) ([]*types.Edge, []*types.Edge, error) {
+func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEdges []*types.Edge, episode *types.Node, entities []*types.Node, createEmbeddings bool) ([]*types.Edge, []*types.Edge, error) {
 	if len(extractedEdges) == 0 {
 		return []*types.Edge{}, []*types.Edge{}, nil
 	}
@@ -388,11 +388,13 @@ func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEd
 		invalidatedEdges = append(invalidatedEdges, newlyInvalidated...)
 	}
 
-	// Create embeddings for all resolved and invalidated edges
-	allEdges := append(resolvedEdges, invalidatedEdges...)
-	for _, edge := range allEdges {
-		if err := eo.createEdgeEmbedding(ctx, edge); err != nil {
-			log.Printf("Warning: failed to create embedding for edge: %v", err)
+	if createEmbeddings {
+		// Create embeddings for all resolved and invalidated edges
+		allEdges := append(resolvedEdges, invalidatedEdges...)
+		for _, edge := range allEdges {
+			if err := eo.createEdgeEmbedding(ctx, edge); err != nil {
+				log.Printf("Warning: failed to create embedding for edge: %v", err)
+			}
 		}
 	}
 
@@ -405,7 +407,9 @@ func (eo *EdgeOperations) createEdgeEmbedding(ctx context.Context, edge *types.E
 	if edge.Summary == "" {
 		return nil
 	}
-
+	if eo.embedder == nil {
+		return nil
+	}
 	embedding, err := eo.embedder.EmbedSingle(ctx, edge.Summary)
 	if err != nil {
 		return fmt.Errorf("failed to create embedding: %w", err)

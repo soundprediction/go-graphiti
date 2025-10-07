@@ -351,6 +351,33 @@ func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*type
 	return nil, fmt.Errorf("node not found")
 }
 
+func (k *KuzuDriver) NodeExists(ctx context.Context, node *types.Node) bool {
+	tableName := k.getTableNameForNodeType(node.Type)
+
+	query := fmt.Sprintf(`
+		MATCH (n:%s)
+		WHERE n.uuid = $uuid AND n.group_id = $group_id
+		RETURN n.uuid
+		LIMIT 1
+	`, tableName)
+
+	params := map[string]interface{}{
+		"uuid":     node.ID,
+		"group_id": node.GroupID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return false
+	}
+
+	if resultList, ok := result.([]map[string]interface{}); ok && len(resultList) > 0 {
+		return true
+	}
+
+	return false
+}
+
 // UpsertNode creates or updates a node in the appropriate table based on node type.
 func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	if node.CreatedAt.IsZero() {
@@ -364,14 +391,17 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	// Determine which table to use based on node type
 	tableName := k.getTableNameForNodeType(node.Type)
 
+	// See if the node already exists in the table
+
 	// Try to create first
-	err := k.executeNodeCreateQuery(node, tableName)
-	if err != nil {
-		// If creation fails, try to update
-		updateErr := k.executeNodeUpdateQuery(node, tableName)
-		if updateErr != nil {
-			return fmt.Errorf("failed to create or update node: create error: %w, update error: %w", err, updateErr)
-		}
+	if k.NodeExists(ctx, node) {
+		err := k.executeNodeCreateQuery(node, tableName)
+		return fmt.Errorf("failed to create node %w", err)
+	}
+
+	updateErr := k.executeNodeUpdateQuery(node, tableName)
+	if updateErr != nil {
+		return fmt.Errorf("failed to update node %w", updateErr)
 	}
 
 	return nil

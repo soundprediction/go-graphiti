@@ -456,15 +456,13 @@ func (no *NodeOperations) extractAttributesFromNode(ctx context.Context, node *t
 		return nil, fmt.Errorf("failed to create summary prompt: %w", err)
 	}
 
-	summaryResponse, err := no.llm.ChatWithStructuredOutput(ctx, summaryMessages, &prompts.EntitySummary{})
+	summaryResponse, err := no.llm.Chat(ctx, summaryMessages)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract summary: %w", err)
 	}
 
 	var entitySummary prompts.EntitySummary
-	if err := json.Unmarshal(summaryResponse, &entitySummary); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal summary response: %w", err)
-	}
+	entitySummary.Summary = summaryResponse.Content
 
 	// Update node with new summary
 	updatedNode := *node // Copy the node
@@ -512,6 +510,9 @@ func (no *NodeOperations) extractAttributesFromNode(ctx context.Context, node *t
 // createNodeEmbedding creates an embedding for a node based on its name and summary
 func (no *NodeOperations) createNodeEmbedding(ctx context.Context, node *types.Node) error {
 	// Create text for embedding from name and summary
+	if node == nil {
+		return nil
+	}
 	text := node.Name
 	if node.Summary != "" {
 		text += " " + node.Summary
