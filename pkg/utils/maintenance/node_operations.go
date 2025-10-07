@@ -122,6 +122,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		}
 
 		if err := json.Unmarshal(rawJSON, &extractedEntities); err != nil {
+			log.Printf("The following failed to unmarshal: \n %s", string(response))
 			return nil, fmt.Errorf("failed to unmarshal entities response: %w", err)
 		}
 
