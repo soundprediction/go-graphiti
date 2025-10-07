@@ -524,5 +524,8 @@ func (no *NodeOperations) createNodeEmbedding(ctx context.Context, node *types.N
 	}
 
 	node.Embedding = embedding
+
+	nameEmbedding, _ := no.embedder.EmbedSingle(ctx, node.Name)
+	node.NameEmbedding = nameEmbedding
 	return nil
 }
