@@ -44,7 +44,8 @@ type LLMConfig struct {
 
 	// MinP controls minimum probability threshold (provider-specific, e.g., LM Studio)
 	// Recommended: 0.0 for non-thinking mode
-	MinP float32 `json:"min_p,omitempty"`
+	MinP       float32 `json:"min_p,omitempty"`
+	MaxRetries int
 
 	// SmallModel is the model to use for simpler prompts
 	SmallModel string `json:"small_model,omitempty"`

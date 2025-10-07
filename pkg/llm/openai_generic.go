@@ -75,7 +75,7 @@ func NewOpenAIGenericClient(args ...interface{}) (*OpenAIGenericClient, error) {
 	}
 
 	baseClient := NewBaseOpenAIClient(llmConfig, DefaultReasoning, DefaultVerbosity)
-
+	baseClient.maxRetries = llmConfig.MaxRetries
 	var client *openai.Client
 	if llmConfig.BaseURL != "" {
 		// Validate and configure custom base URL for OpenAI-compatible services
