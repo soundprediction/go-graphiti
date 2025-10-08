@@ -167,9 +167,8 @@ func GenerateJSONResponseWithContinuationMessages(
 
 		if attempt > 1 && gap == 0 {
 			accumulatedResponse = truncateToLastCloseBrace(accumulatedResponse)
-			resp, _ := jsonrepair.JSONRepair(RemoveThinkTags(accumulatedResponse))
 
-			return resp, err
+			return accumulatedResponse, err
 		}
 
 	}

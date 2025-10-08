@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gocarina/gocsv"
 	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
@@ -107,23 +108,13 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 			return nil, fmt.Errorf("failed to create extraction prompt: %w", err)
 		}
 
-		response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.ExtractedEntities{})
+		response, err := no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract entities: %w", err)
+			return nil, fmt.Errorf("The llm call failed to extract entities: %w", err)
 		}
-		// fmt.Printf("string(response): %v\n", string(response))
-		// Repair JSON before unmarshaling
-		repairedResponse, _ := jsonrepair.JSONRepair(string(response))
-
-		// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-		var rawJSON json.RawMessage
-		if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
-		}
-
-		if err := json.Unmarshal(rawJSON, &extractedEntities); err != nil {
-			log.Printf("The following failed to unmarshal: \n %s", string(response))
-			return nil, fmt.Errorf("failed to unmarshal entities response: %w", err)
+		err = gocsv.UnmarshalString(response.Content, &extractedEntities.ExtractedEntities)
+		if err != nil {
+			return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
 		}
 
 		reflexionIterations++

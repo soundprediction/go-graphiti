@@ -2,9 +2,11 @@ package maintenance
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -136,15 +138,68 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return nil, fmt.Errorf("failed to create prompt: %w", err)
 	}
 
-	response, err := eo.llm.ChatWithStructuredOutput(ctx, messages, &prompts.ExtractedEdges{})
+	response, err := eo.llm.Chat(ctx, messages)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
 
 	var extractedEdges prompts.ExtractedEdges
-	if err := json.Unmarshal(response, &extractedEdges); err != nil {
-		log.Printf("Unable to unmarshal:\n%s", string(response))
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	fmt.Printf("response: %v\n", response)
+
+	// Parse CSV response
+	reader := csv.NewReader(strings.NewReader(response.Content))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CSV response: %w", err)
+	}
+
+	// Skip header row if present
+	if len(records) > 0 {
+		// Assume first row is header
+		dataRows := records[1:]
+		extractedEdges.Edges = make([]prompts.ExtractedEdge, 0, len(dataRows))
+
+		for _, row := range dataRows {
+			if len(row) < 4 { // Minimum: name, fact, source_id, target_id
+				continue
+			}
+
+			sourceID, err := strconv.Atoi(row[2])
+			if err != nil {
+				log.Printf("Warning: invalid source_id %q: %v", row[2], err)
+				continue
+			}
+
+			targetID, err := strconv.Atoi(row[3])
+			if err != nil {
+				log.Printf("Warning: invalid target_id %q: %v", row[3], err)
+				continue
+			}
+
+			edge := prompts.ExtractedEdge{
+				Name:     row[0],
+				Fact:     row[1],
+				SourceID: sourceID,
+				TargetID: targetID,
+			}
+
+			// Parse optional fields if present
+			if len(row) > 4 && row[4] != "" {
+				edge.UpdatedAt, _ = time.Parse(time.RFC3339, row[4])
+			}
+			if len(row) > 5 {
+				edge.Summary = row[5]
+			}
+			if len(row) > 6 {
+				edge.ValidAt = row[6]
+			}
+			if len(row) > 7 {
+				edge.InvalidAt = row[7]
+			}
+
+			extractedEdges.Edges = append(extractedEdges.Edges, edge)
+		}
 	}
 
 	log.Printf("Extracted %d edges in %v", len(extractedEdges.Edges), time.Since(start))
@@ -501,7 +556,6 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 	edgeTypesContext := []map[string]interface{}{}
 	// For now, we don't have edge_type_candidates in this function
 	// This would need to be passed from the calling code if custom edge types are used
-	// TODO: Add edge_type_candidates parameter to this function if custom edge types are needed
 
 	promptContext := map[string]interface{}{
 		"existing_edges":               relatedEdgesContext,

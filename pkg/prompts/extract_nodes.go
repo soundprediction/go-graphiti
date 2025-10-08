@@ -172,18 +172,20 @@ Guidelines:
 2. Avoid creating nodes for relationships or actions.
 3. Avoid creating nodes for temporal information like dates, times or years (these will be added to edges later).
 4. Be as explicit as possible in your node names, using full names and avoiding abbreviations.
-5. Format your response as valid JSON, following the following example:
+5. Format your response as a CSV, following the following SCHEMA
 
-"entities": [
-{
-	"entity": "phlebotomist",
-	"entity_type_id": 34
-},
-{
-	"entity": "cognitive behavioral therapy",
-	"entity_type_id": 30
-	
-}]
+<SCHEMA>
+entity: string
+entity_type_id: int
+</SCHEMA>
+
+<EXAMPLE>
+entity, entity_type_id
+phlebotomist, 34
+cognitive behavioral therapy, 30
+</EXAMPLE>
+
+Use the EXAMPLE as a guide
 `, entityTypes, episodeContent, customPrompt)
 	fmt.Printf("userPrompt: %v\n", userPrompt)
 	return []llm.Message{

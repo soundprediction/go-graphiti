@@ -6,8 +6,8 @@ import (
 
 // ExtractedEntity represents an entity extracted from content
 type ExtractedEntity struct {
-	Name         string `json:"entity"`
-	EntityTypeID int    `json:"entity_type_id"`
+	Name         string `json:"entity" mapstructure:"entity" csv:"entity"`
+	EntityTypeID int    `json:"entity_type_id" mapstructure:"entity_type_id" csv:"entity_type_id"`
 }
 
 // ExtractedEntities represents a list of extracted entities

@@ -104,31 +104,15 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 5. The 'fact_text' should quote or closely paraphrase the original source sentence(s).
 6. Use 'REFERENCE_TIME' to resolve vague or relative temporal expressions (e.g., "last week").
 7. Do **not** hallucinate or infer temporal bounds from unrelated events.
-8. Format your response as valid JSON, following the following example:
+8. Format your response in a CSV table, with the schema:
 
-"facts": [
-  {
-    "source_id": 0,
-    "relation_type": "CAUSES",
-    "target_id": 2,
-    "fact": "If that pressure is not relieved, permanent facial nerve palsy can ensue",
-    "summary": "Acute Facial Palsy (AFP) causes facial nerve palsy",
-    "valid_at": "2025-09-27T00:00:00Z",
-    "invalid_at": null
-  },
-  {
-    "source_id": 0,
-    "relation_type": "CAUSES",
-    "target_id": 3,
-    "fact": "Permanent facial nerve damage results if treatment is not initiated promptly",
-    "summary": "Acute Facial Palsy (AFP) causes permanent facial nerve damage",
-    "valid_at": "2025-09-27T00:00:00Z",
-    "invalid_at": null
-  }
-]
+source_id, relation_type, target_id, fact, summary, valid_at, invalid_at
+int, string, int, string, string, string, string
 
-starting with:
-"facts": [`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
+# EXAMPLE
+source_id, relation_type, target_id, fact, summary, valid_at, invalid_at
+0, "CAUSES", 2,  "If that pressure is not relieved, permanent facial nerve palsy can ensue",  "Acute Facial Palsy (AFP) causes facial nerve palsy", "2025-09-27T00:00:00Z", null
+`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
 
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
