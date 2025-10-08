@@ -139,26 +139,9 @@ func GenerateJSONResponseWithContinuationMessages(
 			continue
 		}
 
-		// Accumulate the response
-		if attempt == 0 {
-			accumulatedResponse = response.Content
-		} else {
-			// For continuation, append the new content
-			accumulatedResponse = AppendOverlap(accumulatedResponse, response.Content)
-		}
-		// fmt.Printf("accumulatedResponse: %v\n", accumulatedResponse)
-		// Try to validate JSON without repair (don't repair during continuation)
-		// First unmarshal to handle potential quoted JSON
+		accumulatedResponse = AppendOverlap(accumulatedResponse, response.Content)
 
-		// check if the response is a full json
-		ok, err := isValidJson(response.Content)
-		if err != nil {
-			if ok {
-				return response.Content, nil
-			}
-		}
-
-		ok, err = isValidJson(accumulatedResponse)
+		ok, err := isValidJson(accumulatedResponse)
 		if err != nil {
 			if ok {
 				return accumulatedResponse, nil
@@ -167,13 +150,11 @@ func GenerateJSONResponseWithContinuationMessages(
 
 	}
 
-	// All retries exhausted - try to repair what we have
-	repairedJSON, _ := jsonrepair.RepairJSON(accumulatedResponse)
 	if lastError != nil {
-		return repairedJSON, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
+		return accumulatedResponse, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
 	}
 
-	return repairedJSON, fmt.Errorf("failed to generate valid JSON after %d attempts", maxRetries+1)
+	return accumulatedResponse, fmt.Errorf("failed to generate valid JSON after %d attempts", maxRetries+1)
 }
 
 // GenerateJSONWithContinuation is a simpler version that doesn't validate against a struct
