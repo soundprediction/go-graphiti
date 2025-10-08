@@ -131,7 +131,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
 		if attempt > 0 {
-			workingMessages[1].Content += messages[1].Content + "\n Complete the following:\n" + accumulatedResponse
+			workingMessages[1].Content += messages[1].Content + "\n Complete the following:\n" + strings.TrimSpace(accumulatedResponse)
 		}
 
 		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
@@ -147,7 +147,7 @@ func GenerateJSONResponseWithContinuationMessages(
 			continue
 		}
 		startLen := len(accumulatedResponse)
-		accumulatedResponse = AppendOverlap(accumulatedResponse, response.Content)
+		accumulatedResponse = AppendOverlap(strings.TrimSpace(accumulatedResponse), strings.TrimSpace((response.Content)))
 		afterLen := len(accumulatedResponse)
 		gap := afterLen - startLen
 		ok, err := isValidJson(RemoveThinkTags(accumulatedResponse))
@@ -208,10 +208,10 @@ func GenerateJSONWithContinuation(
 
 		// Accumulate the response
 		if attempt == 0 {
-			accumulatedResponse = response.Content
+			accumulatedResponse = strings.TrimSpace(response.Content)
 		} else {
 			// For continuation, append the new content
-			accumulatedResponse += response.Content
+			accumulatedResponse += strings.TrimSpace(response.Content)
 		}
 
 		// Try to repair JSON
