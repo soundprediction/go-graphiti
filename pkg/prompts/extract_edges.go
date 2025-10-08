@@ -128,9 +128,7 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 ]
 
 starting with:
-"facts": [
-
-`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
+"facts": [`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
 
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

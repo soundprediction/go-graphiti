@@ -183,10 +183,9 @@ Guidelines:
 	"entity": "cognitive behavioral therapy",
 	"entity_type_id": 30
 	
-}
-]
+}]
 `, entityTypes, episodeContent, customPrompt)
-
+	fmt.Printf("userPrompt: %v\n", userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

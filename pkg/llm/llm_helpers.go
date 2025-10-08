@@ -66,7 +66,8 @@ func GenerateJSONResponseWithContinuation(
 func isValidJson(s string) (bool, error) {
 	var js json.RawMessage
 	err := json.Unmarshal([]byte(s), &js)
-	return err != nil, err
+	ok := (err == nil)
+	return ok, err
 }
 
 // AppendOverlap appends s2 to s1, removing any overlapping part.
@@ -96,6 +97,13 @@ func AppendOverlap(s1, s2 string) string {
 	// If no overlap is found after checking all possibilities,
 	// simply concatenate the two strings.
 	return s1 + s2
+}
+func truncateToLastCloseBrace(s string) string {
+	lastIndex := strings.LastIndex(s, "}")
+	if lastIndex == -1 {
+		return "" // No closing brace found
+	}
+	return s[:lastIndex+1]
 }
 
 // GenerateJSONResponseWithContinuationMessages makes repeated LLM calls with continuation prompts
@@ -128,14 +136,17 @@ func GenerateJSONResponseWithContinuationMessages(
 	var accumulatedResponse string
 	var lastError error
 
+	responses := make([]string, 0)
+
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
 		if attempt > 0 {
-			workingMessages[1].Content += messages[1].Content + "\n Complete the following:\n" + strings.TrimSpace(accumulatedResponse)
+			workingMessages[1].Content = messages[1].Content + "\nFinish your work:\n" + strings.TrimSpace(accumulatedResponse)
 		}
 
 		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
 		response, err := llmClient.Chat(ctx, workingMessages)
+		responses = append(responses, response.Content)
 		if err != nil {
 			lastError = fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
 			continue
@@ -150,15 +161,16 @@ func GenerateJSONResponseWithContinuationMessages(
 		accumulatedResponse = AppendOverlap(strings.TrimSpace(accumulatedResponse), strings.TrimSpace((response.Content)))
 		afterLen := len(accumulatedResponse)
 		gap := afterLen - startLen
-		ok, err := isValidJson(RemoveThinkTags(accumulatedResponse))
-		if err != nil {
-			if ok {
-				return RemoveThinkTags(accumulatedResponse), nil
-			}
-		}
-		if gap == 0 {
+		ok, _ := isValidJson(RemoveThinkTags(accumulatedResponse))
 
+		if ok {
+			return RemoveThinkTags(accumulatedResponse), nil
+		}
+
+		if attempt > 0 && gap == 0 {
+			accumulatedResponse = truncateToLastCloseBrace(accumulatedResponse)
 			resp, _ := jsonrepair.RepairJSON(RemoveThinkTags(accumulatedResponse))
+			fmt.Printf("resp: %v\n", resp)
 			return resp, nil
 		}
 
