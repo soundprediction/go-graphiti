@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	jsonrepair "github.com/RealAlexandreAI/json-repair"
@@ -38,6 +39,13 @@ import (
 //	    &result,
 //	    5,
 //	)
+
+// RemoveThinkTags removes <think> tags and everything in between them from a string.
+func RemoveThinkTags(input string) string {
+	re := regexp.MustCompile(`(?s)<think>.*?</think>`)
+	return re.ReplaceAllString(input, "")
+}
+
 func GenerateJSONResponseWithContinuation(
 	ctx context.Context,
 	llmClient Client,
@@ -123,7 +131,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
 		if attempt > 0 {
-			workingMessages[1].Content += messages[1].Content + "\n Resume, do not replicate:\n" + accumulatedResponse
+			workingMessages[1].Content += messages[1].Content + "\n Complete the following:\n" + accumulatedResponse
 		}
 
 		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
@@ -138,23 +146,29 @@ func GenerateJSONResponseWithContinuationMessages(
 			// ask the LLM to fix the output
 			continue
 		}
-
+		startLen := len(accumulatedResponse)
 		accumulatedResponse = AppendOverlap(accumulatedResponse, response.Content)
-
-		ok, err := isValidJson(accumulatedResponse)
+		afterLen := len(accumulatedResponse)
+		gap := afterLen - startLen
+		ok, err := isValidJson(RemoveThinkTags(accumulatedResponse))
 		if err != nil {
 			if ok {
-				return accumulatedResponse, nil
+				return RemoveThinkTags(accumulatedResponse), nil
 			}
+		}
+		if gap == 0 {
+
+			resp, _ := jsonrepair.RepairJSON(RemoveThinkTags(accumulatedResponse))
+			return resp, nil
 		}
 
 	}
 
 	if lastError != nil {
-		return accumulatedResponse, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
+		return RemoveThinkTags(accumulatedResponse), fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
 	}
 
-	return accumulatedResponse, fmt.Errorf("failed to generate valid JSON after %d attempts", maxRetries+1)
+	return RemoveThinkTags(accumulatedResponse), fmt.Errorf("failed to generate valid JSON after %d attempts", maxRetries+1)
 }
 
 // GenerateJSONWithContinuation is a simpler version that doesn't validate against a struct
