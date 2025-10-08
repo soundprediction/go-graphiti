@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	jsonrepair "github.com/kaptinlin/jsonrepair"
 )
 
 // GenerateJSONResponseWithContinuation makes repeated LLM calls with continuation prompts
@@ -127,7 +127,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	maxRetries int,
 ) (string, error) {
 	if maxRetries <= 0 {
-		maxRetries = 20
+		maxRetries = 4
 	}
 
 	// Make a copy of messages to avoid modifying the original slice
@@ -135,8 +135,6 @@ func GenerateJSONResponseWithContinuationMessages(
 	copy(workingMessages, messages)
 	var accumulatedResponse string
 	var lastError error
-
-	responses := make([]string, 0)
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
@@ -146,7 +144,7 @@ func GenerateJSONResponseWithContinuationMessages(
 
 		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
 		response, err := llmClient.Chat(ctx, workingMessages)
-		responses = append(responses, response.Content)
+
 		if err != nil {
 			lastError = fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
 			continue
@@ -161,23 +159,25 @@ func GenerateJSONResponseWithContinuationMessages(
 		accumulatedResponse = AppendOverlap(strings.TrimSpace(accumulatedResponse), strings.TrimSpace((response.Content)))
 		afterLen := len(accumulatedResponse)
 		gap := afterLen - startLen
-		ok, _ := isValidJson(RemoveThinkTags(accumulatedResponse))
+		ok, err := isValidJson(RemoveThinkTags(accumulatedResponse))
 
 		if ok {
 			return RemoveThinkTags(accumulatedResponse), nil
 		}
 
-		if attempt > 0 && gap == 0 {
+		if attempt > 1 && gap == 0 {
 			accumulatedResponse = truncateToLastCloseBrace(accumulatedResponse)
-			resp, _ := jsonrepair.RepairJSON(RemoveThinkTags(accumulatedResponse))
-			fmt.Printf("resp: %v\n", resp)
-			return resp, nil
+			resp, _ := jsonrepair.JSONRepair(RemoveThinkTags(accumulatedResponse))
+
+			return resp, err
 		}
 
 	}
 
 	if lastError != nil {
-		return RemoveThinkTags(accumulatedResponse), fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
+		accumulatedResponse = truncateToLastCloseBrace(accumulatedResponse)
+		resp, _ := jsonrepair.JSONRepair(RemoveThinkTags(accumulatedResponse))
+		return resp, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
 	}
 
 	return RemoveThinkTags(accumulatedResponse), fmt.Errorf("failed to generate valid JSON after %d attempts", maxRetries+1)
@@ -227,7 +227,7 @@ func GenerateJSONWithContinuation(
 		}
 
 		// Try to repair JSON
-		repairedJSON, _ := jsonrepair.RepairJSON(accumulatedResponse)
+		repairedJSON, _ := jsonrepair.JSONRepair(accumulatedResponse)
 
 		// Validate it's proper JSON
 		var testJSON interface{}

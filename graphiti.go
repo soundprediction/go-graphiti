@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/community"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
@@ -193,7 +193,6 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 		result.Communities = append(result.Communities, episodeResult.Communities...)
 		result.CommunityEdges = append(result.CommunityEdges, episodeResult.CommunityEdges...)
 	}
-
 
 	return result, nil
 }
@@ -657,7 +656,7 @@ func (e *ExtractedEntities) GetEntitiesList() []ExtractedEntity {
 // ParseEntitiesFromResponse parses the LLM response and converts it to Node structures
 func (c *Client) ParseEntitiesFromResponse(responseContent, groupID string) ([]*types.Node, error) {
 	// 1. Parse the structured JSON response from the LLM
-	responseContent, _ = jsonrepair.RepairJSON(responseContent)
+	responseContent, _ = jsonrepair.JSONRepair(responseContent)
 
 	var entitiesList []ExtractedEntity
 

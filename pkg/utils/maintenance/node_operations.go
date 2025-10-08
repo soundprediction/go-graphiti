@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -113,7 +113,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		}
 		// fmt.Printf("string(response): %v\n", string(response))
 		// Repair JSON before unmarshaling
-		repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+		repairedResponse, _ := jsonrepair.JSONRepair(string(response))
 
 		// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
 		var rawJSON json.RawMessage
@@ -237,7 +237,7 @@ func (no *NodeOperations) extractNodesReflexion(ctx context.Context, episode *ty
 	}
 
 	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
 
 	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
 	var rawJSON json.RawMessage
@@ -343,7 +343,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	}
 
 	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
 
 	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
 	var rawJSON json.RawMessage

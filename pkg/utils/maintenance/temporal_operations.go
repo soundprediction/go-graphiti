@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/soundprediction/go-graphiti/pkg/prompts"
 	"github.com/soundprediction/go-graphiti/pkg/types"
@@ -59,7 +59,7 @@ func (to *TemporalOperations) ExtractEdgeDates(ctx context.Context, edge *types.
 	}
 
 	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
 
 	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
 	var rawJSON json.RawMessage
@@ -140,7 +140,7 @@ func (to *TemporalOperations) GetEdgeContradictions(ctx context.Context, newEdge
 	}
 
 	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
 
 	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
 	var rawJSON json.RawMessage
