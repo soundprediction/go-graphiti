@@ -1,6 +1,6 @@
 module github.com/soundprediction/go-graphiti
 
-go 1.24.1
+go 1.24.7
 
 require (
 	// github.com/kuzudb/go-kuzu - to be added when available
@@ -10,10 +10,10 @@ require (
 )
 
 require (
-	github.com/RealAlexandreAI/json-repair v0.0.14
 	github.com/firebase/genkit/go v1.0.1
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
+	github.com/kaptinlin/jsonrepair v0.2.4
 	github.com/kuzudb/go-kuzu v0.11.2
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0

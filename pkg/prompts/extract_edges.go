@@ -107,19 +107,28 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 8. Format your response as valid JSON, following the following example:
 
 "facts": [
-	{
-    "source_id": 13,
-    "name": "CAUSES",
-    "target_id": 11,
-    "fact": "acute compartment syndrome, a medical emergency requiring fasciotomy, with causes including trauma, fractures, and swelling.",
-	"summary": "trauma causes acute compartment syndrome",
-    "valid_at": 2025-04-30T00:00:00Z,
+  {
+    "source_id": 0,
+    "relation_type": "CAUSES",
+    "target_id": 2,
+    "fact": "If that pressure is not relieved, permanent facial nerve palsy can ensue",
+    "summary": "Acute Facial Palsy (AFP) causes facial nerve palsy",
+    "valid_at": "2025-09-27T00:00:00Z",
     "invalid_at": null
   },
+  {
+    "source_id": 0,
+    "relation_type": "CAUSES",
+    "target_id": 3,
+    "fact": "Permanent facial nerve damage results if treatment is not initiated promptly",
+    "summary": "Acute Facial Palsy (AFP) causes permanent facial nerve damage",
+    "valid_at": "2025-09-27T00:00:00Z",
+    "invalid_at": null
+  }
 ]
 
-
-`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
+starting with:
+"facts": [`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
 
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

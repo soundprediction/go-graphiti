@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	jsonrepair "github.com/kaptinlin/jsonrepair"
 )
 
 // GenerateJSONResponseWithContinuation makes repeated LLM calls with continuation prompts
@@ -66,7 +66,8 @@ func GenerateJSONResponseWithContinuation(
 func isValidJson(s string) (bool, error) {
 	var js json.RawMessage
 	err := json.Unmarshal([]byte(s), &js)
-	return err != nil, err
+	ok := (err == nil)
+	return ok, err
 }
 
 // AppendOverlap appends s2 to s1, removing any overlapping part.
@@ -97,6 +98,13 @@ func AppendOverlap(s1, s2 string) string {
 	// simply concatenate the two strings.
 	return s1 + s2
 }
+func truncateToLastCloseBrace(s string) string {
+	lastIndex := strings.LastIndex(s, "}")
+	if lastIndex == -1 {
+		return "" // No closing brace found
+	}
+	return s[:lastIndex+1]
+}
 
 // GenerateJSONResponseWithContinuationMessages makes repeated LLM calls with continuation prompts
 // until valid JSON is received or max retries is reached. This version accepts pre-built messages.
@@ -119,7 +127,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	maxRetries int,
 ) (string, error) {
 	if maxRetries <= 0 {
-		maxRetries = 20
+		maxRetries = 4
 	}
 
 	// Make a copy of messages to avoid modifying the original slice
@@ -131,11 +139,12 @@ func GenerateJSONResponseWithContinuationMessages(
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Make LLM call
 		if attempt > 0 {
-			workingMessages[1].Content += messages[1].Content + "\n Complete the following:\n" + strings.TrimSpace(accumulatedResponse)
+			workingMessages[1].Content = messages[1].Content + "\nFinish your work:\n" + strings.TrimSpace(accumulatedResponse)
 		}
 
 		// fmt.Printf("workingMessages[1].Content: %v\n", workingMessages[1].Content)
 		response, err := llmClient.Chat(ctx, workingMessages)
+
 		if err != nil {
 			lastError = fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
 			continue
@@ -151,21 +160,24 @@ func GenerateJSONResponseWithContinuationMessages(
 		afterLen := len(accumulatedResponse)
 		gap := afterLen - startLen
 		ok, err := isValidJson(RemoveThinkTags(accumulatedResponse))
-		if err != nil {
-			if ok {
-				return RemoveThinkTags(accumulatedResponse), nil
-			}
-		}
-		if gap == 0 {
 
-			resp, _ := jsonrepair.RepairJSON(RemoveThinkTags(accumulatedResponse))
-			return resp, nil
+		if ok {
+			return RemoveThinkTags(accumulatedResponse), nil
+		}
+
+		if attempt > 1 && gap == 0 {
+			accumulatedResponse = truncateToLastCloseBrace(accumulatedResponse)
+			resp, _ := jsonrepair.JSONRepair(RemoveThinkTags(accumulatedResponse))
+
+			return resp, err
 		}
 
 	}
 
 	if lastError != nil {
-		return RemoveThinkTags(accumulatedResponse), fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
+		accumulatedResponse = truncateToLastCloseBrace(accumulatedResponse)
+		resp, _ := jsonrepair.JSONRepair(RemoveThinkTags(accumulatedResponse))
+		return resp, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
 	}
 
 	return RemoveThinkTags(accumulatedResponse), fmt.Errorf("failed to generate valid JSON after %d attempts", maxRetries+1)
@@ -215,7 +227,7 @@ func GenerateJSONWithContinuation(
 		}
 
 		// Try to repair JSON
-		repairedJSON, _ := jsonrepair.RepairJSON(accumulatedResponse)
+		repairedJSON, _ := jsonrepair.JSONRepair(accumulatedResponse)
 
 		// Validate it's proper JSON
 		var testJSON interface{}

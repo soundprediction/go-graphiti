@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	jsonrepair "github.com/RealAlexandreAI/json-repair"
+	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -525,7 +525,7 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 	}
 
 	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
+	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
 
 	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
 	var rawJSON json.RawMessage
