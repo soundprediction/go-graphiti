@@ -141,17 +141,9 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
 
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.RepairJSON(string(response))
-
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
-	}
-
 	var extractedEdges prompts.ExtractedEdges
-	if err := json.Unmarshal(rawJSON, &extractedEdges); err != nil {
+	if err := json.Unmarshal(response, &extractedEdges); err != nil {
+		log.Printf("Unable to unmarshal:\n%s", string(response))
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
