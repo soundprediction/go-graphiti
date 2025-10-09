@@ -200,7 +200,7 @@ duplicates: list[int]
 id\tname\tduplicate_idx\tduplicates
 0\t"anterior compartment of the lower leg"\t-1\t[]
 1\t"tibialis anterior"\t-1\t[],
-2\t"extensor hallucis longus",-1\t[],
+2\t"extensor hallucis longus"\t-1\t[],
 3\t"anterior tibialis"\t1\t[1]
 
 </EXAMPLE>
