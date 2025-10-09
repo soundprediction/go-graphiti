@@ -187,7 +187,7 @@ as an integer.
 - If an entity is a duplicate of one of the EXISTING ENTITIES, return the idx of the candidate it is a 
 duplicate of.
 - If an entity is not a duplicate of one of the EXISTING ENTITIES, return the -1 as the duplication_idx
-- Output CSV; use the SCHEMA
+- Output TSV; use the SCHEMA
 <SCHEMA>
 id: string
 name: string
@@ -197,11 +197,11 @@ duplicates: list[int]
 
 - Refer to the EXAMPLE
 <EXAMPLE>
-id,name,duplicate_idx,duplciates
-0,"anterior compartment of the lower leg",-1,[]
-1,"tibialis anterior",-1,[],
-2,"extensor hallucis longus",-1,[],
-3,"anterior tibialis",1,[1]
+id\tname\tduplicate_idx\tduplicates
+0\t"anterior compartment of the lower leg"\t-1\t[]
+1\t"tibialis anterior"\t-1\t[],
+2\t"extensor hallucis longus",-1\t[],
+3\t"anterior tibialis"\t1\t[1]
 
 </EXAMPLE>
 
