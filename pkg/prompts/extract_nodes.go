@@ -301,12 +301,12 @@ func extractNodesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentJSON, err := ToPromptCSV(episodeContent, ensureASCII)
+	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}
@@ -350,12 +350,12 @@ func extractSummaryPrompt(context map[string]interface{}) ([]llm.Message, error)
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentJSON, err := ToPromptCSV(episodeContent, ensureASCII)
+	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}

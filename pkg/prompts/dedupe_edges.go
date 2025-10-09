@@ -69,9 +69,18 @@ func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 %s
 </EXISTING FACTS>
 
-Determine if the NEW FACT is a duplicate of or contradicts any of the EXISTING FACTS.
-Mark facts as duplicates if they represent the same relationship.
-Mark facts as contradicted if the new fact invalidates existing facts.
+- Determine if the NEW FACT is a duplicate of or contradicts any of the EXISTING FACTS.
+- Mark facts as duplicates if they represent the same relationship.
+- Mark facts as contradicted if the new fact invalidates existing facts.
+- Output as TSV using SCHEMA
+
+<SCHEMA>
+</SCHEMA>
+
+refer to the EXAMPLE, ending with a new line
+
+<EXAMPLE>
+</EXAMPLE>
 `, previousEpisodesJSON, episodeContent, newFactJSON, existingFactsJSON)
 
 	return []llm.Message{
