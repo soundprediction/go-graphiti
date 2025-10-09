@@ -104,7 +104,7 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 5. The 'fact_text' should quote or closely paraphrase the original source sentence(s).
 6. Use 'REFERENCE_TIME' to resolve vague or relative temporal expressions (e.g., "last week").
 7. Do **not** hallucinate or infer temporal bounds from unrelated events.
-8. Format your response in a CSV table, with the schema:
+8. Format your response in a TSV table, with the schema:
 
 <SCHEMA>
 source_id: int 
@@ -119,8 +119,8 @@ invalid_at: string
 9. Refer to the EXAMPLE; end with a new line
 
 <EXAMPLE>
-source_id, relation_type, target_id, fact, summary, valid_at, invalid_at
-0, "CAUSES", 2,  "If that pressure is not relieved, permanent facial nerve palsy can ensue",  "Acute Facial Palsy (AFP) causes facial nerve palsy", "2025-09-27T00:00:00Z", null
+source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
+0\t"CAUSES"\t2\t"If that pressure is not relieved\tpermanent facial nerve palsy can ensue"\t"Acute Facial Palsy (AFP) causes facial nerve palsy"\t"2025-09-27T00:00:00Z"\tnull
 
 </EXAMPLE>
 `, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)

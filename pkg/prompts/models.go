@@ -37,7 +37,7 @@ type EntitySummary struct {
 	Summary string `json:"summary"`
 }
 type ExtractedEdge struct {
-	Name      string    `json:"name" mapstructure:"name" csv:"name"` // matches Python name
+	Name      string    `json:"relation_type" mapstructure:"relation_type" csv:"relation_type"` // matches Python name
 	Fact      string    `json:"fact" mapstructure:"fact" csv:"fact"`
 	SourceID  int       `json:"source_id" mapstructure:"source_id" csv:"source_id"` // alias for SourceNodeID uuid
 	TargetID  int       `json:"target_id" mapstructure:"target_id" csv:"target_id"` // alias for TargetNodeID uuid

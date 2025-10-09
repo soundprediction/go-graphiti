@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -146,8 +147,12 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	r = llm.RemoveThinkTags(r)
 	var extractedEdges prompts.ExtractedEdges
 
-	err = gocsv.UnmarshalString(r, &extractedEdges.Edges)
+	reader := csv.NewReader(strings.NewReader(r))
+	reader.Comma = '\t' // Set delimiter to tab
+	err = gocsv.UnmarshalCSV(reader, &extractedEdges.Edges)
 	if err != nil {
+		fmt.Printf("r: \n %v\n", r)
+		fmt.Printf("err: %v\n", err)
 		return []*types.Edge{}, fmt.Errorf("failed to unmarshal extracted edges: %w", err)
 	}
 
