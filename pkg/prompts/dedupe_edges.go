@@ -21,7 +21,7 @@ type DedupeEdgesVersions struct {
 }
 
 func (d *DedupeEdgesVersions) Edge() PromptVersion        { return d.EdgePrompt }
-func (d *DedupeEdgesVersions) EdgeList() PromptVersion   { return d.EdgeListPrompt }
+func (d *DedupeEdgesVersions) EdgeList() PromptVersion    { return d.EdgeListPrompt }
 func (d *DedupeEdgesVersions) ResolveEdge() PromptVersion { return d.ResolveEdgePrompt }
 
 // dedupeEdgePrompt determines if edges are duplicates or contradictory.
@@ -72,15 +72,13 @@ func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 - Determine if the NEW FACT is a duplicate of or contradicts any of the EXISTING FACTS.
 - Mark facts as duplicates if they represent the same relationship.
 - Mark facts as contradicted if the new fact invalidates existing facts.
-- Output as TSV using SCHEMA
+- Output as JSON using SCHEMA
 
 <SCHEMA>
+duplicated_facts: []int
+contradicted_facts: []int
+fact_type: string
 </SCHEMA>
-
-refer to the EXAMPLE, ending with a new line
-
-<EXAMPLE>
-</EXAMPLE>
 `, previousEpisodesJSON, episodeContent, newFactJSON, existingFactsJSON)
 
 	return []llm.Message{
