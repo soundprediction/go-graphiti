@@ -41,22 +41,22 @@ func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	extractedNodeJSON, err := ToPromptJSON(extractedNode, ensureASCII, 2)
+	extractedNodeJSON, err := ToPromptCSV(extractedNode, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extracted node: %w", err)
 	}
 
-	entityTypeDescriptionJSON, err := ToPromptJSON(entityTypeDescription, ensureASCII, 2)
+	entityTypeDescriptionJSON, err := ToPromptCSV(entityTypeDescription, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity type description: %w", err)
 	}
 
-	existingNodesJSON, err := ToPromptJSON(existingNodes, ensureASCII, 2)
+	existingNodesJSON, err := ToPromptCSV(existingNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing nodes: %w", err)
 	}
@@ -121,17 +121,17 @@ func nodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	extractedNodesJSON, err := ToPromptJSON(extractedNodes, ensureASCII, 2)
+	extractedNodesJSON, err := ToPromptCSV(extractedNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extracted nodes: %w", err)
 	}
 
-	existingNodesJSON, err := ToPromptJSON(existingNodes, ensureASCII, 2)
+	existingNodesJSON, err := ToPromptCSV(existingNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing nodes: %w", err)
 	}
@@ -187,15 +187,25 @@ as an integer.
 - If an entity is a duplicate of one of the EXISTING ENTITIES, return the idx of the candidate it is a 
 duplicate of.
 - If an entity is not a duplicate of one of the EXISTING ENTITIES, return the -1 as the duplication_idx
+- Output CSV; use the SCHEMA
+<SCHEMA>
+id: string
+name: string
+duplicate_idx: int
+duplicates: list[int]
+</SCHEMA>
 
-Response using valid json like in the example:
+- Refer to the EXAMPLE
+<EXAMPLE>
+id,name,duplicate_idx,duplciates
+0,"anterior compartment of the lower leg",-1,[]
+1,"tibialis anterior",-1,[],
+2,"extensor hallucis longus",-1,[],
+3,"anterior tibialis",1,[1]
 
-"entity_resolutions" : [
-  {"id": 0, "name": "anterior compartment of the lower leg", "duplicate_idx": -1},
-  {"id": 1, "name": "tibialis anterior", "duplicate_idx": -1},
-  {"id": 2, "name": "extensor hallucis longus", "duplicate_idx": -1}
-  {"id": 3, "name": "anterior tibialis", "duplicate_idx": 1, "duplicates": [1]},
-  ]
+</EXAMPLE>
+
+Finish your response with a new line
 `, previousEpisodesJSON, episodeContent, extractedNodesJSON, existingNodesJSON)
 
 	return []llm.Message{
@@ -217,7 +227,7 @@ func nodeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	nodesJSON, err := ToPromptJSON(nodes, ensureASCII, 2)
+	nodesJSON, err := ToPromptCSV(nodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 	}

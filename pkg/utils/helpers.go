@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	DefaultPageLimit          = 20
-	DefaultSemaphoreLimit     = 20
+	DefaultPageLimit              = 20
+	DefaultSemaphoreLimit         = 20
 	DefaultMaxReflexionIterations = 0
 )
 
@@ -240,4 +240,21 @@ func ValidateExcludedEntityTypes(excludedEntityTypes []string, availableTypes []
 // GenerateUUID generates a new UUID7 string
 func GenerateUUID() string {
 	return uuid.Must(uuid.NewV7()).String()
+}
+
+// removeLastLine takes a string and returns a new string with the
+// last line of text removed.
+func RemoveLastLine(s string) string {
+	// Find the index of the last newline character.
+	lastNewline := strings.LastIndex(s, "\n")
+
+	// If no newline is found, the string is either a single line or empty.
+	// In either case, removing the last line results in an empty string.
+	if lastNewline == -1 {
+		return ""
+	}
+
+	// Return the substring from the beginning up to the last newline.
+	// This effectively cuts off the text that follows it.
+	return s[:lastNewline]
 }

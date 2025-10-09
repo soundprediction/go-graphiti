@@ -327,23 +327,14 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		return nil, nil, nil, fmt.Errorf("failed to create dedupe prompt: %w", err)
 	}
 
-	response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.NodeResolutions{})
-
+	response, err := no.llm.Chat(ctx, messages)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to resolve nodes: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w", err)
 	}
-
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
-
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
-	}
+	r := llm.RemoveThinkTags(utils.RemoveLastLine(response.Content))
 
 	var nodeResolutions prompts.NodeResolutions
-	if err := json.Unmarshal(rawJSON, &nodeResolutions); err != nil {
+	if err := gocsv.UnmarshalString(r, &nodeResolutions.EntityResolutions); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to unmarshal node resolutions: %w", err)
 	}
 

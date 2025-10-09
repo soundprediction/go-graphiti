@@ -2,14 +2,13 @@ package maintenance
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gocarina/gocsv"
 	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
@@ -139,67 +138,17 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	}
 
 	response, err := eo.llm.Chat(ctx, messages)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
 
+	r := utils.RemoveLastLine(response.Content)
+	r = llm.RemoveThinkTags(r)
 	var extractedEdges prompts.ExtractedEdges
-	fmt.Printf("response: %v\n", response)
 
-	// Parse CSV response
-	reader := csv.NewReader(strings.NewReader(response.Content))
-	records, err := reader.ReadAll()
+	err = gocsv.UnmarshalString(r, &extractedEdges.Edges)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse CSV response: %w", err)
-	}
-
-	// Skip header row if present
-	if len(records) > 0 {
-		// Assume first row is header
-		dataRows := records[1:]
-		extractedEdges.Edges = make([]prompts.ExtractedEdge, 0, len(dataRows))
-
-		for _, row := range dataRows {
-			if len(row) < 4 { // Minimum: name, fact, source_id, target_id
-				continue
-			}
-
-			sourceID, err := strconv.Atoi(row[2])
-			if err != nil {
-				log.Printf("Warning: invalid source_id %q: %v", row[2], err)
-				continue
-			}
-
-			targetID, err := strconv.Atoi(row[3])
-			if err != nil {
-				log.Printf("Warning: invalid target_id %q: %v", row[3], err)
-				continue
-			}
-
-			edge := prompts.ExtractedEdge{
-				Name:     row[0],
-				Fact:     row[1],
-				SourceID: sourceID,
-				TargetID: targetID,
-			}
-
-			// Parse optional fields if present
-			if len(row) > 4 && row[4] != "" {
-				edge.UpdatedAt, _ = time.Parse(time.RFC3339, row[4])
-			}
-			if len(row) > 5 {
-				edge.Summary = row[5]
-			}
-			if len(row) > 6 {
-				edge.ValidAt = row[6]
-			}
-			if len(row) > 7 {
-				edge.InvalidAt = row[7]
-			}
-
-			extractedEdges.Edges = append(extractedEdges.Edges, edge)
-		}
+		return []*types.Edge{}, fmt.Errorf("failed to unmarshal extracted edges: %w", err)
 	}
 
 	log.Printf("Extracted %d edges in %v", len(extractedEdges.Edges), time.Since(start))

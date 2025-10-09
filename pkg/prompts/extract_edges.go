@@ -106,12 +106,23 @@ You may use information from the PREVIOUS MESSAGES only to disambiguate referenc
 7. Do **not** hallucinate or infer temporal bounds from unrelated events.
 8. Format your response in a CSV table, with the schema:
 
-source_id, relation_type, target_id, fact, summary, valid_at, invalid_at
-int, string, int, string, string, string, string
+<SCHEMA>
+source_id: int 
+relation_type: string 
+target_id: int 
+fact: string 
+summary: string 
+valid_at: string 
+invalid_at: string 
+</SCHEMA>
 
-# EXAMPLE
+9. Refer to the EXAMPLE; end with a new line
+
+<EXAMPLE>
 source_id, relation_type, target_id, fact, summary, valid_at, invalid_at
 0, "CAUSES", 2,  "If that pressure is not relieved, permanent facial nerve palsy can ensue",  "Acute Facial Palsy (AFP) causes facial nerve palsy", "2025-09-27T00:00:00Z", null
+
+</EXAMPLE>
 `, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
 
 	return []llm.Message{
