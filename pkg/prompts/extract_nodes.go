@@ -172,7 +172,7 @@ Guidelines:
 2. Avoid creating nodes for relationships or actions.
 3. Avoid creating nodes for temporal information like dates, times or years (these will be added to edges later).
 4. Be as explicit as possible in your node names, using full names and avoiding abbreviations.
-5. Format your response as a CSV, with SCHEMA
+5. Format your response as a TSV, with SCHEMA
 
 <SCHEMA>
 entity: string
@@ -180,9 +180,9 @@ entity_type_id: int
 </SCHEMA>
 
 <EXAMPLE>
-entity, entity_type_id
-phlebotomist, 34
-cognitive behavioral therapy, 30
+entity\tentity_type_id
+phlebotomist\t34
+cognitive behavioral therapy\t30
 
 </EXAMPLE>
 

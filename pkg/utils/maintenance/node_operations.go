@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -112,7 +113,11 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		if err != nil {
 			return nil, fmt.Errorf("The llm call failed to extract entities: %w", err)
 		}
-		err = gocsv.UnmarshalString(response.Content, &extractedEntities.ExtractedEntities)
+		r := utils.RemoveLastLine(response.Content)
+		r = llm.RemoveThinkTags(r)
+		reader := csv.NewReader(strings.NewReader(r))
+		reader.Comma = '\t' // Set delimiter to tab
+		err = gocsv.UnmarshalCSV(reader, &extractedEntities.ExtractedEntities)
 		if err != nil {
 			return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
 		}
