@@ -54,7 +54,7 @@ Your primary task is to extract and classify the speaker and other significant e
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -172,20 +172,23 @@ Guidelines:
 2. Avoid creating nodes for relationships or actions.
 3. Avoid creating nodes for temporal information like dates, times or years (these will be added to edges later).
 4. Be as explicit as possible in your node names, using full names and avoiding abbreviations.
-5. Format your response as valid JSON, following the following example:
+5. Format your response as a CSV, with SCHEMA
 
-"entities": [
-{
-	"entity": "phlebotomist",
-	"entity_type_id": 34
-},
-{
-	"entity": "cognitive behavioral therapy",
-	"entity_type_id": 30
-	
-}]
+<SCHEMA>
+entity: string
+entity_type_id: int
+</SCHEMA>
+
+<EXAMPLE>
+entity, entity_type_id
+phlebotomist, 34
+cognitive behavioral therapy, 30
+
+</EXAMPLE>
+
+Use the EXAMPLE as a guide
+Finish your response with a new line
 `, entityTypes, episodeContent, customPrompt)
-	fmt.Printf("userPrompt: %v\n", userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -207,7 +210,7 @@ func extractNodesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -250,7 +253,7 @@ func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) 
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}

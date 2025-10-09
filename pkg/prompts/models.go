@@ -6,8 +6,8 @@ import (
 
 // ExtractedEntity represents an entity extracted from content
 type ExtractedEntity struct {
-	Name         string `json:"entity"`
-	EntityTypeID int    `json:"entity_type_id"`
+	Name         string `json:"entity" mapstructure:"entity" csv:"entity"`
+	EntityTypeID int    `json:"entity_type_id" mapstructure:"entity_type_id" csv:"entity_type_id"`
 }
 
 // ExtractedEntities represents a list of extracted entities
@@ -37,14 +37,14 @@ type EntitySummary struct {
 	Summary string `json:"summary"`
 }
 type ExtractedEdge struct {
-	Name      string    `json:"name"` // matches Python name
-	Fact      string    `json:"fact"`
-	SourceID  int       `json:"source_id"` // alias for SourceNodeID uuid
-	TargetID  int       `json:"target_id"` // alias for TargetNodeID uuid
-	UpdatedAt time.Time `json:"updated_at"`
-	Summary   string    `json:"summary,omitempty"`
-	ValidAt   string    `json:"valid_at,omitempty"`   // matches Python valid_at
-	InvalidAt string    `json:"invalid_at,omitempty"` // matches Python invalid_at
+	Name      string    `json:"relation_type" mapstructure:"relation_type" csv:"relation_type"` // matches Python name
+	Fact      string    `json:"fact" mapstructure:"fact" csv:"fact"`
+	SourceID  int       `json:"source_id" mapstructure:"source_id" csv:"source_id"` // alias for SourceNodeID uuid
+	TargetID  int       `json:"target_id" mapstructure:"target_id" csv:"target_id"` // alias for TargetNodeID uuid
+	UpdatedAt time.Time `json:"updated_at" mapstructure:"updated_at" csv:"updated_at"`
+	Summary   string    `json:"summary,omitempty" mapstructure:"summary" csv:"summary"`
+	ValidAt   string    `json:"valid_at,omitempty" mapstructure:"valid_at" csv:"valid_at"`       // matches Python valid_at
+	InvalidAt string    `json:"invalid_at,omitempty" mapstructure:"invalid_at" csv:"invalid_at"` // matches Python invalid_at
 	// alias for Fact
 }
 
@@ -60,10 +60,10 @@ type MissingFacts struct {
 
 // NodeDuplicate represents a node duplicate resolution
 type NodeDuplicate struct {
-	ID           int    `json:"id"`
-	DuplicateIdx int    `json:"duplicate_idx"`
-	Name         string `json:"name"`
-	Duplicates   []int  `json:"duplicates"`
+	ID           int    `json:"id" mapstructure:"id" csv:"id"`
+	DuplicateIdx int    `json:"duplicate_idx" mapstructure:"duplicate_idx" csv:"duplicate_idx"`
+	Name         string `json:"name" mapstructure:"name" csv:"name"`
+	Duplicates   []int  `json:"duplicates" mapstructure:"duplicates" csv:"duplicates"`
 }
 
 // NodeResolutions represents node duplicate resolutions

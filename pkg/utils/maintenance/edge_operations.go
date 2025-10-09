@@ -2,12 +2,14 @@ package maintenance
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/gocarina/gocsv"
 	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
@@ -136,15 +138,22 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return nil, fmt.Errorf("failed to create prompt: %w", err)
 	}
 
-	response, err := eo.llm.ChatWithStructuredOutput(ctx, messages, &prompts.ExtractedEdges{})
+	response, err := eo.llm.Chat(ctx, messages)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
 
+	r := utils.RemoveLastLine(response.Content)
+	r = llm.RemoveThinkTags(r)
 	var extractedEdges prompts.ExtractedEdges
-	if err := json.Unmarshal(response, &extractedEdges); err != nil {
-		log.Printf("Unable to unmarshal:\n%s", string(response))
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+
+	reader := csv.NewReader(strings.NewReader(r))
+	reader.Comma = '\t' // Set delimiter to tab
+	err = gocsv.UnmarshalCSV(reader, &extractedEdges.Edges)
+	if err != nil {
+		fmt.Printf("r: \n %v\n", r)
+		fmt.Printf("err: %v\n", err)
+		return []*types.Edge{}, fmt.Errorf("failed to unmarshal extracted edges: %w", err)
 	}
 
 	log.Printf("Extracted %d edges in %v", len(extractedEdges.Edges), time.Since(start))
@@ -501,7 +510,6 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 	edgeTypesContext := []map[string]interface{}{}
 	// For now, we don't have edge_type_candidates in this function
 	// This would need to be passed from the calling code if custom edge types are used
-	// TODO: Add edge_type_candidates parameter to this function if custom edge types are needed
 
 	promptContext := map[string]interface{}{
 		"existing_edges":               relatedEdgesContext,
