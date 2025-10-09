@@ -117,6 +117,8 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		r = llm.RemoveThinkTags(r)
 		reader := csv.NewReader(strings.NewReader(r))
 		reader.Comma = '\t' // Set delimiter to tab
+		reader.LazyQuotes = true
+
 		err = gocsv.UnmarshalCSV(reader, &extractedEntities.ExtractedEntities)
 		if err != nil {
 			return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
@@ -339,6 +341,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	r := llm.RemoveThinkTags(utils.RemoveLastLine(response.Content))
 	reader := csv.NewReader(strings.NewReader(r))
 	reader.Comma = '\t' // Set delimiter to tab
+	reader.LazyQuotes = true
 	var nodeResolutions prompts.NodeResolutions
 
 	if err := gocsv.UnmarshalCSV(reader, &nodeResolutions.EntityResolutions); err != nil {
