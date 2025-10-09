@@ -149,6 +149,7 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 
 	reader := csv.NewReader(strings.NewReader(r))
 	reader.Comma = '\t' // Set delimiter to tab
+	reader.LazyQuotes = true
 	err = gocsv.UnmarshalCSV(reader, &extractedEdges.Edges)
 	if err != nil {
 		fmt.Printf("r: \n %v\n", r)
