@@ -121,6 +121,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 
 		err = gocsv.UnmarshalCSV(reader, &extractedEntities.ExtractedEntities)
 		if err != nil {
+			fmt.Printf("\nresponse:\n %v\n\n", r)
 			return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
 		}
 
