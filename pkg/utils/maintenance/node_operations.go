@@ -2,14 +2,12 @@ package maintenance
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/gocarina/gocsv"
 	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
@@ -115,14 +113,29 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		}
 		r := utils.RemoveLastLine(response.Content)
 		r = llm.RemoveThinkTags(r)
-		reader := csv.NewReader(strings.NewReader(r))
-		reader.Comma = '\t' // Set delimiter to tab
-		reader.LazyQuotes = true
+		/*
+			reader := csv.NewReader(strings.NewReader(r))
+			reader.Comma = '\t' // Set delimiter to tab
+			reader.LazyQuotes = true
 
-		err = gocsv.UnmarshalCSV(reader, &extractedEntities.ExtractedEntities)
+			err = gocsv.UnmarshalCSV(reader, &extractedEntities.ExtractedEntities)
+			if err != nil {
+				fmt.Printf("\nresponse:\n %v\n\n", r)
+				return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
+			}
+		*/
+		extractedEntityPtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedEntity](r, '\t')
 		if err != nil {
 			fmt.Printf("\nresponse:\n %v\n\n", r)
-			return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
+			return nil, fmt.Errorf("failed to extract entities from csv: %w", err)
+		}
+
+		// Convert pointer slice to value slice
+		extractedEntities.ExtractedEntities = make([]prompts.ExtractedEntity, len(extractedEntityPtrs))
+		for i, ptr := range extractedEntityPtrs {
+			if ptr != nil {
+				extractedEntities.ExtractedEntities[i] = *ptr
+			}
 		}
 
 		reflexionIterations++
@@ -340,13 +353,19 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w", err)
 	}
 	r := llm.RemoveThinkTags(utils.RemoveLastLine(response.Content))
-	reader := csv.NewReader(strings.NewReader(r))
-	reader.Comma = '\t' // Set delimiter to tab
-	reader.LazyQuotes = true
-	var nodeResolutions prompts.NodeResolutions
 
-	if err := gocsv.UnmarshalCSV(reader, &nodeResolutions.EntityResolutions); err != nil {
+	nodeDuplicatePtrs, err := utils.DuckDbUnmarshalCSV[prompts.NodeDuplicate](r, '\t')
+	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to unmarshal node resolutions: %w", err)
+	}
+
+	// Convert pointer slice to value slice
+	var nodeResolutions prompts.NodeResolutions
+	nodeResolutions.EntityResolutions = make([]prompts.NodeDuplicate, len(nodeDuplicatePtrs))
+	for i, ptr := range nodeDuplicatePtrs {
+		if ptr != nil {
+			nodeResolutions.EntityResolutions[i] = *ptr
+		}
 	}
 
 	// Process the resolutions

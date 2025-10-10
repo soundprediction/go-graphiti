@@ -2,14 +2,12 @@ package maintenance
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/gocarina/gocsv"
 	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
@@ -145,16 +143,21 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 
 	r := utils.RemoveLastLine(response.Content)
 	r = llm.RemoveThinkTags(r)
-	var extractedEdges prompts.ExtractedEdges
 
-	reader := csv.NewReader(strings.NewReader(r))
-	reader.Comma = '\t' // Set delimiter to tab
-	reader.LazyQuotes = true
-	err = gocsv.UnmarshalCSV(reader, &extractedEdges.Edges)
+	extractedEdgePtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedEdge](r, '\t')
 	if err != nil {
 		fmt.Printf("r: \n %v\n", r)
 		fmt.Printf("err: %v\n", err)
 		return []*types.Edge{}, fmt.Errorf("failed to unmarshal extracted edges: %w", err)
+	}
+
+	// Convert pointer slice to value slice
+	var extractedEdges prompts.ExtractedEdges
+	extractedEdges.Edges = make([]prompts.ExtractedEdge, len(extractedEdgePtrs))
+	for i, ptr := range extractedEdgePtrs {
+		if ptr != nil {
+			extractedEdges.Edges[i] = *ptr
+		}
 	}
 
 	log.Printf("Extracted %d edges in %v", len(extractedEdges.Edges), time.Since(start))

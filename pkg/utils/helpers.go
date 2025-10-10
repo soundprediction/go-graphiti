@@ -1,16 +1,21 @@
 package utils
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	_ "github.com/marcboeker/go-duckdb/v2"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 )
 
@@ -257,4 +262,174 @@ func RemoveLastLine(s string) string {
 	// Return the substring from the beginning up to the last newline.
 	// This effectively cuts off the text that follows it.
 	return s[:lastNewline]
+}
+
+// DuckDbUnmarshalCSV parses a CSV string and unmarshals it into a slice of structs.
+// It uses an in-memory DuckDB instance for robust CSV parsing.
+//
+// Parameters:
+//   - T: The target struct type. The function will create a slice of *T.
+//   - csvString: The raw string data of the CSV.
+//   - delimiter: The delimiter character (e.g., ',', '\t').
+//
+// Returns:
+//   - A slice of pointers to the populated structs ([]*T).
+//   - An error if a fatal issue occurs (e.g., database connection, reflection error).
+//
+// Features:
+//   - Ignores errors in individual CSV rows.
+//   - Handles lazy quoting automatically.
+//   - Maps CSV header columns to struct fields by name (case-insensitive).
+//   - Caches struct field mapping for performance.
+func DuckDbUnmarshalCSV[T any](csvString string, delimiter rune) ([]*T, error) {
+	// Create a temporary file to store the CSV data
+	tmpFile, err := os.CreateTemp("", "duckdb_csv_*.csv")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+
+	// Write CSV string to the temp file
+	if _, err := tmpFile.WriteString(csvString); err != nil {
+		tmpFile.Close()
+		return nil, fmt.Errorf("failed to write to temp file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	// Open an in-memory DuckDB database
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open duckdb: %w", err)
+	}
+	defer db.Close()
+
+	// Construct the query to read the CSV.
+	// - header=true: Uses the first row as column names.
+	// - ignore_errors=true: Skips rows that have parsing errors.
+	// - all_varchar=true: Simplifies scanning by treating all columns as text.
+	// Note: DuckDB uses absolute paths, so we need to ensure the path is properly formatted
+	absPath, err := filepath.Abs(tmpPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	query := fmt.Sprintf(
+		"SELECT * FROM read_csv('%s', delim='%c', header=true, ignore_errors=true, all_varchar=true)",
+		strings.ReplaceAll(absPath, "'", "''"), // Escape single quotes in path
+		delimiter,
+	)
+
+	rows, err := db.QueryContext(context.Background(), query)
+	if err != nil {
+		return nil, fmt.Errorf("duckdb query failed: %w", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns: %w", err)
+	}
+
+	var results []*T
+	structType := reflect.TypeOf(new(T)).Elem()
+
+	for rows.Next() {
+		// For each row, scan all values as nullable strings.
+		scannedValues := make([]sql.NullString, len(columns))
+		scanArgs := make([]interface{}, len(columns))
+		for i := range scannedValues {
+			scanArgs[i] = &scannedValues[i]
+		}
+
+		if err := rows.Scan(scanArgs...); err != nil {
+			// This might happen on rare occasions despite ignore_errors, so we log and skip.
+			fmt.Printf("Warning: failed to scan row: %v\n", err)
+			continue
+		}
+
+		// Create a new instance of our target struct T
+		newStructPtr := reflect.New(structType)
+		newStruct := newStructPtr.Elem()
+
+		// Map scanned string values to the corresponding struct fields.
+		for i, colName := range columns {
+			if !scannedValues[i].Valid {
+				continue // Skip NULL values
+			}
+			val := scannedValues[i].String
+
+			// Find struct field that matches the column name (case-insensitive)
+			for j := 0; j < newStruct.NumField(); j++ {
+				field := structType.Field(j)
+				if strings.EqualFold(field.Name, colName) {
+					if err := setField(newStruct.Field(j), val); err != nil {
+						fmt.Printf("Warning: could not set field '%s' with value '%s': %v\n", field.Name, val, err)
+					}
+					break
+				}
+			}
+		}
+		results = append(results, newStructPtr.Interface().(*T))
+	}
+
+	return results, rows.Err()
+}
+
+// setField is a helper that converts a string value and sets it on a reflect.Value field.
+func setField(field reflect.Value, value string) error {
+	if !field.CanSet() {
+		return errors.New("field cannot be set")
+	}
+
+	// Handle pointers by dereferencing to the underlying type
+	if field.Kind() == reflect.Ptr {
+		if field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+		field = field.Elem()
+	}
+
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(value)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		if field.OverflowInt(i) {
+			return fmt.Errorf("int overflow for value %s", value)
+		}
+		field.SetInt(i)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		if field.OverflowUint(u) {
+			return fmt.Errorf("uint overflow for value %s", value)
+		}
+		field.SetUint(u)
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		if field.OverflowFloat(f) {
+			return fmt.Errorf("float overflow for value %s", value)
+		}
+		field.SetFloat(f)
+	case reflect.Bool:
+		b, err := strconv.ParseBool(strings.ToLower(value))
+		if err != nil {
+			return err
+		}
+		field.SetBool(b)
+	default:
+		return fmt.Errorf("unsupported field type: %s", field.Kind())
+	}
+	return nil
 }
