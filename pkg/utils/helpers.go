@@ -336,6 +336,22 @@ func DuckDbUnmarshalCSV[T any](csvString string, delimiter rune) ([]*T, error) {
 	var results []*T
 	structType := reflect.TypeOf(new(T)).Elem()
 
+	// Build a mapping from CSV column names to struct field indices
+	// This mapping uses csv tags if present, otherwise falls back to field names
+	fieldMap := make(map[string]int)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+
+		// Check for csv tag
+		csvTag := field.Tag.Get("csv")
+		if csvTag != "" && csvTag != "-" {
+			fieldMap[csvTag] = i
+		} else {
+			// Fall back to field name (case-insensitive matching handled later)
+			fieldMap[strings.ToLower(field.Name)] = i
+		}
+	}
+
 	for rows.Next() {
 		// For each row, scan all values as nullable strings.
 		scannedValues := make([]sql.NullString, len(columns))
@@ -361,14 +377,18 @@ func DuckDbUnmarshalCSV[T any](csvString string, delimiter rune) ([]*T, error) {
 			}
 			val := scannedValues[i].String
 
-			// Find struct field that matches the column name (case-insensitive)
-			for j := 0; j < newStruct.NumField(); j++ {
-				field := structType.Field(j)
-				if strings.EqualFold(field.Name, colName) {
-					if err := setField(newStruct.Field(j), val); err != nil {
-						fmt.Printf("Warning: could not set field '%s' with value '%s': %v\n", field.Name, val, err)
-					}
-					break
+			// First try exact match with csv tag
+			if fieldIdx, ok := fieldMap[colName]; ok {
+				if err := setField(newStruct.Field(fieldIdx), val); err != nil {
+					fmt.Printf("Warning: could not set field at index %d with value '%s': %v\n", fieldIdx, val, err)
+				}
+				continue
+			}
+
+			// Fall back to case-insensitive match by field name
+			if fieldIdx, ok := fieldMap[strings.ToLower(colName)]; ok {
+				if err := setField(newStruct.Field(fieldIdx), val); err != nil {
+					fmt.Printf("Warning: could not set field at index %d with value '%s': %v\n", fieldIdx, val, err)
 				}
 			}
 		}
