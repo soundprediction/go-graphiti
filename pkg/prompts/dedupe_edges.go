@@ -69,10 +69,33 @@ func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 %s
 </EXISTING FACTS>
 
-- Determine if the NEW FACT is a duplicate of or contradicts any of the EXISTING FACTS.
-- Mark facts as duplicates if they represent the same relationship.
-- Mark facts as contradicted if the new fact invalidates existing facts.
-- Output as JSON using SCHEMA
+Task:
+You have TWO separate lists of facts. Each list uses 'idx' as its index field, starting from 0.
+
+1. DUPLICATE DETECTION:
+	- If the NEW FACT represents identical factual information as any fact in EXISTING FACTS, return those idx values in duplicate_facts.
+	- Facts with similar information that contain key differences should NOT be marked as duplicates.
+	- Return idx values from EXISTING FACTS.
+	- If no duplicates, return an empty list for duplicate_facts.
+
+2. FACT TYPE CLASSIFICATION:
+	- Given the predefined FACT TYPES, determine if the NEW FACT should be classified as one of these types.
+	- Return the fact type as fact_type or DEFAULT if NEW FACT is not one of the FACT TYPES.
+
+3. CONTRADICTION DETECTION:
+	- Based on FACT INVALIDATION CANDIDATES and NEW FACT, determine which facts the new fact contradicts.
+	- Return idx values from FACT INVALIDATION CANDIDATES.
+	- If no contradictions, return an empty list for contradicted_facts.
+
+IMPORTANT:
+- duplicate_facts: Use ONLY 'idx' values from EXISTING FACTS
+- contradicted_facts: Use ONLY 'idx' values from FACT INVALIDATION CANDIDATES
+- These are two separate lists with independent idx ranges starting from 0
+
+Guidelines:
+1. Some facts may be very similar but will have key differences, particularly around numeric values in the facts.
+	Do not mark these facts as duplicates.
+
 
 <SCHEMA>
 duplicated_facts: []int

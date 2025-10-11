@@ -131,6 +131,7 @@ type AddEpisodeOptions struct {
 	// Default behavior is false (skip if exists)
 	OverwriteExisting  bool
 	GenerateEmbeddings bool
+	MaxCharacters      int
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
@@ -199,11 +200,132 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 
 // AddEpisode processes and adds a single episode to the knowledge graph.
 // This implementation follows the Python graphiti.add_episode() flow exactly.
+// If the episode content exceeds MaxCharacters, it will be chunked and processed in parts.
 func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
+	maxCharacters := 10000
+	if options.MaxCharacters > 0 {
+		maxCharacters = options.MaxCharacters
+	}
 
+	// Check if we need to chunk the episode
+	if len(episode.Content) > maxCharacters {
+		return c.addEpisodeChunked(ctx, episode, options, maxCharacters)
+	}
+
+	// Process single episode (no chunking needed)
+	return c.addEpisodeSingle(ctx, episode, options)
+}
+
+// addEpisodeChunked chunks long episode content and processes each chunk separately,
+// then merges the results.
+func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, options *AddEpisodeOptions, maxCharacters int) (*types.AddEpisodeResults, error) {
+	// Chunk the content
+	chunks := chunkText(episode.Content, maxCharacters)
+
+	c.logger.Info("Chunking episode content",
+		"episode_id", episode.ID,
+		"original_length", len(episode.Content),
+		"num_chunks", len(chunks),
+		"max_characters", maxCharacters)
+
+	// Create merged result
+	mergedResult := &types.AddEpisodeResults{
+		EpisodicEdges:  []*types.Edge{},
+		Nodes:          []*types.Node{},
+		Edges:          []*types.Edge{},
+		Communities:    []*types.Node{},
+		CommunityEdges: []*types.Edge{},
+	}
+
+	// Track unique nodes and edges to avoid duplicates
+	nodeIDMap := make(map[string]*types.Node)
+	edgeIDMap := make(map[string]*types.Edge)
+	episodicEdgeIDMap := make(map[string]*types.Edge)
+	communityIDMap := make(map[string]*types.Node)
+	communityEdgeIDMap := make(map[string]*types.Edge)
+
+	// Process each chunk
+	for i, chunk := range chunks {
+		// Create a new episode for this chunk
+		chunkEpisode := types.Episode{
+			ID:               fmt.Sprintf("%s_chunk_%d", episode.ID, i),
+			Name:             fmt.Sprintf("%s (chunk %d/%d)", episode.Name, i+1, len(chunks)),
+			Content:          chunk,
+			Reference:        episode.Reference,
+			CreatedAt:        episode.CreatedAt,
+			GroupID:          episode.GroupID,
+			Metadata:         episode.Metadata,
+			ContentEmbedding: nil, // Will be generated for each chunk
+		}
+
+		// Process the chunk
+		chunkResult, err := c.addEpisodeSingle(ctx, chunkEpisode, options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process chunk %d: %w", i, err)
+		}
+
+		// Set the first chunk's episode as the main episode
+		if i == 0 && chunkResult.Episode != nil {
+			mergedResult.Episode = chunkResult.Episode
+		}
+
+		// Merge episodic edges (avoiding duplicates)
+		for _, edge := range chunkResult.EpisodicEdges {
+			if _, exists := episodicEdgeIDMap[edge.ID]; !exists {
+				episodicEdgeIDMap[edge.ID] = edge
+				mergedResult.EpisodicEdges = append(mergedResult.EpisodicEdges, edge)
+			}
+		}
+
+		// Merge nodes (avoiding duplicates)
+		for _, node := range chunkResult.Nodes {
+			if _, exists := nodeIDMap[node.ID]; !exists {
+				nodeIDMap[node.ID] = node
+				mergedResult.Nodes = append(mergedResult.Nodes, node)
+			}
+		}
+
+		// Merge edges (avoiding duplicates)
+		for _, edge := range chunkResult.Edges {
+			if _, exists := edgeIDMap[edge.ID]; !exists {
+				edgeIDMap[edge.ID] = edge
+				mergedResult.Edges = append(mergedResult.Edges, edge)
+			}
+		}
+
+		// Merge communities (avoiding duplicates)
+		for _, community := range chunkResult.Communities {
+			if _, exists := communityIDMap[community.ID]; !exists {
+				communityIDMap[community.ID] = community
+				mergedResult.Communities = append(mergedResult.Communities, community)
+			}
+		}
+
+		// Merge community edges (avoiding duplicates)
+		for _, edge := range chunkResult.CommunityEdges {
+			if _, exists := communityEdgeIDMap[edge.ID]; !exists {
+				communityEdgeIDMap[edge.ID] = edge
+				mergedResult.CommunityEdges = append(mergedResult.CommunityEdges, edge)
+			}
+		}
+	}
+
+	c.logger.Info("Chunked episode processing completed",
+		"episode_id", episode.ID,
+		"total_chunks", len(chunks),
+		"total_entities", len(mergedResult.Nodes),
+		"total_relationships", len(mergedResult.Edges),
+		"total_episodic_edges", len(mergedResult.EpisodicEdges),
+		"total_communities", len(mergedResult.Communities))
+
+	return mergedResult, nil
+}
+
+// addEpisodeSingle processes a single episode without chunking.
+func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	// Use default entity types from config if not provided in options
 	if options.EntityTypes == nil && c.config.EntityTypes != nil {
 		options.EntityTypes = c.config.EntityTypes
@@ -804,6 +926,114 @@ func (c *Client) parseEntitiesFromText(responseContent, groupID string) ([]*type
 // generateID generates a unique ID for nodes and edges.
 func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+// chunkText splits text into chunks of approximately maxChars size,
+// preserving paragraph boundaries when possible. It prioritizes keeping
+// complete paragraphs together and only splits within paragraphs when necessary.
+func chunkText(text string, maxChars int) []string {
+	if len(text) <= maxChars {
+		return []string{text}
+	}
+
+	// Split text into paragraphs first (preserve paragraph structure)
+	paragraphs := strings.Split(text, "\n\n")
+
+	var chunks []string
+	var currentChunk strings.Builder
+	currentLen := 0
+
+	for i, para := range paragraphs {
+		paraLen := len(para)
+
+		// If this single paragraph is longer than maxChars, we need to split it
+		if paraLen > maxChars {
+			// Flush current chunk if it has content
+			if currentChunk.Len() > 0 {
+				chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+				currentChunk.Reset()
+				currentLen = 0
+			}
+
+			// Split the large paragraph into smaller chunks
+			subChunks := chunkParagraph(para, maxChars)
+			chunks = append(chunks, subChunks...)
+			continue
+		}
+
+		// Will adding this paragraph exceed maxChars?
+		separator := ""
+		if currentChunk.Len() > 0 {
+			separator = "\n\n"
+		}
+		newLen := currentLen + len(separator) + paraLen
+
+		if newLen > maxChars && currentChunk.Len() > 0 {
+			// Adding this paragraph would exceed limit, flush current chunk
+			chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+			currentChunk.Reset()
+			currentChunk.WriteString(para)
+			currentLen = paraLen
+		} else {
+			// Add paragraph to current chunk
+			if currentChunk.Len() > 0 {
+				currentChunk.WriteString("\n\n")
+			}
+			currentChunk.WriteString(para)
+			currentLen = newLen
+		}
+
+		// If this is the last paragraph, flush the chunk
+		if i == len(paragraphs)-1 && currentChunk.Len() > 0 {
+			chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+		}
+	}
+
+	return chunks
+}
+
+// chunkParagraph splits a single paragraph that's too large into smaller chunks,
+// breaking at sentence or word boundaries.
+func chunkParagraph(para string, maxChars int) []string {
+	var chunks []string
+	remaining := para
+
+	for len(remaining) > 0 {
+		if len(remaining) <= maxChars {
+			chunks = append(chunks, strings.TrimSpace(remaining))
+			break
+		}
+
+		// Try to find a good break point within maxChars
+		chunkEnd := maxChars
+		breakPoint := -1
+
+		// Minimum chunk size to avoid tiny fragments (at least 1/3 of maxChars)
+		minChunkSize := maxChars / 3
+
+		// Try to break at a sentence boundary first
+		if idx := strings.LastIndex(remaining[:chunkEnd], ". "); idx > minChunkSize {
+			breakPoint = idx + 2
+		} else if idx := strings.LastIndex(remaining[:chunkEnd], "! "); idx > minChunkSize {
+			breakPoint = idx + 2
+		} else if idx := strings.LastIndex(remaining[:chunkEnd], "? "); idx > minChunkSize {
+			breakPoint = idx + 2
+		} else if idx := strings.LastIndex(remaining[:chunkEnd], "\n"); idx > minChunkSize {
+			// Try to break at a newline
+			breakPoint = idx + 1
+		} else if idx := strings.LastIndex(remaining[:chunkEnd], " "); idx > minChunkSize {
+			// Try to break at a word boundary
+			breakPoint = idx + 1
+		} else {
+			// No good break point found, just split at maxChars
+			breakPoint = maxChars
+		}
+
+		chunks = append(chunks, strings.TrimSpace(remaining[:breakPoint]))
+		remaining = remaining[breakPoint:]
+	}
+
+	return chunks
 }
 
 // Search performs hybrid search across the knowledge graph.
