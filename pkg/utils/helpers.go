@@ -448,8 +448,82 @@ func setField(field reflect.Value, value string) error {
 			return err
 		}
 		field.SetBool(b)
+	case reflect.Slice:
+		// Handle slice types (e.g., []string)
+		// Check for empty array notation
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "[]" || trimmed == "" {
+			// Set to empty slice
+			field.Set(reflect.MakeSlice(field.Type(), 0, 0))
+			return nil
+		}
+
+		// For non-empty arrays, parse based on element type
+		elemType := field.Type().Elem()
+
+		// Remove brackets if present
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			trimmed = trimmed[1 : len(trimmed)-1]
+		}
+
+		// Split by comma
+		if trimmed == "" {
+			field.Set(reflect.MakeSlice(field.Type(), 0, 0))
+			return nil
+		}
+
+		parts := strings.Split(trimmed, ",")
+		slice := reflect.MakeSlice(field.Type(), len(parts), len(parts))
+
+		for i, part := range parts {
+			part = strings.TrimSpace(part)
+			// Remove quotes if present
+			part = strings.Trim(part, "\"'")
+
+			elem := slice.Index(i)
+			if err := setSliceElement(elem, part, elemType); err != nil {
+				return fmt.Errorf("failed to set slice element %d: %w", i, err)
+			}
+		}
+
+		field.Set(slice)
 	default:
 		return fmt.Errorf("unsupported field type: %s", field.Kind())
+	}
+	return nil
+}
+
+// setSliceElement sets a single element in a slice based on its type
+func setSliceElement(elem reflect.Value, value string, elemType reflect.Type) error {
+	switch elemType.Kind() {
+	case reflect.String:
+		elem.SetString(value)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		elem.SetInt(i)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		elem.SetUint(u)
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		elem.SetFloat(f)
+	case reflect.Bool:
+		b, err := strconv.ParseBool(strings.ToLower(value))
+		if err != nil {
+			return err
+		}
+		elem.SetBool(b)
+	default:
+		return fmt.Errorf("unsupported slice element type: %s", elemType.Kind())
 	}
 	return nil
 }
