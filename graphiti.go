@@ -129,9 +129,13 @@ type AddEpisodeOptions struct {
 	EdgeTypeMap map[string]map[string][]interface{}
 	// OverwriteExisting whether to overwrite an existing episode with the same UUID
 	// Default behavior is false (skip if exists)
-	OverwriteExisting  bool
-	GenerateEmbeddings bool
-	MaxCharacters      int
+	OverwriteExisting   bool
+	GenerateEmbeddings  bool
+	MaxCharacters       int
+	DeferGraphIngestion bool
+	// DuckDBPath is the path to the DuckDB file for deferred ingestion
+	// If empty and DeferGraphIngestion is true, defaults to "./graphiti_deferred.duckdb"
+	DuckDBPath string
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
@@ -453,30 +457,39 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 	var duplicatePairs []maintenance.NodePair
 
 	if len(extractedNodes) > 0 {
-		c.logger.Info("Starting entity resolution and deduplication",
-			"episode_id", episodeNode.ID,
-			"entities_to_resolve", len(extractedNodes))
+		if options.DeferGraphIngestion {
+			// Skip deduplication - use extracted nodes as-is
+			c.logger.Info("Skipping entity deduplication (DeferGraphIngestion=true)",
+				"episode_id", episodeNode.ID,
+				"entities_extracted", len(extractedNodes))
+			resolvedNodes = extractedNodes
+			uuidMap = make(map[string]string)
+		} else {
+			c.logger.Info("Starting entity resolution and deduplication",
+				"episode_id", episodeNode.ID,
+				"entities_to_resolve", len(extractedNodes))
 
-		resolvedNodes, uuidMap, duplicatePairs, err = nodeOps.ResolveExtractedNodes(ctx,
-			extractedNodes, episodeNode, previousEpisodes, options.EntityTypes)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve nodes: %w", err)
-		}
-
-		c.logger.Info("Entity resolution completed",
-			"episode_id", episodeNode.ID,
-			"resolved_entities", len(resolvedNodes),
-			"duplicates_found", len(duplicatePairs))
-
-		// Build and store duplicate edges
-		if len(duplicatePairs) > 0 {
-			duplicateEdges, err := edgeOps.BuildDuplicateOfEdges(ctx, episodeNode, now, duplicatePairs)
+			resolvedNodes, uuidMap, duplicatePairs, err = nodeOps.ResolveExtractedNodes(ctx,
+				extractedNodes, episodeNode, previousEpisodes, options.EntityTypes)
 			if err != nil {
-				return nil, fmt.Errorf("failed to build duplicate edges: %w", err)
+				return nil, fmt.Errorf("failed to resolve nodes: %w", err)
 			}
-			for _, edge := range duplicateEdges {
-				if err := c.driver.UpsertEdge(ctx, edge); err != nil {
-					return nil, fmt.Errorf("failed to store duplicate edge: %w", err)
+
+			c.logger.Info("Entity resolution completed",
+				"episode_id", episodeNode.ID,
+				"resolved_entities", len(resolvedNodes),
+				"duplicates_found", len(duplicatePairs))
+
+			// Build and store duplicate edges
+			if len(duplicatePairs) > 0 {
+				duplicateEdges, err := edgeOps.BuildDuplicateOfEdges(ctx, episodeNode, now, duplicatePairs)
+				if err != nil {
+					return nil, fmt.Errorf("failed to build duplicate edges: %w", err)
+				}
+				for _, edge := range duplicateEdges {
+					if err := c.driver.UpsertEdge(ctx, edge); err != nil {
+						return nil, fmt.Errorf("failed to store duplicate edge: %w", err)
+					}
 				}
 			}
 		}
@@ -522,42 +535,64 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 	var invalidatedEdges []*types.Edge
 
 	if len(extractedEdges) > 0 {
-		c.logger.Info("Starting relationship resolution",
-			"episode_id", episodeNode.ID,
-			"relationships_to_resolve", len(extractedEdges))
+		if options.DeferGraphIngestion {
+			// Skip edge deduplication and temporal invalidation
+			c.logger.Info("Skipping relationship resolution (DeferGraphIngestion=true)",
+				"episode_id", episodeNode.ID,
+				"relationships_extracted", len(extractedEdges))
 
-		// Resolve edge pointers using uuid map from node resolution
-		utils.ResolveEdgePointers(extractedEdges, uuidMap)
+			// Resolve edge pointers using uuid map from node resolution
+			utils.ResolveEdgePointers(extractedEdges, uuidMap)
 
-		// Resolve extracted edges (dedupe + invalidation)
-		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
-			extractedEdges, episodeNode, resolvedNodes, options.GenerateEmbeddings)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve edges: %w", err)
+			// Use extracted edges as-is
+			resolvedEdges = extractedEdges
+			invalidatedEdges = []*types.Edge{}
+		} else {
+			c.logger.Info("Starting relationship resolution",
+				"episode_id", episodeNode.ID,
+				"relationships_to_resolve", len(extractedEdges))
+
+			// Resolve edge pointers using uuid map from node resolution
+			utils.ResolveEdgePointers(extractedEdges, uuidMap)
+
+			// Resolve extracted edges (dedupe + invalidation)
+			resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
+				extractedEdges, episodeNode, resolvedNodes, options.GenerateEmbeddings)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve edges: %w", err)
+			}
+
+			c.logger.Info("Relationship resolution completed",
+				"episode_id", episodeNode.ID,
+				"resolved_relationships", len(resolvedEdges),
+				"invalidated_relationships", len(invalidatedEdges))
 		}
-
-		c.logger.Info("Relationship resolution completed",
-			"episode_id", episodeNode.ID,
-			"resolved_relationships", len(resolvedEdges),
-			"invalidated_relationships", len(invalidatedEdges))
 	}
 
 	// PHASE 7: ATTRIBUTE EXTRACTION
 	var hydratedNodes []*types.Node
 	if len(resolvedNodes) > 0 {
-		c.logger.Info("Starting attribute extraction",
-			"episode_id", episodeNode.ID,
-			"entities_to_hydrate", len(resolvedNodes))
+		if options.DeferGraphIngestion {
+			// Skip attribute extraction - use resolved nodes as-is
+			c.logger.Info("Skipping attribute extraction (DeferGraphIngestion=true)",
+				"episode_id", episodeNode.ID,
+				"entities", len(resolvedNodes))
+			hydratedNodes = resolvedNodes
+		} else {
+			c.logger.Info("Starting attribute extraction",
+				"episode_id", episodeNode.ID,
+				"entities_to_hydrate", len(resolvedNodes))
 
-		hydratedNodes, err = nodeOps.ExtractAttributesFromNodes(ctx,
-			resolvedNodes, episodeNode, previousEpisodes, options.EntityTypes)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract attributes: %w", err)
+			hydratedNodes, err = nodeOps.ExtractAttributesFromNodes(ctx,
+				resolvedNodes, episodeNode, previousEpisodes, options.EntityTypes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to extract attributes: %w", err)
+			}
+
+			c.logger.Info("Attribute extraction completed",
+				"episode_id", episodeNode.ID,
+				"hydrated_entities", len(hydratedNodes))
 		}
-
-		c.logger.Info("Attribute extraction completed",
-			"episode_id", episodeNode.ID,
-			"hydrated_entities", len(hydratedNodes))
 	}
 
 	// PHASE 8: BUILD EPISODIC EDGES
@@ -584,16 +619,61 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 
 	// PHASE 9: BULK PERSISTENCE
 	allEdges := append(resolvedEdges, invalidatedEdges...)
+	if !options.DeferGraphIngestion {
+		// Use bulk operations for efficiency to write to Kuzu graph database
+		_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
+			[]*types.Node{episodeNode},
+			episodicEdges,
+			hydratedNodes,
+			allEdges,
+			c.embedder)
+		if err != nil {
+			return nil, fmt.Errorf("failed to bulk persist data: %w", err)
+		}
+	} else {
+		// Write to DuckDB tables instead of Kuzu
+		c.logger.Info("Writing to DuckDB for deferred ingestion",
+			"episode_id", episodeNode.ID,
+			"entities", len(hydratedNodes),
+			"entity_edges", len(allEdges),
+			"episodic_edges", len(episodicEdges))
 
-	// Use bulk operations for efficiency
-	_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
-		[]*types.Node{episodeNode},
-		episodicEdges,
-		hydratedNodes,
-		allEdges,
-		c.embedder)
-	if err != nil {
-		return nil, fmt.Errorf("failed to bulk persist data: %w", err)
+		// Determine DuckDB path
+		duckDBPath := options.DuckDBPath
+		if duckDBPath == "" {
+			duckDBPath = "./graphiti_deferred.duckdb"
+		}
+
+		// Create DuckDB writer
+		duckDBWriter, err := utils.NewDuckDBWriter(duckDBPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DuckDB writer: %w", err)
+		}
+		defer duckDBWriter.Close()
+
+		// Write episode node
+		if err := duckDBWriter.WriteEpisode(ctx, episodeNode); err != nil {
+			return nil, fmt.Errorf("failed to write episode to DuckDB: %w", err)
+		}
+
+		// Write entity nodes
+		if err := duckDBWriter.WriteEntityNodes(ctx, hydratedNodes, episodeNode.ID); err != nil {
+			return nil, fmt.Errorf("failed to write entity nodes to DuckDB: %w", err)
+		}
+
+		// Write entity edges
+		if err := duckDBWriter.WriteEntityEdges(ctx, allEdges, episodeNode.ID); err != nil {
+			return nil, fmt.Errorf("failed to write entity edges to DuckDB: %w", err)
+		}
+
+		// Write episodic edges
+		if err := duckDBWriter.WriteEpisodicEdges(ctx, episodicEdges, episodeNode.ID); err != nil {
+			return nil, fmt.Errorf("failed to write episodic edges to DuckDB: %w", err)
+		}
+
+		c.logger.Info("Successfully wrote episode data to DuckDB",
+			"episode_id", episodeNode.ID,
+			"duckdb_path", duckDBPath)
 	}
 
 	result.Nodes = hydratedNodes
