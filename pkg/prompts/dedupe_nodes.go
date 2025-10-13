@@ -181,12 +181,15 @@ Do NOT mark entities as duplicates if:
 Task:
 Your response will be json called entity_resolutions with a list that contains one entry for each entity.
 
-For each entity, return the id of the entity as id, the name of the entity as name, and the duplicate_idx
-as an integer.
+For every entity, return an object with the following quantities:
 
-- If an entity is a duplicate of one of the EXISTING ENTITIES, return the idx of the candidate it is a 
-duplicate of.
-- If an entity is not a duplicate of one of the EXISTING ENTITIES, return the -1 as the duplication_idx
+	- "id": integer id from ENTITIES,
+	- "name": the best full name for the entity (preserve the original name unless a duplicate has a more complete name),
+	- "duplicate_idx": the idx of the EXISTING ENTITY that is the best duplicate match, or -1 if there is no duplicate,
+	- "duplicates": a sorted list of all idx values from EXISTING ENTITIES that refer to duplicates (deduplicate the list, use [] when none or unsure)
+
+- Only use idx values that appear in EXISTING ENTITIES.
+- Never fabricate entities or indices.
 - Output TSV; use the SCHEMA
 <SCHEMA>
 id: string
