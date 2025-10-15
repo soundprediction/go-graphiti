@@ -49,7 +49,7 @@ func (w *DuckDBWriter) createTables(ctx context.Context) error {
 			id VARCHAR PRIMARY KEY,
 			name VARCHAR,
 			content VARCHAR,
-			reference VARCHAR,
+			reference TIMESTAMP,
 			group_id VARCHAR,
 			created_at TIMESTAMP,
 			updated_at TIMESTAMP,
@@ -138,10 +138,31 @@ func (w *DuckDBWriter) WriteEpisode(ctx context.Context, episode *types.Node) er
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
 
-	// Convert Reference to sql.NullTime to handle zero values
+	// Convert timestamps to sql.NullTime to handle zero values
 	reference := sql.NullTime{}
 	if !episode.Reference.IsZero() {
 		reference = sql.NullTime{Time: episode.Reference, Valid: true}
+	}
+
+	createdAt := sql.NullTime{}
+	if !episode.CreatedAt.IsZero() {
+		createdAt = sql.NullTime{Time: episode.CreatedAt, Valid: true}
+	}
+
+	updatedAt := sql.NullTime{}
+	if !episode.UpdatedAt.IsZero() {
+		updatedAt = sql.NullTime{Time: episode.UpdatedAt, Valid: true}
+	}
+
+	validFrom := sql.NullTime{}
+	if !episode.ValidFrom.IsZero() {
+		validFrom = sql.NullTime{Time: episode.ValidFrom, Valid: true}
+	}
+
+	// Handle empty GroupID
+	groupID := episode.GroupID
+	if groupID == "" {
+		groupID = "default"
 	}
 
 	_, err = w.db.ExecContext(ctx, `
@@ -154,10 +175,10 @@ func (w *DuckDBWriter) WriteEpisode(ctx context.Context, episode *types.Node) er
 		episode.Name,
 		episode.Content,
 		reference,
-		episode.GroupID,
-		episode.CreatedAt,
-		episode.UpdatedAt,
-		episode.ValidFrom,
+		groupID,
+		createdAt,
+		updatedAt,
+		validFrom,
 		episode.Embedding,
 		string(metadataJSON),
 	)
@@ -199,6 +220,22 @@ func (w *DuckDBWriter) WriteEntityNodes(ctx context.Context, nodes []*types.Node
 			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
 
+		// Convert timestamps to sql.NullTime
+		createdAt := sql.NullTime{}
+		if !node.CreatedAt.IsZero() {
+			createdAt = sql.NullTime{Time: node.CreatedAt, Valid: true}
+		}
+
+		updatedAt := sql.NullTime{}
+		if !node.UpdatedAt.IsZero() {
+			updatedAt = sql.NullTime{Time: node.UpdatedAt, Valid: true}
+		}
+
+		validFrom := sql.NullTime{}
+		if !node.ValidFrom.IsZero() {
+			validFrom = sql.NullTime{Time: node.ValidFrom, Valid: true}
+		}
+
 		validTo := sql.NullTime{}
 		if node.ValidTo != nil && !node.ValidTo.IsZero() {
 			validTo = sql.NullTime{Time: *node.ValidTo, Valid: true}
@@ -209,9 +246,9 @@ func (w *DuckDBWriter) WriteEntityNodes(ctx context.Context, nodes []*types.Node
 			node.Name,
 			node.EntityType,
 			node.GroupID,
-			node.CreatedAt,
-			node.UpdatedAt,
-			node.ValidFrom,
+			createdAt,
+			updatedAt,
+			validFrom,
 			validTo,
 			node.Summary,
 			node.Embedding,
@@ -267,6 +304,17 @@ func (w *DuckDBWriter) WriteEntityEdges(ctx context.Context, edges []*types.Edge
 			return fmt.Errorf("failed to marshal episodes: %w", err)
 		}
 
+		// Convert timestamps to sql.NullTime
+		createdAt := sql.NullTime{}
+		if !edge.CreatedAt.IsZero() {
+			createdAt = sql.NullTime{Time: edge.CreatedAt, Valid: true}
+		}
+
+		validFrom := sql.NullTime{}
+		if !edge.ValidFrom.IsZero() {
+			validFrom = sql.NullTime{Time: edge.ValidFrom, Valid: true}
+		}
+
 		invalidAt := sql.NullTime{}
 		if edge.InvalidAt != nil && !edge.InvalidAt.IsZero() {
 			invalidAt = sql.NullTime{Time: *edge.InvalidAt, Valid: true}
@@ -286,8 +334,8 @@ func (w *DuckDBWriter) WriteEntityEdges(ctx context.Context, edges []*types.Edge
 			edge.Summary,
 			string(edge.Type),
 			edge.GroupID,
-			edge.CreatedAt,
-			edge.ValidFrom,
+			createdAt,
+			validFrom,
 			invalidAt,
 			expiredAt,
 			edge.Embedding,
@@ -333,6 +381,17 @@ func (w *DuckDBWriter) WriteEpisodicEdges(ctx context.Context, edges []*types.Ed
 	defer stmt.Close()
 
 	for _, edge := range edges {
+		// Convert timestamps to sql.NullTime
+		createdAt := sql.NullTime{}
+		if !edge.CreatedAt.IsZero() {
+			createdAt = sql.NullTime{Time: edge.CreatedAt, Valid: true}
+		}
+
+		validFrom := sql.NullTime{}
+		if !edge.ValidFrom.IsZero() {
+			validFrom = sql.NullTime{Time: edge.ValidFrom, Valid: true}
+		}
+
 		_, err = stmt.ExecContext(ctx,
 			edge.ID,
 			edge.SourceID,
@@ -340,8 +399,8 @@ func (w *DuckDBWriter) WriteEpisodicEdges(ctx context.Context, edges []*types.Ed
 			edge.Name,
 			string(edge.Type),
 			edge.GroupID,
-			edge.CreatedAt,
-			edge.ValidFrom,
+			createdAt,
+			validFrom,
 			episodeID,
 		)
 		if err != nil {
