@@ -209,7 +209,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
-	maxCharacters := 80000
+	maxCharacters := 20000
 	if options.MaxCharacters > 0 {
 		maxCharacters = options.MaxCharacters
 	}
@@ -379,10 +379,10 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 		// Only retrieve episodes that occurred before this episode's reference time
 		previousEpisodes, err = c.RetrieveEpisodes(
 			ctx,
-			episode.Reference,            // Use episode's reference time for temporal filtering
-			[]string{episode.GroupID},    // Filter by group ID
-			search.RelevantSchemaLimit,   // Limit to relevant schema size
-			nil,                          // No episode type filter
+			episode.Reference,          // Use episode's reference time for temporal filtering
+			[]string{episode.GroupID},  // Filter by group ID
+			search.RelevantSchemaLimit, // Limit to relevant schema size
+			nil,                        // No episode type filter
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve previous episodes: %w", err)
