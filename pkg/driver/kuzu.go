@@ -394,9 +394,13 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	// See if the node already exists in the table
 
 	// Try to create first
-	if k.NodeExists(ctx, node) {
+	if !k.NodeExists(ctx, node) {
 		err := k.executeNodeCreateQuery(node, tableName)
-		return fmt.Errorf("failed to create node %w", err)
+		if err != nil {
+			return fmt.Errorf("failed to create node %w", err)
+		}
+		return err
+
 	}
 
 	updateErr := k.executeNodeUpdateQuery(node, tableName)
@@ -1266,20 +1270,25 @@ func (k *KuzuDriver) getTableNameForNodeType(nodeType types.NodeType) string {
 func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*types.Node, error) {
 	node := &types.Node{}
 
-	if id, ok := data["uuid"]; ok {
+	if id, ok := data["n.uuid"]; ok {
 		node.ID = fmt.Sprintf("%v", id)
 	}
-	if name, ok := data["name"]; ok {
+	if name, ok := data["n.name"]; ok {
 		node.Name = fmt.Sprintf("%v", name)
 	}
-	if groupID, ok := data["group_id"]; ok {
+	if groupID, ok := data["n.group_id"]; ok {
 		node.GroupID = fmt.Sprintf("%v", groupID)
 	}
-	if summary, ok := data["summary"]; ok {
+	if summary, ok := data["n.summary"]; ok {
 		node.Summary = fmt.Sprintf("%v", summary)
 	}
-	if content, ok := data["content"]; ok {
+	if content, ok := data["n.content"]; ok {
 		node.Content = fmt.Sprintf("%v", content)
+	}
+	if labels, ok := data["n.labels"].([]interface{}); ok && len(labels) > 0 {
+		if label, ok := labels[0].(string); ok {
+			node.EntityType = label
+		}
 	}
 
 	// Set node type based on table
@@ -1386,7 +1395,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 				uuid: $uuid,
 				name: $name,
 				group_id: $group_id,
-				labels: [],
+				labels: $labels,
 				created_at: $created_at,
 				name_embedding: [],
 				summary: $summary,
@@ -1396,6 +1405,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
+		params["labels"] = []string{node.EntityType}
 		params["created_at"] = node.CreatedAt
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
@@ -1454,13 +1464,15 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 			WHERE n.uuid = $uuid AND n.group_id = $group_id
 			SET n.name = $name,
 				n.summary = $summary,
-				n.attributes = $attributes
+				n.attributes = $attributes,
+				n.labels = $labels
 		`
 		params["uuid"] = node.ID
 		params["group_id"] = node.GroupID
 		params["name"] = node.Name
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
+		params["labels"] = []string{node.EntityType}
 	case "Community":
 		query = `
 			MATCH (n:Community)

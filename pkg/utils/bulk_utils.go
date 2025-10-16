@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -183,6 +184,70 @@ func AddNodesAndEdgesBulk(
 				result.EntityEdges = append(result.EntityEdges, edge)
 			}
 		}
+	}
+
+	// Report database statistics for all affected groups
+	logger := slog.Default()
+
+	// Collect unique group IDs from all added nodes and edges
+	groupIDs := make(map[string]bool)
+	for _, node := range episodicNodes {
+		if node.GroupID != "" {
+			groupIDs[node.GroupID] = true
+		}
+	}
+	for _, node := range entityNodes {
+		if node.GroupID != "" {
+			groupIDs[node.GroupID] = true
+		}
+	}
+	for _, edge := range episodicEdges {
+		if edge.GroupID != "" {
+			groupIDs[edge.GroupID] = true
+		}
+	}
+	for _, edge := range entityEdges {
+		if edge.GroupID != "" {
+			groupIDs[edge.GroupID] = true
+		}
+	}
+
+	// Query and log statistics for each affected group
+	for groupID := range groupIDs {
+		stats, err := driver.GetStats(ctx, groupID)
+		if err != nil {
+			logger.Warn("Failed to retrieve graph statistics",
+				"group_id", groupID,
+				"error", err.Error())
+			continue
+		}
+
+		// Extract counts by type
+		episodicNodeCount := int64(0)
+		entityNodeCount := int64(0)
+		episodicEdgeCount := int64(0)
+		entityEdgeCount := int64(0)
+
+		if stats.NodesByType != nil {
+			episodicNodeCount = stats.NodesByType[string(types.EpisodicNodeType)]
+			entityNodeCount = stats.NodesByType[string(types.EntityNodeType)]
+		}
+
+		if stats.EdgesByType != nil {
+			episodicEdgeCount = stats.EdgesByType[string(types.EpisodicEdgeType)]
+			entityEdgeCount = stats.EdgesByType[string(types.EntityEdgeType)]
+		}
+
+		logger.Info("Graph database statistics after bulk operation",
+			"group_id", groupID,
+			"total_nodes", stats.NodeCount,
+			"total_edges", stats.EdgeCount,
+			"episodic_nodes", episodicNodeCount,
+			"entity_nodes", entityNodeCount,
+			"episodic_edges", episodicEdgeCount,
+			"entity_edges", entityEdgeCount,
+			"communities", stats.CommunityCount,
+		)
 	}
 
 	return result, nil

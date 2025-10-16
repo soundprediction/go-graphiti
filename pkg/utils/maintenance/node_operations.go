@@ -363,6 +363,15 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w", err)
 	}
+	if !utils.IsLastLineEmpty(response.Content) {
+		messages[len(messages)-1].Content += fmt.Sprintf(`\n
+Continue the INCOMPLETE RESPONSE\n
+<INCOMPLETE RESPONSE>
+%s
+</INCOMPLETE RESPONSE>
+			`, utils.RemoveLastLine(response.Content))
+		response, _ = no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+	}
 	r := llm.RemoveThinkTags(utils.RemoveLastLine(response.Content))
 
 	nodeDuplicatePtrs, err := utils.DuckDbUnmarshalCSV[prompts.NodeDuplicate](r, '\t')
@@ -431,7 +440,9 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes []*types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) ([]*types.Node, error) {
 	var updatedNodes []*types.Node
 
-	for _, node := range nodes {
+	for n, node := range nodes {
+		log.Printf("Extracting attributes %d of %d for entity:  %s", n+1, len(nodes), node.Name)
+
 		updatedNode, err := no.extractAttributesFromNode(ctx, node, episode, previousEpisodes, entityTypes)
 		if err != nil {
 			log.Printf("Warning: failed to extract attributes for node %s: %v", node.Name, err)

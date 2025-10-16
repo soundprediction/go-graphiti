@@ -1,10 +1,13 @@
 package driver_test
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -86,4 +89,64 @@ func TestKuzuDriverUsageExample(t *testing.T) {
 	// neighbors, err := d.GetNeighbors(ctx, "test-node", "test-group", 2)
 	// require.NoError(t, err)
 	// assert.NotEmpty(t, neighbors)
+}
+
+func TestKuzuDriver_UpsertNode(t *testing.T) {
+	dbPath := createTempKuzuDB(t)
+	d, err := driver.NewKuzuDriver(dbPath, 1)
+	require.NoError(t, err)
+	defer d.Close()
+
+	ctx := context.Background()
+
+	// Create indices for the database
+	err = d.CreateIndices(ctx)
+	require.NoError(t, err)
+
+	// Create a test node
+	now := time.Now()
+	testNode := &types.Node{
+		ID:         "test-node-123",
+		Name:       "Test Entity",
+		Type:       types.EntityNodeType,
+		GroupID:    "test-group",
+		EntityType: "Person",
+		Summary:    "A test entity for UpsertNode",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	// Upsert the node
+	err = d.UpsertNode(ctx, testNode)
+	require.NoError(t, err, "UpsertNode should succeed")
+
+	// Read the node back from the database
+	retrievedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	require.NoError(t, err, "GetNode should succeed")
+	require.NotNil(t, retrievedNode, "Retrieved node should not be nil")
+
+	// Verify the node data matches
+	assert.Equal(t, testNode.ID, retrievedNode.ID, "Node ID should match")
+	assert.Equal(t, testNode.Name, retrievedNode.Name, "Node name should match")
+	assert.Equal(t, testNode.Type, retrievedNode.Type, "Node type should match")
+	assert.Equal(t, testNode.GroupID, retrievedNode.GroupID, "Node GroupID should match")
+	assert.Equal(t, testNode.EntityType, retrievedNode.EntityType, "Node EntityType should match")
+	assert.Equal(t, testNode.Summary, retrievedNode.Summary, "Node summary should match")
+
+	// Test updating the same node (upsert should update existing)
+	testNode.Summary = "Updated summary for test entity"
+	testNode.UpdatedAt = time.Now()
+
+	err = d.UpsertNode(ctx, testNode)
+	require.NoError(t, err, "Second UpsertNode (update) should succeed")
+
+	// Read the updated node back
+	updatedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	require.NoError(t, err, "GetNode after update should succeed")
+	require.NotNil(t, updatedNode, "Updated node should not be nil")
+
+	// Verify the update was applied
+	assert.Equal(t, "Updated summary for test entity", updatedNode.Summary, "Node summary should be updated")
+	assert.Equal(t, testNode.ID, updatedNode.ID, "Node ID should remain the same")
+	assert.Equal(t, testNode.Name, updatedNode.Name, "Node name should remain the same")
 }
