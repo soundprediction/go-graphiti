@@ -1479,6 +1479,10 @@ func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error)
 		edge.Summary = fmt.Sprintf("%v", fact)
 		edge.Fact = fmt.Sprintf("%v", fact)
 	}
+
+	if embedding, ok := data["fact_embedding"]; ok {
+		edge.FactEmbedding = embedding.([]float32)
+	}
 	if sourceID, ok := data["source_id"]; ok {
 		edge.SourceID = fmt.Sprintf("%v", sourceID)
 		edge.SourceNodeID = fmt.Sprintf("%v", sourceID)
