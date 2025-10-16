@@ -458,7 +458,6 @@ func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes 
 			log.Printf("Warning: failed to create embedding for node %s: %v", node.Name, err)
 		}
 	}
-
 	return updatedNodes, nil
 }
 
