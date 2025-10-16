@@ -140,7 +140,15 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
-
+	if !utils.IsLastLineEmpty(response.Content) {
+		messages[len(messages)-1].Content += fmt.Sprintf(`\n
+Continue the INCOMPLETE RESPONSE\n
+<INCOMPLETE RESPONSE>
+%s
+</INCOMPLETE RESPONSE>
+			`, utils.RemoveLastLine(response.Content))
+		response, _ = eo.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+	}
 	r := utils.RemoveLastLine(response.Content)
 	r = llm.RemoveThinkTags(r)
 
@@ -186,6 +194,8 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		if edgeData.ValidAt != "" {
 			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(edgeData.ValidAt, "Z", "+00:00")); err == nil {
 				validAt = parsed.UTC()
+			} else if edgeData.ValidAt == "null" {
+				validAt = episode.ValidFrom
 			} else {
 				log.Printf("Warning: failed to parse valid_at date: %v", err)
 				validAt = episode.ValidFrom
@@ -198,6 +208,8 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(edgeData.InvalidAt, "Z", "+00:00")); err == nil {
 				parsedUTC := parsed.UTC()
 				validTo = &parsedUTC
+			} else if edgeData.InvalidAt == "null" {
+				validTo = nil
 			} else {
 				log.Printf("Warning: failed to parse invalid_at date: %v", err)
 			}

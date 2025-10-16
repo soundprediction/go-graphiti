@@ -111,6 +111,17 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		if err != nil {
 			return nil, fmt.Errorf("The llm call failed to extract entities: %w", err)
 		}
+
+		if !utils.IsLastLineEmpty(response.Content) {
+			messages[len(messages)-1].Content += fmt.Sprintf(`\n
+Continue the INCOMPLETE RESPONSE\n
+<INCOMPLETE RESPONSE>
+%s
+</INCOMPLETE RESPONSE>
+			`, utils.RemoveLastLine(response.Content))
+			response, _ = no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+		}
+
 		r := utils.RemoveLastLine(response.Content)
 		r = llm.RemoveThinkTags(r)
 		/*
