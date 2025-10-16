@@ -14,8 +14,9 @@ import (
 )
 
 // NodeOperations interface to avoid import cycle with maintenance package
+// The duplicate pairs are returned as simple string pair tuples [source_uuid, target_uuid]
 type NodeOperations interface {
-	ResolveExtractedNodes(ctx context.Context, extractedNodes []*types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) ([]*types.Node, map[string]string, []NodePair, error)
+	ResolveExtractedNodes(ctx context.Context, extractedNodes []*types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) ([]*types.Node, map[string]string, interface{}, error)
 }
 
 // Clients represents the set of clients needed for bulk operations
@@ -364,7 +365,7 @@ func DedupeNodesBulk(
 	type firstPassResult struct {
 		resolvedNodes  []*types.Node
 		uuidMap        map[string]string
-		duplicatePairs []NodePair
+		duplicatePairs interface{} // Can be []NodePair from maintenance or any compatible type
 	}
 
 	firstPassResults := make([]firstPassResult, len(extractedNodesByEpisode))
@@ -431,24 +432,20 @@ func DedupeNodesBulk(
 		firstPassResults[i] = results[i]
 	}
 
-	// Collect episode resolutions and duplicate pairs from first pass
+	// Collect episode resolutions from first pass
+	// Note: duplicate pairs from Pass 1 are already captured in the UUID maps,
+	// so we don't need to extract them separately
 	episodeResolutions := make([]struct {
 		episodeUUID   string
 		resolvedNodes []*types.Node
 	}, len(episodeTuples))
 
 	perEpisodeUUIDMaps := make([]map[string]string, len(firstPassResults))
-	var duplicatePairsFromPass1 [][2]string
 
 	for i, result := range firstPassResults {
 		episodeResolutions[i].episodeUUID = episodeTuples[i].Episode.ID
 		episodeResolutions[i].resolvedNodes = result.resolvedNodes
 		perEpisodeUUIDMaps[i] = result.uuidMap
-
-		// Collect duplicate pairs
-		for _, dup := range result.duplicatePairs {
-			duplicatePairsFromPass1 = append(duplicatePairsFromPass1, [2]string{dup.Source.ID, dup.Target.ID})
-		}
 	}
 
 	// PASS 2: Re-run deduplication across the union of resolved nodes to catch
@@ -517,13 +514,15 @@ func DedupeNodesBulk(
 	}
 
 	// Combine UUID maps from both passes using directed union-find
+	// Pass 1 duplicate information is already in perEpisodeUUIDMaps
 	var unionPairs [][2]string
 	for _, uuidMap := range perEpisodeUUIDMaps {
 		for oldUUID, newUUID := range uuidMap {
-			unionPairs = append(unionPairs, [2]string{oldUUID, newUUID})
+			if oldUUID != newUUID {
+				unionPairs = append(unionPairs, [2]string{oldUUID, newUUID})
+			}
 		}
 	}
-	unionPairs = append(unionPairs, duplicatePairsFromPass1...)
 	unionPairs = append(unionPairs, duplicatePairsFromPass2...)
 
 	compressedMap := BuildDirectedUUIDMap(unionPairs)
