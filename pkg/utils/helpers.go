@@ -527,3 +527,18 @@ func setSliceElement(elem reflect.Value, value string, elemType reflect.Type) er
 	}
 	return nil
 }
+
+func IsLastLineEmpty(text string) bool {
+	lines := strings.Split(text, "\n")
+
+	// Handle empty text
+	if len(lines) == 0 {
+		return true // Or false, depending on your definition of "empty last line" for empty text
+	}
+
+	// Get the last line (which might be an empty string if the text ends with a newline)
+	lastLine := lines[len(lines)-1]
+
+	// Trim whitespace and check if it's empty
+	return strings.TrimSpace(lastLine) == ""
+}

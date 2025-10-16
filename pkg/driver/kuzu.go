@@ -394,9 +394,13 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	// See if the node already exists in the table
 
 	// Try to create first
-	if k.NodeExists(ctx, node) {
+	if !k.NodeExists(ctx, node) {
 		err := k.executeNodeCreateQuery(node, tableName)
-		return fmt.Errorf("failed to create node %w", err)
+		if err != nil {
+			return fmt.Errorf("failed to create node %w", err)
+		}
+		return err
+
 	}
 
 	updateErr := k.executeNodeUpdateQuery(node, tableName)
@@ -455,13 +459,18 @@ func (k *KuzuDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID str
 // GetEdge retrieves an edge by ID using the RelatesToNode_ pattern.
 func (k *KuzuDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
 	// Query using the RelatesToNode_ pattern from Python implementation
-	query := fmt.Sprintf(`
+	query := `
 		MATCH (a:Entity)-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
-		WHERE rel.uuid = '%s' AND rel.group_id = '%s'
-		RETURN rel.*, a.uuid AS source_id, b.uuid AS target_id
-	`, strings.ReplaceAll(edgeID, "'", "\\'"), strings.ReplaceAll(groupID, "'", "\\'"))
+		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
+		RETURN rel.uuid as uuid, rel.name as name, rel.fact as fact, rel.group_id as group_id, a.uuid AS source_id, b.uuid AS target_id
+	`
 
-	result, _, _, err := k.ExecuteQuery(query, nil)
+	params := map[string]interface{}{
+		"uuid":     edgeID,
+		"group_id": groupID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query edge: %w", err)
 	}
@@ -483,17 +492,135 @@ func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 		edge.ValidFrom = edge.CreatedAt
 	}
 
-	// Try to create the edge using RelatesToNode_ pattern
-	err := k.executeEdgeCreateQuery(edge)
-	if err != nil {
-		// If creation fails, try to update
-		updateErr := k.executeEdgeUpdateQuery(edge)
-		if updateErr != nil {
-			return fmt.Errorf("failed to create or update edge: create error: %w, update error: %w", err, updateErr)
+	if !k.EdgeExists(ctx, edge) {
+		err := k.executeEdgeCreateQuery(edge)
+		if err != nil {
+			return fmt.Errorf("failed to create edge %w", err)
 		}
+		return err
+	}
+
+	updateErr := k.executeEdgeUpdateQuery(edge)
+	if updateErr != nil {
+		return fmt.Errorf("failed to update edge %w", updateErr)
 	}
 
 	return nil
+}
+
+func (k *KuzuDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
+	query := `
+		MATCH (rel:RelatesToNode_)
+		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
+		RETURN rel.uuid
+		LIMIT 1
+	`
+
+	params := map[string]interface{}{
+		"uuid":     edge.ID,
+		"group_id": edge.GroupID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return false
+	}
+
+	if resultList, ok := result.([]map[string]interface{}); ok && len(resultList) > 0 {
+		return true
+	}
+
+	return false
+}
+
+func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
+	var metadataJSON string
+	if edge.Metadata != nil {
+		if data, err := json.Marshal(edge.Metadata); err == nil {
+			metadataJSON = string(data)
+		}
+	}
+
+	query := `
+		MATCH (a:Entity {uuid: $source_uuid, group_id: $group_id})
+		MATCH (b:Entity {uuid: $target_uuid, group_id: $group_id})
+		CREATE (rel:RelatesToNode_ {
+			uuid: $uuid,
+			group_id: $group_id,
+			created_at: $created_at,
+			name: $name,
+			fact: $fact,
+			fact_embedding: [],
+			episodes: [],
+			expired_at: $expired_at,
+			valid_at: $valid_at,
+			invalid_at: $invalid_at,
+			attributes: $attributes
+		})
+		CREATE (a)-[:RELATES_TO]->(rel)
+		CREATE (rel)-[:RELATES_TO]->(b)
+	`
+
+	params := make(map[string]interface{})
+	params["source_uuid"] = edge.SourceID
+	params["target_uuid"] = edge.TargetID
+	params["group_id"] = edge.GroupID
+	params["uuid"] = edge.ID
+	params["created_at"] = edge.CreatedAt
+	params["name"] = edge.Name
+	params["fact"] = edge.Fact
+	params["attributes"] = metadataJSON
+	params["valid_at"] = edge.ValidFrom
+
+	if edge.ValidTo != nil {
+		params["expired_at"] = edge.ValidTo
+		params["invalid_at"] = edge.ValidTo
+	} else {
+		params["expired_at"] = nil
+		params["invalid_at"] = nil
+	}
+
+	_, _, _, err := k.ExecuteQuery(query, params)
+	return err
+}
+
+func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
+	var metadataJSON string
+	if edge.Metadata != nil {
+		if data, err := json.Marshal(edge.Metadata); err == nil {
+			metadataJSON = string(data)
+		}
+	}
+
+	query := `
+		MATCH (rel:RelatesToNode_)
+		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
+		SET rel.name = $name,
+			rel.fact = $fact,
+			rel.expired_at = $expired_at,
+			rel.valid_at = $valid_at,
+			rel.invalid_at = $invalid_at,
+			rel.attributes = $attributes
+	`
+
+	params := make(map[string]interface{})
+	params["uuid"] = edge.ID
+	params["group_id"] = edge.GroupID
+	params["name"] = edge.Name
+	params["fact"] = edge.Fact
+	params["attributes"] = metadataJSON
+	params["valid_at"] = edge.ValidFrom
+
+	if edge.ValidTo != nil {
+		params["expired_at"] = edge.ValidTo
+		params["invalid_at"] = edge.ValidTo
+	} else {
+		params["expired_at"] = nil
+		params["invalid_at"] = nil
+	}
+
+	_, _, _, err := k.ExecuteQuery(query, params)
+	return err
 }
 
 // DeleteEdge removes an edge.
@@ -1266,20 +1393,25 @@ func (k *KuzuDriver) getTableNameForNodeType(nodeType types.NodeType) string {
 func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*types.Node, error) {
 	node := &types.Node{}
 
-	if id, ok := data["uuid"]; ok {
+	if id, ok := data["node.uuid"]; ok {
 		node.ID = fmt.Sprintf("%v", id)
 	}
-	if name, ok := data["name"]; ok {
+	if name, ok := data["node.name"]; ok {
 		node.Name = fmt.Sprintf("%v", name)
 	}
-	if groupID, ok := data["group_id"]; ok {
+	if groupID, ok := data["node.group_id"]; ok {
 		node.GroupID = fmt.Sprintf("%v", groupID)
 	}
-	if summary, ok := data["summary"]; ok {
+	if summary, ok := data["node.summary"]; ok {
 		node.Summary = fmt.Sprintf("%v", summary)
 	}
-	if content, ok := data["content"]; ok {
+	if content, ok := data["node.content"]; ok {
 		node.Content = fmt.Sprintf("%v", content)
+	}
+	if labels, ok := data["node.labels"].([]interface{}); ok && len(labels) > 0 {
+		if label, ok := labels[0].(string); ok {
+			node.EntityType = label
+		}
 	}
 
 	// Set node type based on table
@@ -1322,12 +1454,15 @@ func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error)
 	}
 	if fact, ok := data["fact"]; ok {
 		edge.Summary = fmt.Sprintf("%v", fact)
+		edge.Fact = fmt.Sprintf("%v", fact)
 	}
 	if sourceID, ok := data["source_id"]; ok {
 		edge.SourceID = fmt.Sprintf("%v", sourceID)
+		edge.SourceNodeID = fmt.Sprintf("%v", sourceID)
 	}
 	if targetID, ok := data["target_id"]; ok {
 		edge.TargetID = fmt.Sprintf("%v", targetID)
+		edge.TargetNodeID = fmt.Sprintf("%v", targetID)
 	}
 
 	edge.Type = types.EntityEdgeType
@@ -1386,7 +1521,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 				uuid: $uuid,
 				name: $name,
 				group_id: $group_id,
-				labels: [],
+				labels: $labels,
 				created_at: $created_at,
 				name_embedding: [],
 				summary: $summary,
@@ -1396,6 +1531,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
+		params["labels"] = []string{node.EntityType}
 		params["created_at"] = node.CreatedAt
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
@@ -1454,13 +1590,15 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 			WHERE n.uuid = $uuid AND n.group_id = $group_id
 			SET n.name = $name,
 				n.summary = $summary,
-				n.attributes = $attributes
+				n.attributes = $attributes,
+				n.labels = $labels
 		`
 		params["uuid"] = node.ID
 		params["group_id"] = node.GroupID
 		params["name"] = node.Name
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
+		params["labels"] = []string{node.EntityType}
 	case "Community":
 		query = `
 			MATCH (n:Community)
@@ -1474,96 +1612,6 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 		params["summary"] = node.Summary
 	default:
 		return fmt.Errorf("unknown table: %s", tableName)
-	}
-
-	_, _, _, err := k.ExecuteQuery(query, params)
-	return err
-}
-
-func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
-	var metadataJSON string
-	if edge.Metadata != nil {
-		if data, err := json.Marshal(edge.Metadata); err == nil {
-			metadataJSON = string(data)
-		}
-	}
-
-	query := `
-		MATCH (a:Entity {uuid: $source_uuid, group_id: $group_id})
-		MATCH (b:Entity {uuid: $target_uuid, group_id: $group_id})
-		CREATE (rel:RelatesToNode_ {
-			uuid: $uuid,
-			group_id: $group_id,
-			created_at: $created_at,
-			name: $name,
-			fact: $fact,
-			fact_embedding: [],
-			episodes: [],
-			expired_at: $expired_at,
-			valid_at: $valid_at,
-			invalid_at: $invalid_at,
-			attributes: $attributes
-		})
-		CREATE (a)-[:RELATES_TO]->(rel)
-		CREATE (rel)-[:RELATES_TO]->(b)
-	`
-
-	params := make(map[string]interface{})
-	params["source_uuid"] = edge.SourceID
-	params["target_uuid"] = edge.TargetID
-	params["group_id"] = edge.GroupID
-	params["uuid"] = edge.ID
-	params["created_at"] = edge.CreatedAt
-	params["name"] = edge.Name
-	params["fact"] = edge.Summary
-	params["attributes"] = metadataJSON
-	params["valid_at"] = edge.ValidFrom
-
-	if edge.ValidTo != nil {
-		params["expired_at"] = edge.ValidTo
-		params["invalid_at"] = edge.ValidTo
-	} else {
-		params["expired_at"] = nil
-		params["invalid_at"] = nil
-	}
-
-	_, _, _, err := k.ExecuteQuery(query, params)
-	return err
-}
-
-func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
-	var metadataJSON string
-	if edge.Metadata != nil {
-		if data, err := json.Marshal(edge.Metadata); err == nil {
-			metadataJSON = string(data)
-		}
-	}
-
-	query := `
-		MATCH (rel:RelatesToNode_)
-		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
-		SET rel.name = $name,
-			rel.fact = $fact,
-			rel.expired_at = $expired_at,
-			rel.valid_at = $valid_at,
-			rel.invalid_at = $invalid_at,
-			rel.attributes = $attributes
-	`
-
-	params := make(map[string]interface{})
-	params["uuid"] = edge.ID
-	params["group_id"] = edge.GroupID
-	params["name"] = edge.Name
-	params["fact"] = edge.Summary
-	params["attributes"] = metadataJSON
-	params["valid_at"] = edge.ValidFrom
-
-	if edge.ValidTo != nil {
-		params["expired_at"] = edge.ValidTo
-		params["invalid_at"] = edge.ValidTo
-	} else {
-		params["expired_at"] = nil
-		params["invalid_at"] = nil
 	}
 
 	_, _, _, err := k.ExecuteQuery(query, params)

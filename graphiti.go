@@ -42,6 +42,18 @@ func (w *driverWrapper) Provider() types.GraphProvider {
 	}
 }
 
+// nodeOpsWrapper adapts maintenance.NodeOperations to utils.NodeOperations interface
+type nodeOpsWrapper struct {
+	*maintenance.NodeOperations
+}
+
+// ResolveExtractedNodes wraps maintenance.NodeOperations.ResolveExtractedNodes to match the interface
+func (w *nodeOpsWrapper) ResolveExtractedNodes(ctx context.Context, extractedNodes []*types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) ([]*types.Node, map[string]string, interface{}, error) {
+	nodes, uuidMap, pairs, err := w.NodeOperations.ResolveExtractedNodes(ctx, extractedNodes, episode, previousEpisodes, entityTypes)
+	// Return pairs as interface{} to satisfy the interface
+	return nodes, uuidMap, pairs, err
+}
+
 // Graphiti is the main interface for interacting with temporal knowledge graphs.
 // It provides methods for building, querying, and maintaining temporally-aware
 // knowledge graphs designed for AI agents.
@@ -203,29 +215,28 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 }
 
 // AddEpisode processes and adds a single episode to the knowledge graph.
-// This implementation follows the Python graphiti.add_episode() flow exactly.
-// If the episode content exceeds MaxCharacters, it will be chunked and processed in parts.
+// This implementation uses bulk processing with sophisticated deduplication.
+// Content is automatically chunked if it exceeds MaxCharacters, but the same
+// efficient bulk processing path is used for both single and multi-chunk episodes.
 func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
-	maxCharacters := 80000
+	maxCharacters := 20000
 	if options.MaxCharacters > 0 {
 		maxCharacters = options.MaxCharacters
 	}
 
-	// Check if we need to chunk the episode
-	if len(episode.Content) > maxCharacters {
-		return c.addEpisodeChunked(ctx, episode, options, maxCharacters)
-	}
-
-	// Process single episode (no chunking needed)
-	return c.addEpisodeSingle(ctx, episode, options)
+	// Always use the bulk processing path for consistent, sophisticated deduplication
+	// If content is small, it will be processed as a single chunk
+	return c.addEpisodeChunked(ctx, episode, options, maxCharacters)
 }
 
-// addEpisodeChunked chunks long episode content and processes each chunk separately,
-// then merges the results.
+// addEpisodeChunked chunks long episode content and uses bulk deduplication
+// processing across all chunks to efficiently handle large episodes.
 func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, options *AddEpisodeOptions, maxCharacters int) (*types.AddEpisodeResults, error) {
+	now := time.Now()
+
 	// Chunk the content
 	chunks := chunkText(episode.Content, maxCharacters)
 
@@ -235,121 +246,9 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		"num_chunks", len(chunks),
 		"max_characters", maxCharacters)
 
-	// Create merged result
-	mergedResult := &types.AddEpisodeResults{
-		EpisodicEdges:  []*types.Edge{},
-		Nodes:          []*types.Node{},
-		Edges:          []*types.Edge{},
-		Communities:    []*types.Node{},
-		CommunityEdges: []*types.Edge{},
-	}
-
-	// Track unique nodes and edges to avoid duplicates
-	nodeIDMap := make(map[string]*types.Node)
-	edgeIDMap := make(map[string]*types.Edge)
-	episodicEdgeIDMap := make(map[string]*types.Edge)
-	communityIDMap := make(map[string]*types.Node)
-	communityEdgeIDMap := make(map[string]*types.Edge)
-
-	// Process each chunk
-	for i, chunk := range chunks {
-		// Create a new episode for this chunk
-		chunkEpisode := types.Episode{
-			ID:               fmt.Sprintf("%s_chunk_%d", episode.ID, i),
-			Name:             fmt.Sprintf("%s (chunk %d/%d)", episode.Name, i+1, len(chunks)),
-			Content:          chunk,
-			Reference:        episode.Reference,
-			CreatedAt:        episode.CreatedAt,
-			GroupID:          episode.GroupID,
-			Metadata:         episode.Metadata,
-			ContentEmbedding: nil, // Will be generated for each chunk
-		}
-
-		// Process the chunk
-		chunkResult, err := c.addEpisodeSingle(ctx, chunkEpisode, options)
-		if err != nil {
-			return nil, fmt.Errorf("failed to process chunk %d: %w", i, err)
-		}
-
-		// Set the first chunk's episode as the main episode
-		if i == 0 && chunkResult.Episode != nil {
-			mergedResult.Episode = chunkResult.Episode
-		}
-
-		// Merge episodic edges (avoiding duplicates)
-		for _, edge := range chunkResult.EpisodicEdges {
-			if _, exists := episodicEdgeIDMap[edge.ID]; !exists {
-				episodicEdgeIDMap[edge.ID] = edge
-				mergedResult.EpisodicEdges = append(mergedResult.EpisodicEdges, edge)
-			}
-		}
-
-		// Merge nodes (avoiding duplicates)
-		for _, node := range chunkResult.Nodes {
-			if _, exists := nodeIDMap[node.ID]; !exists {
-				nodeIDMap[node.ID] = node
-				mergedResult.Nodes = append(mergedResult.Nodes, node)
-			}
-		}
-
-		// Merge edges (avoiding duplicates)
-		for _, edge := range chunkResult.Edges {
-			if _, exists := edgeIDMap[edge.ID]; !exists {
-				edgeIDMap[edge.ID] = edge
-				mergedResult.Edges = append(mergedResult.Edges, edge)
-			}
-		}
-
-		// Merge communities (avoiding duplicates)
-		for _, community := range chunkResult.Communities {
-			if _, exists := communityIDMap[community.ID]; !exists {
-				communityIDMap[community.ID] = community
-				mergedResult.Communities = append(mergedResult.Communities, community)
-			}
-		}
-
-		// Merge community edges (avoiding duplicates)
-		for _, edge := range chunkResult.CommunityEdges {
-			if _, exists := communityEdgeIDMap[edge.ID]; !exists {
-				communityEdgeIDMap[edge.ID] = edge
-				mergedResult.CommunityEdges = append(mergedResult.CommunityEdges, edge)
-			}
-		}
-	}
-
-	c.logger.Info("Chunked episode processing completed",
-		"episode_id", episode.ID,
-		"total_chunks", len(chunks),
-		"total_entities", len(mergedResult.Nodes),
-		"total_relationships", len(mergedResult.Edges),
-		"total_episodic_edges", len(mergedResult.EpisodicEdges),
-		"total_communities", len(mergedResult.Communities))
-
-	return mergedResult, nil
-}
-
-// addEpisodeSingle processes a single episode without chunking.
-func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
-	// Use default entity types from config if not provided in options
-	if options.EntityTypes == nil && c.config.EntityTypes != nil {
-		options.EntityTypes = c.config.EntityTypes
-	}
-
-	now := time.Now()
-
-	// PHASE 1: VALIDATION
 	// Validate entity types
 	if err := utils.ValidateEntityTypes(options.EntityTypes); err != nil {
 		return nil, fmt.Errorf("invalid entity types: %w", err)
-	}
-
-	// Validate excluded entity types
-	entityTypeNames := make([]string, 0, len(options.EntityTypes))
-	for name := range options.EntityTypes {
-		entityTypeNames = append(entityTypeNames, name)
-	}
-	if err := utils.ValidateExcludedEntityTypes(options.ExcludedEntityTypes, entityTypeNames); err != nil {
-		return nil, fmt.Errorf("invalid excluded entity types: %w", err)
 	}
 
 	// Validate and set group ID
@@ -360,13 +259,10 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 		episode.GroupID = utils.GetDefaultGroupID(c.driver.Provider())
 	}
 
-	// PHASE 2: CONTEXT RETRIEVAL
 	// Get previous episodes for context
 	var previousEpisodes []*types.Node
 	var err error
-
 	if len(options.PreviousEpisodeUUIDs) > 0 {
-		// Get specific episodes by UUIDs
 		for _, uuid := range options.PreviousEpisodeUUIDs {
 			episodeNode, err := c.driver.GetNode(ctx, uuid, episode.GroupID)
 			if err == nil && episodeNode != nil {
@@ -374,324 +270,246 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 			}
 		}
 	} else {
-		// Get recent episodes for context with temporal filtering
-		// This matches Python's retrieve_episodes() call in add_episode (graphiti.py:458-467)
-		// Only retrieve episodes that occurred before this episode's reference time
 		previousEpisodes, err = c.RetrieveEpisodes(
 			ctx,
-			episode.Reference,            // Use episode's reference time for temporal filtering
-			[]string{episode.GroupID},    // Filter by group ID
-			search.RelevantSchemaLimit,   // Limit to relevant schema size
-			nil,                          // No episode type filter
+			episode.Reference,
+			[]string{episode.GroupID},
+			search.RelevantSchemaLimit,
+			nil,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve previous episodes: %w", err)
 		}
 	}
 
-	// Get or create episode node
-	var episodeNode *types.Node
-	if episode.ID != "" {
-		// Check if episode with same UUID already exists
-		existingNode, err := c.driver.GetNode(ctx, episode.ID, episode.GroupID)
-		if err == nil && existingNode != nil {
-			if !options.OverwriteExisting {
-				// Default behavior: skip existing episode
-				return &types.AddEpisodeResults{
-					Episode:        existingNode,
-					EpisodicEdges:  []*types.Edge{},
-					Nodes:          []*types.Node{},
-					Edges:          []*types.Edge{},
-					Communities:    []*types.Node{},
-					CommunityEdges: []*types.Edge{},
-				}, nil
-			}
-			// OverwriteExisting is true - remove existing episode first
-			if err := c.RemoveEpisode(ctx, episode.ID); err != nil {
-				return nil, fmt.Errorf("failed to remove existing episode %s: %w", episode.ID, err)
-			}
-		}
-		episodeNode, err = c.driver.GetNode(ctx, episode.ID, episode.GroupID)
-		if err != nil || episodeNode == nil {
-			// Create new episode node
-			episodeNode, err = c.createEpisodeNode(ctx, episode, options)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create episode node: %w", err)
-			}
-		}
-	} else {
-		// Create new episode node
-		episodeNode, err = c.createEpisodeNode(ctx, episode, options)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create episode node: %w", err)
-		}
-	}
+	// Create episode nodes for each chunk
+	chunkEpisodes := make([]*types.Node, len(chunks))
+	episodeTuples := make([]utils.EpisodeTuple, len(chunks))
 
-	result := &types.AddEpisodeResults{
-		Episode:        episodeNode,
-		EpisodicEdges:  []*types.Edge{},
-		Nodes:          []*types.Node{},
-		Edges:          []*types.Edge{},
-		Communities:    []*types.Node{},
-		CommunityEdges: []*types.Edge{},
+	for i, chunk := range chunks {
+		// Create episode node for this chunk
+		chunkEpisode := types.Episode{
+			ID:        fmt.Sprintf("%s_chunk_%d", episode.ID, i),
+			Name:      fmt.Sprintf("%s (chunk %d/%d)", episode.Name, i+1, len(chunks)),
+			Content:   chunk,
+			Reference: episode.Reference,
+			CreatedAt: episode.CreatedAt,
+			GroupID:   episode.GroupID,
+			Metadata:  episode.Metadata,
+		}
+
+		chunkNode, err := c.createEpisodeNode(ctx, chunkEpisode, options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create episode node for chunk %d: %w", i, err)
+		}
+		chunkEpisodes[i] = chunkNode
+
+		// Convert previous episodes to Episode type for EpisodeTuple
+		prevEps := make([]*types.Episode, len(previousEpisodes))
+		for j, prevNode := range previousEpisodes {
+			prevEps[j] = &types.Episode{
+				ID:        prevNode.ID,
+				Name:      prevNode.Name,
+				Content:   prevNode.Content,
+				Reference: prevNode.ValidFrom,
+				CreatedAt: prevNode.CreatedAt,
+				GroupID:   prevNode.GroupID,
+				Metadata:  prevNode.Metadata,
+			}
+		}
+
+		episodeTuples[i] = utils.EpisodeTuple{
+			Episode:          &chunkEpisode,
+			PreviousEpisodes: prevEps,
+		}
 	}
 
 	// Initialize maintenance operations
 	nodeOps := maintenance.NewNodeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
 	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
 
-	// PHASE 3: ENTITY EXTRACTION
-	var extractedNodes []*types.Node
-	if c.llm != nil {
-		c.logger.Info("Starting entity extraction",
-			"episode_id", episodeNode.ID,
-			"group_id", episode.GroupID,
-			"previous_episodes", len(previousEpisodes))
+	// PHASE 1: ENTITY EXTRACTION for all chunks
+	c.logger.Info("Starting bulk entity extraction",
+		"episode_id", episode.ID,
+		"num_chunks", len(chunks))
 
-		extractedNodes, err = nodeOps.ExtractNodes(ctx, episodeNode, previousEpisodes,
+	extractedNodesByChunk := make([][]*types.Node, len(chunks))
+	for i, chunkNode := range chunkEpisodes {
+		extractedNodes, err := nodeOps.ExtractNodes(ctx, chunkNode, previousEpisodes,
 			options.EntityTypes, options.ExcludedEntityTypes)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract nodes: %w", err)
+			return nil, fmt.Errorf("failed to extract nodes from chunk %d: %w", i, err)
 		}
-
-		c.logger.Info("Entity extraction completed",
-			"episode_id", episodeNode.ID,
-			"entities_extracted", len(extractedNodes))
+		extractedNodesByChunk[i] = extractedNodes
 	}
 
-	// PHASE 4: ENTITY RESOLUTION & DEDUPLICATION
-	var resolvedNodes []*types.Node
-	var uuidMap map[string]string
-	var duplicatePairs []maintenance.NodePair
-
-	if len(extractedNodes) > 0 {
-		if options.DeferGraphIngestion {
-			// Skip deduplication - use extracted nodes as-is
-			c.logger.Info("Skipping entity deduplication (DeferGraphIngestion=true)",
-				"episode_id", episodeNode.ID,
-				"entities_extracted", len(extractedNodes))
-			resolvedNodes = extractedNodes
-			uuidMap = make(map[string]string)
-		} else {
-			c.logger.Info("Starting entity resolution and deduplication",
-				"episode_id", episodeNode.ID,
-				"entities_to_resolve", len(extractedNodes))
-
-			resolvedNodes, uuidMap, duplicatePairs, err = nodeOps.ResolveExtractedNodes(ctx,
-				extractedNodes, episodeNode, previousEpisodes, options.EntityTypes)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve nodes: %w", err)
+	c.logger.Info("Bulk entity extraction completed",
+		"episode_id", episode.ID,
+		"total_entities_extracted", func() int {
+			total := 0
+			for _, nodes := range extractedNodesByChunk {
+				total += len(nodes)
 			}
+			return total
+		}())
 
-			c.logger.Info("Entity resolution completed",
-				"episode_id", episodeNode.ID,
-				"resolved_entities", len(resolvedNodes),
-				"duplicates_found", len(duplicatePairs))
+	// PHASE 2: BULK ENTITY DEDUPLICATION across all chunks
+	c.logger.Info("Starting bulk entity deduplication",
+		"episode_id", episode.ID,
+		"num_chunks", len(chunks))
 
-			// Build and store duplicate edges
-			if len(duplicatePairs) > 0 {
-				duplicateEdges, err := edgeOps.BuildDuplicateOfEdges(ctx, episodeNode, now, duplicatePairs)
-				if err != nil {
-					return nil, fmt.Errorf("failed to build duplicate edges: %w", err)
-				}
-				for _, edge := range duplicateEdges {
-					if err := c.driver.UpsertEdge(ctx, edge); err != nil {
-						return nil, fmt.Errorf("failed to store duplicate edge: %w", err)
-					}
-				}
+	clients := &utils.Clients{
+		Driver:   c.driver,
+		LLM:      c.llm,
+		Embedder: c.embedder,
+		Prompts:  prompts.NewLibrary(),
+	}
+
+	dedupeResult, err := utils.DedupeNodesBulk(
+		ctx,
+		clients,
+		extractedNodesByChunk,
+		episodeTuples,
+		options.EntityTypes,
+		&nodeOpsWrapper{nodeOps},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deduplicate nodes in bulk: %w", err)
+	}
+
+	c.logger.Info("Bulk entity deduplication completed",
+		"episode_id", episode.ID,
+		"uuid_mappings", len(dedupeResult.UUIDMap))
+
+	// Collect all resolved nodes across chunks
+	var allResolvedNodes []*types.Node
+	seenNodeIDs := make(map[string]bool)
+	for _, nodes := range dedupeResult.NodesByEpisode {
+		for _, node := range nodes {
+			if !seenNodeIDs[node.ID] {
+				allResolvedNodes = append(allResolvedNodes, node)
+				seenNodeIDs[node.ID] = true
 			}
 		}
 	}
 
-	// PHASE 5: RELATIONSHIP EXTRACTION
-	var extractedEdges []*types.Edge
-	if c.llm != nil && len(resolvedNodes) > 0 {
-		c.logger.Info("Starting relationship extraction",
-			"episode_id", episodeNode.ID,
-			"entity_count", len(resolvedNodes))
+	// PHASE 3: RELATIONSHIP EXTRACTION for all chunks
+	c.logger.Info("Starting bulk relationship extraction",
+		"episode_id", episode.ID,
+		"num_chunks", len(chunks))
 
-		// Create edge type map if needed
-		edgeTypeMapInterface := options.EdgeTypeMap
-		if edgeTypeMapInterface == nil && c.config.EdgeTypes != nil {
-			edgeTypeMapInterface = c.config.EdgeMap
-		}
-
-		edgeTypeMap := make(map[string][][]string)
-
-		for outerEntity, innerMap := range edgeTypeMapInterface {
+	var allExtractedEdges []*types.Edge
+	edgeTypeMap := make(map[string][][]string)
+	if options.EdgeTypeMap != nil {
+		for outerEntity, innerMap := range options.EdgeTypeMap {
 			for innerEntity, relationships := range innerMap {
 				for _, relation := range relationships {
 					edgeTypeMap[relation.(string)] = append(edgeTypeMap[relation.(string)], []string{outerEntity, innerEntity})
 				}
 			}
+		}
+	}
 
+	for i, chunkNode := range chunkEpisodes {
+		// Get resolved nodes for this chunk
+		chunkNodes := dedupeResult.NodesByEpisode[chunkNode.ID]
+		if len(chunkNodes) == 0 {
+			continue
 		}
 
-		extractedEdges, err = edgeOps.ExtractEdges(ctx, episodeNode, resolvedNodes,
+		extractedEdges, err := edgeOps.ExtractEdges(ctx, chunkNode, chunkNodes,
 			previousEpisodes, edgeTypeMap, options.EdgeTypes, episode.GroupID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract edges: %w", err)
+			return nil, fmt.Errorf("failed to extract edges from chunk %d: %w", i, err)
 		}
 
-		c.logger.Info("Relationship extraction completed",
-			"episode_id", episodeNode.ID,
-			"relationships_extracted", len(extractedEdges))
+		// Apply UUID mapping to edge pointers
+		utils.ResolveEdgePointers(extractedEdges, dedupeResult.UUIDMap)
+		allExtractedEdges = append(allExtractedEdges, extractedEdges...)
 	}
 
-	// PHASE 6: RELATIONSHIP RESOLUTION & TEMPORAL INVALIDATION
+	c.logger.Info("Bulk relationship extraction completed",
+		"episode_id", episode.ID,
+		"total_relationships_extracted", len(allExtractedEdges))
+
+	// PHASE 4: RELATIONSHIP RESOLUTION & TEMPORAL INVALIDATION
+	c.logger.Info("Starting bulk relationship resolution",
+		"episode_id", episode.ID,
+		"relationships_to_resolve", len(allExtractedEdges))
+
 	var resolvedEdges []*types.Edge
 	var invalidatedEdges []*types.Edge
-
-	if len(extractedEdges) > 0 {
-		if options.DeferGraphIngestion {
-			// Skip edge deduplication and temporal invalidation
-			c.logger.Info("Skipping relationship resolution (DeferGraphIngestion=true)",
-				"episode_id", episodeNode.ID,
-				"relationships_extracted", len(extractedEdges))
-
-			// Resolve edge pointers using uuid map from node resolution
-			utils.ResolveEdgePointers(extractedEdges, uuidMap)
-
-			// Use extracted edges as-is
-			resolvedEdges = extractedEdges
-			invalidatedEdges = []*types.Edge{}
-		} else {
-			c.logger.Info("Starting relationship resolution",
-				"episode_id", episodeNode.ID,
-				"relationships_to_resolve", len(extractedEdges))
-
-			// Resolve edge pointers using uuid map from node resolution
-			utils.ResolveEdgePointers(extractedEdges, uuidMap)
-
-			// Resolve extracted edges (dedupe + invalidation)
-			resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
-				extractedEdges, episodeNode, resolvedNodes, options.GenerateEmbeddings)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve edges: %w", err)
-			}
-
-			c.logger.Info("Relationship resolution completed",
-				"episode_id", episodeNode.ID,
-				"resolved_relationships", len(resolvedEdges),
-				"invalidated_relationships", len(invalidatedEdges))
-		}
-	}
-
-	// PHASE 7: ATTRIBUTE EXTRACTION
-	var hydratedNodes []*types.Node
-	if len(resolvedNodes) > 0 {
-		if options.DeferGraphIngestion {
-			// Skip attribute extraction - use resolved nodes as-is
-			c.logger.Info("Skipping attribute extraction (DeferGraphIngestion=true)",
-				"episode_id", episodeNode.ID,
-				"entities", len(resolvedNodes))
-			hydratedNodes = resolvedNodes
-		} else {
-			c.logger.Info("Starting attribute extraction",
-				"episode_id", episodeNode.ID,
-				"entities_to_hydrate", len(resolvedNodes))
-
-			hydratedNodes, err = nodeOps.ExtractAttributesFromNodes(ctx,
-				resolvedNodes, episodeNode, previousEpisodes, options.EntityTypes)
-			if err != nil {
-				return nil, fmt.Errorf("failed to extract attributes: %w", err)
-			}
-
-			c.logger.Info("Attribute extraction completed",
-				"episode_id", episodeNode.ID,
-				"hydrated_entities", len(hydratedNodes))
-		}
-	}
-
-	// PHASE 8: BUILD EPISODIC EDGES
-	var episodicEdges []*types.Edge
-	if len(hydratedNodes) > 0 {
-		episodicEdges, err = edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, episodeNode.ID, now)
+	if len(allExtractedEdges) > 0 {
+		// Use the first chunk's episode node as the episode context
+		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
+			allExtractedEdges, chunkEpisodes[0], allResolvedNodes, options.GenerateEmbeddings)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build episodic edges: %w", err)
+			return nil, fmt.Errorf("failed to resolve edges: %w", err)
 		}
-
-		// Store entity edge UUIDs on episode node
-		entityEdgeUUIDs := make([]string, 0, len(resolvedEdges)+len(invalidatedEdges))
-		for _, edge := range resolvedEdges {
-			entityEdgeUUIDs = append(entityEdgeUUIDs, edge.ID)
-		}
-		for _, edge := range invalidatedEdges {
-			entityEdgeUUIDs = append(entityEdgeUUIDs, edge.ID)
-		}
-		if episodeNode.Metadata == nil {
-			episodeNode.Metadata = make(map[string]interface{})
-		}
-		episodeNode.Metadata["entity_edges"] = entityEdgeUUIDs
 	}
 
-	// PHASE 9: BULK PERSISTENCE
+	c.logger.Info("Bulk relationship resolution completed",
+		"episode_id", episode.ID,
+		"resolved_relationships", len(resolvedEdges),
+		"invalidated_relationships", len(invalidatedEdges))
+
+	// PHASE 5: ATTRIBUTE EXTRACTION
+	c.logger.Info("Starting bulk attribute extraction",
+		"episode_id", episode.ID,
+		"entities_to_hydrate", len(allResolvedNodes))
+
+	hydratedNodes, err := nodeOps.ExtractAttributesFromNodes(ctx,
+		allResolvedNodes, chunkEpisodes[0], previousEpisodes, options.EntityTypes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract attributes: %w", err)
+	}
+
+	c.logger.Info("Bulk attribute extraction completed",
+		"episode_id", episode.ID,
+		"hydrated_entities", len(hydratedNodes))
+
+	// PHASE 6: BUILD EPISODIC EDGES for all chunks
+	var allEpisodicEdges []*types.Edge
+	for _, chunkNode := range chunkEpisodes {
+		episodicEdges, err := edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, chunkNode.ID, now)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build episodic edges for chunk %s: %w", chunkNode.ID, err)
+		}
+		allEpisodicEdges = append(allEpisodicEdges, episodicEdges...)
+	}
+
+	// PHASE 7: BULK PERSISTENCE
 	allEdges := append(resolvedEdges, invalidatedEdges...)
-	if !options.DeferGraphIngestion {
-		// Use bulk operations for efficiency to write to Kuzu graph database
-		_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
-			[]*types.Node{episodeNode},
-			episodicEdges,
-			hydratedNodes,
-			allEdges,
-			c.embedder)
-		if err != nil {
-			return nil, fmt.Errorf("failed to bulk persist data: %w", err)
-		}
-	} else {
-		// Write to DuckDB tables instead of Kuzu
-		c.logger.Info("Writing to DuckDB for deferred ingestion",
-			"episode_id", episodeNode.ID,
-			"entities", len(hydratedNodes),
-			"entity_edges", len(allEdges),
-			"episodic_edges", len(episodicEdges))
+	c.logger.Info("Starting bulk persistence",
+		"episode_id", episode.ID,
+		"episodic_nodes", len(chunkEpisodes),
+		"entity_nodes", len(hydratedNodes),
+		"entity_edges", len(allEdges),
+		"episodic_edges", len(allEpisodicEdges))
 
-		// Determine DuckDB path
-		duckDBPath := options.DuckDBPath
-		if duckDBPath == "" {
-			duckDBPath = "./graphiti_deferred.duckdb"
-		}
-
-		// Create DuckDB writer
-		duckDBWriter, err := utils.NewDuckDBWriter(duckDBPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create DuckDB writer: %w", err)
-		}
-		defer duckDBWriter.Close()
-
-		// Write episode node
-		if err := duckDBWriter.WriteEpisode(ctx, episodeNode); err != nil {
-			return nil, fmt.Errorf("failed to write episode to DuckDB: %w", err)
-		}
-
-		// Write entity nodes
-		if err := duckDBWriter.WriteEntityNodes(ctx, hydratedNodes, episodeNode.ID); err != nil {
-			return nil, fmt.Errorf("failed to write entity nodes to DuckDB: %w", err)
-		}
-
-		// Write entity edges
-		if err := duckDBWriter.WriteEntityEdges(ctx, allEdges, episodeNode.ID); err != nil {
-			return nil, fmt.Errorf("failed to write entity edges to DuckDB: %w", err)
-		}
-
-		// Write episodic edges
-		if err := duckDBWriter.WriteEpisodicEdges(ctx, episodicEdges, episodeNode.ID); err != nil {
-			return nil, fmt.Errorf("failed to write episodic edges to DuckDB: %w", err)
-		}
-
-		c.logger.Info("Successfully wrote episode data to DuckDB",
-			"episode_id", episodeNode.ID,
-			"duckdb_path", duckDBPath)
+	_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
+		chunkEpisodes,
+		allEpisodicEdges,
+		hydratedNodes,
+		allEdges,
+		c.embedder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bulk persist data: %w", err)
 	}
 
-	result.Nodes = hydratedNodes
-	result.Edges = allEdges
-	result.EpisodicEdges = episodicEdges
+	// PHASE 8: COMMUNITY UPDATE (optional)
+	result := &types.AddEpisodeResults{
+		Episode:        chunkEpisodes[0], // Return first chunk as main episode
+		EpisodicEdges:  allEpisodicEdges,
+		Nodes:          hydratedNodes,
+		Edges:          allEdges,
+		Communities:    []*types.Node{},
+		CommunityEdges: []*types.Edge{},
+	}
 
-	// PHASE 10: COMMUNITY UPDATE
 	if options.UpdateCommunities {
 		c.logger.Info("Starting community update",
-			"episode_id", episodeNode.ID,
+			"episode_id", episode.ID,
 			"group_id", episode.GroupID)
 
 		communityResult, err := c.community.BuildCommunities(ctx, []string{episode.GroupID})
@@ -702,19 +520,18 @@ func (c *Client) addEpisodeSingle(ctx context.Context, episode types.Episode, op
 		result.CommunityEdges = communityResult.CommunityEdges
 
 		c.logger.Info("Community update completed",
-			"episode_id", episodeNode.ID,
+			"episode_id", episode.ID,
 			"communities", len(result.Communities),
 			"community_edges", len(result.CommunityEdges))
 	}
 
-	// Final summary log
-	c.logger.Info("Episode processing completed",
-		"episode_id", episodeNode.ID,
-		"group_id", episode.GroupID,
+	c.logger.Info("Chunked episode processing completed with bulk deduplication",
+		"episode_id", episode.ID,
+		"total_chunks", len(chunks),
 		"total_entities", len(result.Nodes),
 		"total_relationships", len(result.Edges),
-		"episodic_edges", len(result.EpisodicEdges),
-		"communities", len(result.Communities))
+		"total_episodic_edges", len(result.EpisodicEdges),
+		"total_communities", len(result.Communities))
 
 	return result, nil
 }

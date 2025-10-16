@@ -191,11 +191,11 @@ func (p *DeferredProcessor) loadEpisodes(ctx context.Context, db *sql.DB, option
 			id, name, content, groupID      string
 			reference, createdAt, updatedAt time.Time
 			validFrom                       time.Time
-			embeddingBytes                  []byte
+			embedding                       []float32
 			metadataStr                     string
 		)
 
-		err := rows.Scan(&id, &name, &content, &reference, &groupID, &createdAt, &updatedAt, &validFrom, &embeddingBytes, &metadataStr)
+		err := rows.Scan(&id, &name, &content, &reference, &groupID, &createdAt, &updatedAt, &validFrom, &embedding, &metadataStr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan episode row: %w", err)
 		}
@@ -207,13 +207,6 @@ func (p *DeferredProcessor) loadEpisodes(ctx context.Context, db *sql.DB, option
 				p.logger.Warn("Failed to parse episode metadata", "episode_id", id, "error", err)
 				metadata = make(map[string]interface{})
 			}
-		}
-
-		// Convert embedding bytes to float32 slice
-		var embedding []float32
-		if len(embeddingBytes) > 0 {
-			// DuckDB returns FLOAT[] as bytes, need to decode
-			// For simplicity, we'll let the embedder regenerate if needed
 		}
 
 		episode := &types.Node{
@@ -462,12 +455,12 @@ func (p *DeferredProcessor) loadEntityNodes(ctx context.Context, db *sql.DB, epi
 	var nodes []*types.Node
 	for rows.Next() {
 		var (
-			id, name, entityType, groupID        string
-			createdAt, updatedAt, validFrom      time.Time
-			validTo                              sql.NullTime
-			summary                              string
-			embeddingBytes, nameEmbeddingBytes   []byte
-			metadataStr                          string
+			id, name, entityType, groupID      string
+			createdAt, updatedAt, validFrom    time.Time
+			validTo                            sql.NullTime
+			summary                            string
+			embeddingBytes, nameEmbeddingBytes []byte
+			metadataStr                        string
 		)
 
 		err := rows.Scan(&id, &name, &entityType, &groupID, &createdAt, &updatedAt,
@@ -526,12 +519,12 @@ func (p *DeferredProcessor) loadEntityEdges(ctx context.Context, db *sql.DB, epi
 	var edges []*types.Edge
 	for rows.Next() {
 		var (
-			id, sourceID, targetID, name         string
-			fact, summary, edgeType, groupID     string
-			createdAt, validFrom                 time.Time
-			invalidAt, expiredAt                 sql.NullTime
-			embeddingBytes, factEmbeddingBytes   []byte
-			episodesStr, metadataStr             string
+			id, sourceID, targetID, name       string
+			fact, summary, edgeType, groupID   string
+			createdAt, validFrom               time.Time
+			invalidAt, expiredAt               sql.NullTime
+			embeddingBytes, factEmbeddingBytes []byte
+			episodesStr, metadataStr           string
 		)
 
 		err := rows.Scan(&id, &sourceID, &targetID, &name, &fact, &summary, &edgeType, &groupID,

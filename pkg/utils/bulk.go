@@ -91,6 +91,56 @@ func CompressUUIDMap(duplicatePairs [][]string) map[string]string {
 	return result
 }
 
+// BuildDirectedUUIDMap collapses alias -> canonical chains while preserving direction.
+// This is used by dedupe_nodes_bulk to handle directed mappings discovered during node dedupe.
+func BuildDirectedUUIDMap(pairs [][2]string) map[string]string {
+	if len(pairs) == 0 {
+		return make(map[string]string)
+	}
+
+	parent := make(map[string]string)
+
+	// find performs directed union-find lookup using iterative path compression
+	find := func(uuid string) string {
+		if _, exists := parent[uuid]; !exists {
+			parent[uuid] = uuid
+		}
+		root := uuid
+		for parent[root] != root {
+			root = parent[root]
+		}
+
+		// Path compression
+		for parent[uuid] != root {
+			nextUUID := parent[uuid]
+			parent[uuid] = root
+			uuid = nextUUID
+		}
+
+		return root
+	}
+
+	// Build the directed mapping
+	for _, pair := range pairs {
+		sourceUUID, targetUUID := pair[0], pair[1]
+		if _, exists := parent[sourceUUID]; !exists {
+			parent[sourceUUID] = sourceUUID
+		}
+		if _, exists := parent[targetUUID]; !exists {
+			parent[targetUUID] = targetUUID
+		}
+		parent[find(sourceUUID)] = find(targetUUID)
+	}
+
+	// Build final mapping
+	result := make(map[string]string)
+	for uuid := range parent {
+		result[uuid] = find(uuid)
+	}
+
+	return result
+}
+
 // ResolveEdgePointers updates edge source and target node UUIDs according to the UUID mapping
 func ResolveEdgePointers(edges []*types.Edge, uuidMap map[string]string) {
 	for _, edge := range edges {
