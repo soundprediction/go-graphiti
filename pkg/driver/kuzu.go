@@ -1422,9 +1422,9 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 	}
 
 	if embedding, ok := data["node.name_embedding"]; ok {
-		node.NameEmbedding = embedding.([]float32)
+		node.NameEmbedding = convertToFloat32Slice(embedding)
 	} else if embedding, ok := data["n.name_embedding"]; ok {
-		node.NameEmbedding = embedding.([]float32)
+		node.NameEmbedding = convertToFloat32Slice(embedding)
 	}
 
 	if labels, ok := data["node.labels"].([]interface{}); ok && len(labels) > 0 {
@@ -1481,7 +1481,7 @@ func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error)
 	}
 
 	if embedding, ok := data["fact_embedding"]; ok {
-		edge.FactEmbedding = embedding.([]float32)
+		edge.FactEmbedding = convertToFloat32Slice(embedding)
 	}
 	if sourceID, ok := data["source_id"]; ok {
 		edge.SourceID = fmt.Sprintf("%v", sourceID)
@@ -1643,6 +1643,24 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 
 	_, _, _, err := k.ExecuteQuery(query, params)
 	return err
+}
+
+func convertToFloat32Slice(data interface{}) []float32 {
+	if data == nil {
+		return nil
+	}
+	if arr, ok := data.([]interface{}); ok {
+		floatSlice := make([]float32, len(arr))
+		for i, v := range arr {
+			if f, ok := v.(float64); ok {
+				floatSlice[i] = float32(f)
+			} else if f, ok := v.(float32); ok {
+				floatSlice[i] = f
+			}
+		}
+		return floatSlice
+	}
+	return nil
 }
 
 // cosineSimilarity computes the cosine similarity between two vectors
