@@ -13,6 +13,11 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
+// NodeOperations interface to avoid import cycle with maintenance package
+type NodeOperations interface {
+	ResolveExtractedNodes(ctx context.Context, extractedNodes []*types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) ([]*types.Node, map[string]string, []NodePair, error)
+}
+
 // Clients represents the set of clients needed for bulk operations
 type Clients struct {
 	Driver   driver.GraphDriver
@@ -330,156 +335,230 @@ func extractFromSingleEpisode(
 	}, nil
 }
 
-// DedupeNodesBulk deduplicates extracted nodes across episodes
-// This matches the Python function signature: dedupe_nodes_bulk(clients, extracted_nodes, episode_tuples, ...)
+// DedupeNodesBulk resolves entity duplicates across an in-memory batch using a two-pass strategy.
+//
+// Pass 1: Run ResolveExtractedNodes for every episode in parallel so each batch item is
+// reconciled against the live graph just like the non-batch flow.
+//
+// Pass 2: Re-run the deterministic similarity heuristics across the union of resolved nodes
+// to catch duplicates that only co-occur inside this batch, emitting a canonical UUID map
+// that callers can apply to edges and persistence.
+//
+// This matches the Python function: dedupe_nodes_bulk(clients, extracted_nodes, episode_tuples, entity_types)
 func DedupeNodesBulk(
 	ctx context.Context,
 	clients *Clients,
-	extractedNodes []*types.Node,
+	extractedNodesByEpisode [][]*types.Node, // List of lists - one list per episode
 	episodeTuples []EpisodeTuple,
-	embedder embedder.Client,
+	entityTypes map[string]interface{},
+	nodeOps NodeOperations,
 ) (*DedupeNodesResult, error) {
-	if len(extractedNodes) == 0 {
+	if len(extractedNodesByEpisode) == 0 {
 		return &DedupeNodesResult{
 			NodesByEpisode: make(map[string][]*types.Node),
 			UUIDMap:        make(map[string]string),
 		}, nil
 	}
 
-	// Generate embeddings for nodes if not present
-	var nodesToEmbed []*types.Node
-	var textsToEmbed []string
-	for _, node := range extractedNodes {
-		if len(node.Embedding) == 0 && node.Name != "" {
-			nodesToEmbed = append(nodesToEmbed, node)
-			textsToEmbed = append(textsToEmbed, node.Name)
+	// PASS 1: Resolve each episode's nodes against the live graph in parallel
+	type firstPassResult struct {
+		resolvedNodes  []*types.Node
+		uuidMap        map[string]string
+		duplicatePairs []NodePair
+	}
+
+	firstPassResults := make([]firstPassResult, len(extractedNodesByEpisode))
+	functions := make([]func() (firstPassResult, error), len(extractedNodesByEpisode))
+
+	for i, nodes := range extractedNodesByEpisode {
+		idx := i
+		nodesCopy := nodes
+		functions[idx] = func() (firstPassResult, error) {
+			if idx >= len(episodeTuples) {
+				return firstPassResult{}, fmt.Errorf("episode tuple index %d out of range", idx)
+			}
+
+			episode := episodeTuples[idx].Episode
+			previousEpisodes := episodeTuples[idx].PreviousEpisodes
+
+			// Convert Episode to Node for compatibility
+			episodeNode := &types.Node{
+				ID:        episode.ID,
+				Name:      episode.Name,
+				Type:      types.EpisodicNodeType,
+				Content:   episode.Content,
+				GroupID:   episode.GroupID,
+				CreatedAt: episode.CreatedAt,
+				ValidFrom: episode.Reference,
+			}
+
+			// Convert Episode slice to Node slice for previous episodes
+			var prevEpisodeNodes []*types.Node
+			for _, prevEp := range previousEpisodes {
+				prevEpisodeNodes = append(prevEpisodeNodes, &types.Node{
+					ID:        prevEp.ID,
+					Name:      prevEp.Name,
+					Type:      types.EpisodicNodeType,
+					Content:   prevEp.Content,
+					GroupID:   prevEp.GroupID,
+					CreatedAt: prevEp.CreatedAt,
+					ValidFrom: prevEp.Reference,
+				})
+			}
+
+			// Resolve against live graph
+			resolved, uuidMap, duplicates, err := nodeOps.ResolveExtractedNodes(
+				ctx, nodesCopy, episodeNode, prevEpisodeNodes, entityTypes,
+			)
+			if err != nil {
+				return firstPassResult{}, fmt.Errorf("failed to resolve episode %d nodes: %w", idx, err)
+			}
+
+			return firstPassResult{
+				resolvedNodes:  resolved,
+				uuidMap:        uuidMap,
+				duplicatePairs: duplicates,
+			}, nil
 		}
 	}
 
-	if len(textsToEmbed) > 0 && embedder != nil {
-		embeddings, err := embedder.Embed(ctx, textsToEmbed)
+	// Execute first pass in parallel
+	results, errors := SemaphoreGatherWithResults(ctx, GetSemaphoreLimit(), functions...)
+	for i, err := range errors {
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate embeddings for deduplication: %w", err)
+			return nil, fmt.Errorf("first pass failed for episode %d: %w", i, err)
 		}
-		for i, embedding := range embeddings {
-			if i < len(nodesToEmbed) {
-				nodesToEmbed[i].Embedding = embedding
+		firstPassResults[i] = results[i]
+	}
+
+	// Collect episode resolutions and duplicate pairs from first pass
+	episodeResolutions := make([]struct {
+		episodeUUID   string
+		resolvedNodes []*types.Node
+	}, len(episodeTuples))
+
+	perEpisodeUUIDMaps := make([]map[string]string, len(firstPassResults))
+	var duplicatePairsFromPass1 [][2]string
+
+	for i, result := range firstPassResults {
+		episodeResolutions[i].episodeUUID = episodeTuples[i].Episode.ID
+		episodeResolutions[i].resolvedNodes = result.resolvedNodes
+		perEpisodeUUIDMaps[i] = result.uuidMap
+
+		// Collect duplicate pairs
+		for _, dup := range result.duplicatePairs {
+			duplicatePairsFromPass1 = append(duplicatePairsFromPass1, [2]string{dup.Source.ID, dup.Target.ID})
+		}
+	}
+
+	// PASS 2: Re-run deduplication across the union of resolved nodes to catch
+	// duplicates that only co-occur inside this batch
+	canonicalNodes := make(map[string]*types.Node)
+	var duplicatePairsFromPass2 [][2]string
+
+	for _, resolution := range episodeResolutions {
+		for _, node := range resolution.resolvedNodes {
+			// This loop is O(n^2) but caching keeps it manageable for typical batch sizes
+			if len(canonicalNodes) == 0 {
+				canonicalNodes[node.ID] = node
+				continue
+			}
+
+			// Build indexes for existing canonical nodes
+			existingCandidates := make([]*types.Node, 0, len(canonicalNodes))
+			for _, n := range canonicalNodes {
+				existingCandidates = append(existingCandidates, n)
+			}
+
+			// Check for exact name match
+			normalized := NormalizeStringExact(node.Name)
+			var exactMatch *types.Node
+			for _, candidate := range existingCandidates {
+				if NormalizeStringExact(candidate.Name) == normalized {
+					exactMatch = candidate
+					break
+				}
+			}
+
+			if exactMatch != nil {
+				if exactMatch.ID != node.ID {
+					duplicatePairsFromPass2 = append(duplicatePairsFromPass2, [2]string{node.ID, exactMatch.ID})
+				}
+				continue
+			}
+
+			// Try fuzzy matching using similarity heuristics
+			indexes := BuildCandidateIndexes(existingCandidates)
+			state := &DedupResolutionState{
+				ResolvedNodes:     []*types.Node{nil},
+				UUIDMap:           make(map[string]string),
+				UnresolvedIndices: []int{},
+				DuplicatePairs:    []NodePair{},
+			}
+
+			ResolveWithSimilarity([]*types.Node{node}, indexes, state)
+
+			resolved := state.ResolvedNodes[0]
+			if resolved == nil {
+				// No match found - add as new canonical node
+				canonicalNodes[node.ID] = node
+				continue
+			}
+
+			// Found a match
+			canonicalUUID := resolved.ID
+			if _, exists := canonicalNodes[canonicalUUID]; !exists {
+				canonicalNodes[canonicalUUID] = resolved
+			}
+			if canonicalUUID != node.ID {
+				duplicatePairsFromPass2 = append(duplicatePairsFromPass2, [2]string{node.ID, canonicalUUID})
 			}
 		}
 	}
 
-	// Find duplicates using similarity comparison
-	var duplicatePairs [][]string
-	processed := make(map[string]bool)
-
-	for i, node1 := range extractedNodes {
-		if processed[node1.ID] {
-			continue
+	// Combine UUID maps from both passes using directed union-find
+	var unionPairs [][2]string
+	for _, uuidMap := range perEpisodeUUIDMaps {
+		for oldUUID, newUUID := range uuidMap {
+			unionPairs = append(unionPairs, [2]string{oldUUID, newUUID})
 		}
-
-		similar := FindSimilarNodes(node1, extractedNodes[i+1:], MinScoreNodes)
-		if len(similar) > 0 {
-			for _, node2 := range similar {
-				if !processed[node2.ID] {
-					duplicatePairs = append(duplicatePairs, []string{node1.ID, node2.ID})
-					processed[node2.ID] = true
-				}
-			}
-		}
-		processed[node1.ID] = true
 	}
+	unionPairs = append(unionPairs, duplicatePairsFromPass1...)
+	unionPairs = append(unionPairs, duplicatePairsFromPass2...)
 
-	// Use LLM to confirm duplicates (simplified)
-	if len(duplicatePairs) > 0 && clients != nil && clients.LLM != nil {
-		confirmedPairs := make([][]string, 0, len(duplicatePairs))
+	compressedMap := BuildDirectedUUIDMap(unionPairs)
 
-		for _, pair := range duplicatePairs {
-			// Find the actual nodes
-			var node1, node2 *types.Node
-			for _, node := range extractedNodes {
-				if node.ID == pair[0] {
-					node1 = node
-				} else if node.ID == pair[1] {
-					node2 = node
-				}
-			}
-
-			if node1 != nil && node2 != nil {
-				// Use LLM to confirm if they are duplicates
-				dedupeContext := map[string]interface{}{
-					"nodes": []*types.Node{node1, node2},
-				}
-
-				dedupeMessages, err := clients.Prompts.DedupeNodes().Node().Call(dedupeContext)
-				if err == nil {
-					response, err := clients.LLM.Chat(ctx, dedupeMessages)
-					if err == nil && strings.Contains(strings.ToLower(response.Content), "duplicate") {
-						confirmedPairs = append(confirmedPairs, pair)
-					}
-				}
-			}
-		}
-		duplicatePairs = confirmedPairs
-	}
-
-	// Create UUID mapping using UnionFind
-	uuidMap := CompressUUIDMap(duplicatePairs)
-
-	// Group nodes by episode
+	// Group nodes by episode with canonical UUIDs
 	nodesByEpisode := make(map[string][]*types.Node)
-	nodeMap := make(map[string]*types.Node)
-
-	// Create node map and apply UUID mappings
-	for _, node := range extractedNodes {
-		canonicalID := uuidMap[node.ID]
-		if canonicalID == "" {
-			canonicalID = node.ID
-		}
-
-		// Use the canonical node (lexicographically smallest ID)
-		if existingNode, exists := nodeMap[canonicalID]; exists {
-			// Merge properties if needed (simplified)
-			if existingNode.Name == "" && node.Name != "" {
-				existingNode.Name = node.Name
-			}
-			if existingNode.Summary == "" && node.Summary != "" {
-				existingNode.Summary = node.Summary
-			}
-		} else {
-			// Create a copy with canonical ID
-			canonicalNode := *node
-			canonicalNode.ID = canonicalID
-			nodeMap[canonicalID] = &canonicalNode
-		}
-	}
-
-	// Group nodes by their source episodes
-	for _, episodeTuple := range episodeTuples {
-		var episodeNodes []*types.Node
+	for _, resolution := range episodeResolutions {
+		dedupedNodes := make([]*types.Node, 0)
 		seen := make(map[string]bool)
 
-		// Find nodes that came from this episode
-		for _, node := range extractedNodes {
-			// This is simplified - in practice you'd track which episode each node came from
-			if strings.Contains(node.ID, episodeTuple.Episode.ID) {
-				canonicalID := uuidMap[node.ID]
-				if canonicalID == "" {
-					canonicalID = node.ID
-				}
-
-				if !seen[canonicalID] && nodeMap[canonicalID] != nil {
-					episodeNodes = append(episodeNodes, nodeMap[canonicalID])
-					seen[canonicalID] = true
-				}
+		for _, node := range resolution.resolvedNodes {
+			canonicalUUID := compressedMap[node.ID]
+			if canonicalUUID == "" {
+				canonicalUUID = node.ID
 			}
+
+			if seen[canonicalUUID] {
+				continue
+			}
+			seen[canonicalUUID] = true
+
+			canonicalNode := canonicalNodes[canonicalUUID]
+			if canonicalNode == nil {
+				// Fallback to original node if canonical not found
+				canonicalNode = node
+			}
+			dedupedNodes = append(dedupedNodes, canonicalNode)
 		}
 
-		nodesByEpisode[episodeTuple.Episode.ID] = episodeNodes
+		nodesByEpisode[resolution.episodeUUID] = dedupedNodes
 	}
 
 	return &DedupeNodesResult{
 		NodesByEpisode: nodesByEpisode,
-		UUIDMap:        uuidMap,
+		UUIDMap:        compressedMap,
 	}, nil
 }
 
