@@ -480,7 +480,7 @@ func (no *NodeOperations) extractAttributesFromNode(ctx context.Context, node *t
 	// Extract summary
 	summaryContext := map[string]interface{}{
 		"node":              nodeContext,
-		"episode_content":   episode.Summary,
+		"episode_content":   episode.Content,
 		"previous_episodes": previousEpisodeContents,
 		"ensure_ascii":      true,
 	}
