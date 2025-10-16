@@ -1395,20 +1395,37 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 
 	if id, ok := data["node.uuid"]; ok {
 		node.ID = fmt.Sprintf("%v", id)
+	} else if id, ok := data["n.uuid"]; ok {
+		node.ID = fmt.Sprintf("%v", id)
 	}
 	if name, ok := data["node.name"]; ok {
+		node.Name = fmt.Sprintf("%v", name)
+	} else if name, ok := data["n.name"]; ok {
 		node.Name = fmt.Sprintf("%v", name)
 	}
 	if groupID, ok := data["node.group_id"]; ok {
 		node.GroupID = fmt.Sprintf("%v", groupID)
+	} else if groupID, ok := data["n.group_id"]; ok {
+		node.GroupID = fmt.Sprintf("%v", groupID)
 	}
+
 	if summary, ok := data["node.summary"]; ok {
 		node.Summary = fmt.Sprintf("%v", summary)
+	} else if summary, ok := data["n.summary"]; ok {
+		node.Summary = fmt.Sprintf("%v", summary)
 	}
+
 	if content, ok := data["node.content"]; ok {
 		node.Content = fmt.Sprintf("%v", content)
+	} else if content, ok := data["n.content"]; ok {
+		node.Content = fmt.Sprintf("%v", content)
 	}
+
 	if labels, ok := data["node.labels"].([]interface{}); ok && len(labels) > 0 {
+		if label, ok := labels[0].(string); ok {
+			node.EntityType = label
+		}
+	} else if labels, ok := data["n.labels"].([]interface{}); ok && len(labels) > 0 {
 		if label, ok := labels[0].(string); ok {
 			node.EntityType = label
 		}
