@@ -1421,6 +1421,12 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 		node.Content = fmt.Sprintf("%v", content)
 	}
 
+	if embedding, ok := data["node.name_embedding"]; ok {
+		node.NameEmbedding = embedding.([]float32)
+	} else if embedding, ok := data["n.name_embedding"]; ok {
+		node.NameEmbedding = embedding.([]float32)
+	}
+
 	if labels, ok := data["node.labels"].([]interface{}); ok && len(labels) > 0 {
 		if label, ok := labels[0].(string); ok {
 			node.EntityType = label
