@@ -144,11 +144,14 @@ Return a list of unique facts, removing any duplicates.
 	}, nil
 }
 
-// resolveEdgePrompt resolves conflicts between edges.
+// resolveEdgePrompt resolves conflicts between edges using TSV output.
 func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
-	sysPrompt := `You are a helpful assistant that resolves conflicts between edges.`
+	sysPrompt := `You are a helpful assistant that determines whether extracted edges are duplicates or contradictions of existing edges.`
 
-	conflictingEdges := context["conflicting_edges"]
+	existingEdges := context["existing_edges"]
+	newEdge := context["new_edge"]
+	edgeInvalidationCandidates := context["edge_invalidation_candidates"]
+	edgeTypes := context["edge_types"]
 
 	ensureASCII := true
 	if val, ok := context["ensure_ascii"]; ok {
@@ -157,20 +160,82 @@ func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	conflictingEdgesJSON, err := ToPromptJSON(conflictingEdges, ensureASCII, 2)
+	existingEdgesJSON, err := ToPromptJSON(existingEdges, ensureASCII, 2)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal conflicting edges: %w", err)
+		return nil, fmt.Errorf("failed to marshal existing edges: %w", err)
+	}
+
+	edgeInvalidationCandidatesJSON, err := ToPromptJSON(edgeInvalidationCandidates, ensureASCII, 2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal edge invalidation candidates: %w", err)
+	}
+
+	edgeTypesJSON, err := ToPromptJSON(edgeTypes, ensureASCII, 2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal edge types: %w", err)
 	}
 
 	userPrompt := fmt.Sprintf(`
-Resolve conflicts between the following edges:
+<NEW FACT>
+%v
+</NEW FACT>
 
-Conflicting Edges:
+<EXISTING FACTS>
 %s
+</EXISTING FACTS>
+
+<FACT INVALIDATION CANDIDATES>
+%s
+</FACT INVALIDATION CANDIDATES>
+
+<FACT TYPES>
+%s
+</FACT TYPES>
 
 Task:
-Determine which edges should be kept and which should be invalidated.
-`, conflictingEdgesJSON)
+You have THREE separate lists: NEW FACT (string), EXISTING FACTS (with 'id' field), and FACT INVALIDATION CANDIDATES (with 'id' field starting from 0).
+
+1. DUPLICATE DETECTION:
+   - If the NEW FACT represents identical factual information as any fact in EXISTING FACTS, identify which ones.
+   - Facts with similar information that contain key differences should NOT be marked as duplicates.
+   - Return a comma-separated list of id values from EXISTING FACTS that are duplicates.
+   - If no duplicates, return an empty string.
+
+2. FACT TYPE CLASSIFICATION:
+   - Given the predefined FACT TYPES, determine if the NEW FACT should be classified as one of these types.
+   - Return the fact type name or DEFAULT if NEW FACT is not one of the FACT TYPES.
+
+3. CONTRADICTION DETECTION:
+   - Based on FACT INVALIDATION CANDIDATES and NEW FACT, determine which facts the new fact contradicts.
+   - Return a comma-separated list of id values from FACT INVALIDATION CANDIDATES.
+   - If no contradictions, return an empty string.
+
+IMPORTANT:
+- duplicate_facts: Use ONLY 'id' values from EXISTING FACTS as a comma-separated string (e.g., "1,3,5" or "" for none)
+- contradicted_facts: Use ONLY 'id' values from FACT INVALIDATION CANDIDATES as a comma-separated string (e.g., "0,2" or "" for none)
+- These are two separate lists with independent id ranges
+
+Guidelines:
+1. Some facts may be very similar but will have key differences, particularly around numeric values.
+   Do not mark these facts as duplicates.
+
+Output Format:
+Provide your answer as a single-row TSV (tab-separated values) with the following schema:
+
+<SCHEMA>
+duplicate_facts: string (comma-separated integers or empty)
+contradicted_facts: string (comma-separated integers or empty)
+fact_type: string
+</SCHEMA>
+
+<EXAMPLE>
+duplicate_facts	contradicted_facts	fact_type
+1,3	0,2	KNOWS
+
+</EXAMPLE>
+
+Provide only the TSV header and data row. Finish your response with a new line.
+`, newEdge, existingEdgesJSON, edgeInvalidationCandidatesJSON, edgeTypesJSON)
 
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

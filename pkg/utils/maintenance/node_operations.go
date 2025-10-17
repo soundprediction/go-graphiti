@@ -19,7 +19,7 @@ import (
 
 const (
 	// MaxAttributeExtractionBatchSize is the maximum number of nodes to process in a single LLM call
-	MaxAttributeExtractionBatchSize = 20
+	MaxAttributeExtractionBatchSize = 24
 )
 
 // NodeOperations provides node-related maintenance operations

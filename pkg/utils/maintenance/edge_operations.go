@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -542,26 +541,72 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
-	response, err := eo.llm.ChatWithStructuredOutput(ctx, messages, &prompts.EdgeDuplicate{})
+	response, err := eo.llm.Chat(ctx, messages)
 	if err != nil {
 		log.Printf("Warning: LLM edge resolution failed: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
+	// Handle incomplete responses
+	if !utils.IsLastLineEmpty(response.Content) {
+		messages[len(messages)-1].Content += fmt.Sprintf(`\n
+Continue the INCOMPLETE RESPONSE\n
+<INCOMPLETE RESPONSE>
+%s
+</INCOMPLETE RESPONSE>
+		`, utils.RemoveLastLine(response.Content))
+		response, _ = eo.llm.Chat(ctx, messages)
+	}
 
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		log.Printf("Warning: failed to unmarshal repaired response: %v", err)
+	// Parse TSV response
+	r := utils.RemoveLastLine(response.Content)
+	r = llm.RemoveThinkTags(r)
+
+	edgeDuplicateTSVPtrs, err := utils.DuckDbUnmarshalCSV[prompts.EdgeDuplicateTSV](r, '\t')
+	if err != nil {
+		fmt.Printf("\nresponse:\n %v\n\n", r)
+		log.Printf("Warning: failed to parse edge deduplication TSV: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
-	var edgeDuplicate prompts.EdgeDuplicate
-	if err := json.Unmarshal(rawJSON, &edgeDuplicate); err != nil {
-		log.Printf("Warning: failed to unmarshal dedupe response: %v", err)
+	if len(edgeDuplicateTSVPtrs) == 0 || edgeDuplicateTSVPtrs[0] == nil {
+		log.Printf("Warning: empty edge deduplication response")
 		return extractedEdge, []*types.Edge{}, nil
+	}
+
+	// Convert TSV result to EdgeDuplicate
+	edgeDuplicateTSV := edgeDuplicateTSVPtrs[0]
+	var edgeDuplicate prompts.EdgeDuplicate
+	edgeDuplicate.FactType = edgeDuplicateTSV.FactType
+
+	// Parse comma-separated duplicate facts
+	if edgeDuplicateTSV.DuplicateFacts != "" {
+		duplicateFactsStr := strings.Split(edgeDuplicateTSV.DuplicateFacts, ",")
+		for _, idStr := range duplicateFactsStr {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			var id int
+			if _, err := fmt.Sscanf(idStr, "%d", &id); err == nil {
+				edgeDuplicate.DuplicateFacts = append(edgeDuplicate.DuplicateFacts, id)
+			}
+		}
+	}
+
+	// Parse comma-separated contradicted facts
+	if edgeDuplicateTSV.ContradictedFacts != "" {
+		contradictedFactsStr := strings.Split(edgeDuplicateTSV.ContradictedFacts, ",")
+		for _, idStr := range contradictedFactsStr {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			var id int
+			if _, err := fmt.Sscanf(idStr, "%d", &id); err == nil {
+				edgeDuplicate.ContradictedFacts = append(edgeDuplicate.ContradictedFacts, id)
+			}
+		}
 	}
 
 	// Process duplicate facts
