@@ -36,6 +36,12 @@ type EntityClassification struct {
 type EntitySummary struct {
 	Summary string `json:"summary"`
 }
+
+// ExtractedNodeAttributes represents extracted attributes and summary for a node
+type ExtractedNodeAttributes struct {
+	NodeID int    `json:"node_id" mapstructure:"node_id" csv:"node_id"`
+	Summary string `json:"summary" mapstructure:"summary" csv:"summary"`
+}
 type ExtractedEdge struct {
 	Name      string    `json:"relation_type" mapstructure:"relation_type" csv:"relation_type"` // matches Python name
 	Fact      string    `json:"fact" mapstructure:"fact" csv:"fact"`
