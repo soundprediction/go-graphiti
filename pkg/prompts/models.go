@@ -84,6 +84,13 @@ type EdgeDuplicate struct {
 	FactType          string `json:"fact_type"`
 }
 
+// EdgeDuplicateTSV represents edge duplicate detection result from TSV
+type EdgeDuplicateTSV struct {
+	DuplicateFacts    string `json:"duplicate_facts" mapstructure:"duplicate_facts" csv:"duplicate_facts"`
+	ContradictedFacts string `json:"contradicted_facts" mapstructure:"contradicted_facts" csv:"contradicted_facts"`
+	FactType          string `json:"fact_type" mapstructure:"fact_type" csv:"fact_type"`
+}
+
 // UniqueFact represents a unique fact
 type UniqueFact struct {
 	UUID string `json:"uuid"`
