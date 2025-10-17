@@ -15,26 +15,29 @@ type ExtractNodesPrompt interface {
 	ClassifyNodes() PromptVersion
 	ExtractAttributes() PromptVersion
 	ExtractSummary() PromptVersion
+	ExtractAttributesBatch() PromptVersion
 }
 
 // ExtractNodesVersions holds all versions of extract nodes prompts.
 type ExtractNodesVersions struct {
-	extractMessagePrompt    PromptVersion
-	extractJSONPrompt       PromptVersion
-	extractTextPrompt       PromptVersion
-	reflexionPrompt         PromptVersion
-	classifyNodesPrompt     PromptVersion
-	extractAttributesPrompt PromptVersion
-	extractSummaryPrompt    PromptVersion
+	extractMessagePrompt         PromptVersion
+	extractJSONPrompt            PromptVersion
+	extractTextPrompt            PromptVersion
+	reflexionPrompt              PromptVersion
+	classifyNodesPrompt          PromptVersion
+	extractAttributesPrompt      PromptVersion
+	extractSummaryPrompt         PromptVersion
+	extractAttributesBatchPrompt PromptVersion
 }
 
-func (e *ExtractNodesVersions) ExtractMessage() PromptVersion    { return e.extractMessagePrompt }
-func (e *ExtractNodesVersions) ExtractJSON() PromptVersion       { return e.extractJSONPrompt }
-func (e *ExtractNodesVersions) ExtractText() PromptVersion       { return e.extractTextPrompt }
-func (e *ExtractNodesVersions) Reflexion() PromptVersion         { return e.reflexionPrompt }
-func (e *ExtractNodesVersions) ClassifyNodes() PromptVersion     { return e.classifyNodesPrompt }
-func (e *ExtractNodesVersions) ExtractAttributes() PromptVersion { return e.extractAttributesPrompt }
-func (e *ExtractNodesVersions) ExtractSummary() PromptVersion    { return e.extractSummaryPrompt }
+func (e *ExtractNodesVersions) ExtractMessage() PromptVersion         { return e.extractMessagePrompt }
+func (e *ExtractNodesVersions) ExtractJSON() PromptVersion            { return e.extractJSONPrompt }
+func (e *ExtractNodesVersions) ExtractText() PromptVersion            { return e.extractTextPrompt }
+func (e *ExtractNodesVersions) Reflexion() PromptVersion              { return e.reflexionPrompt }
+func (e *ExtractNodesVersions) ClassifyNodes() PromptVersion          { return e.classifyNodesPrompt }
+func (e *ExtractNodesVersions) ExtractAttributes() PromptVersion      { return e.extractAttributesPrompt }
+func (e *ExtractNodesVersions) ExtractSummary() PromptVersion         { return e.extractSummaryPrompt }
+func (e *ExtractNodesVersions) ExtractAttributesBatch() PromptVersion { return e.extractAttributesBatchPrompt }
 
 // extractMessagePrompt extracts entity nodes from conversational messages.
 func extractMessagePrompt(context map[string]interface{}) ([]llm.Message, error) {
@@ -374,7 +377,7 @@ from the messages and relevant information from the existing summary.
 Guidelines:
 1. Do not hallucinate entity summary information if they cannot be found in the current context.
 2. Only use the provided MESSAGES and ENTITY to set attribute values.
-3. The summary attribute represents a summary of the ENTITY, and should be updated with new information about the Entity from the MESSAGES. 
+3. The summary attribute represents a summary of the ENTITY, and should be updated with new information about the Entity from the MESSAGES.
     Summaries must be no longer than 250 words.
 
 <ENTITY>
@@ -388,15 +391,89 @@ Guidelines:
 	}, nil
 }
 
+// extractAttributesBatchPrompt extracts attributes and summaries for multiple nodes in batch using TSV output.
+func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message, error) {
+	previousEpisodes := context["previous_episodes"]
+	episodeContent := context["episode_content"]
+	nodes := context["nodes"]
+
+	ensureASCII := true
+	if val, ok := context["ensure_ascii"]; ok {
+		if b, ok := val.(bool); ok {
+			ensureASCII = b
+		}
+	}
+
+	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
+	}
+
+	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
+	}
+
+	nodesJSON, err := ToPromptJSON(nodes, ensureASCII, 2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
+	}
+
+	sysPrompt := `You are a helpful assistant that extracts entity summaries and attributes from the provided text.`
+
+	userPrompt := fmt.Sprintf(`
+<MESSAGES>
+%s
+%s
+</MESSAGES>
+
+Given the above MESSAGES and the following ENTITIES, update the summary for each entity that combines relevant information
+from the messages and relevant information from the existing summary.
+
+Guidelines:
+1. Do not hallucinate entity information if they cannot be found in the current context.
+2. Only use the provided MESSAGES and ENTITIES to set summary values.
+3. The summary attribute represents a summary of the ENTITY, and should be updated with new information about the Entity from the MESSAGES.
+   Summaries must be no longer than 250 words.
+4. Format your response as a TSV with the following schema:
+
+<SCHEMA>
+node_id: int
+summary: string
+</SCHEMA>
+
+<EXAMPLE>
+node_id	summary
+0	John Smith is a software engineer who works at Google. He has 10 years of experience.
+1	Alice Johnson is a data scientist specializing in machine learning.
+
+</EXAMPLE>
+
+<ENTITIES>
+%s
+</ENTITIES>
+
+Provide a TSV row for each entity in the ENTITIES list above.
+Use the node_id field from each entity to identify it in your TSV output.
+Finish your response with a new line.
+`, previousEpisodesJSON, episodeContentJSON, nodesJSON)
+
+	return []llm.Message{
+		llm.NewSystemMessage(sysPrompt),
+		llm.NewUserMessage(userPrompt),
+	}, nil
+}
+
 // NewExtractNodesVersions creates a new ExtractNodesVersions instance.
 func NewExtractNodesVersions() *ExtractNodesVersions {
 	return &ExtractNodesVersions{
-		extractMessagePrompt:    NewPromptVersion(extractMessagePrompt),
-		extractJSONPrompt:       NewPromptVersion(extractJSONPrompt),
-		extractTextPrompt:       NewPromptVersion(extractTextPrompt),
-		reflexionPrompt:         NewPromptVersion(extractNodesReflexionPrompt),
-		classifyNodesPrompt:     NewPromptVersion(classifyNodesPrompt),
-		extractAttributesPrompt: NewPromptVersion(extractNodesAttributesPrompt),
-		extractSummaryPrompt:    NewPromptVersion(extractSummaryPrompt),
+		extractMessagePrompt:         NewPromptVersion(extractMessagePrompt),
+		extractJSONPrompt:            NewPromptVersion(extractJSONPrompt),
+		extractTextPrompt:            NewPromptVersion(extractTextPrompt),
+		reflexionPrompt:              NewPromptVersion(extractNodesReflexionPrompt),
+		classifyNodesPrompt:          NewPromptVersion(classifyNodesPrompt),
+		extractAttributesPrompt:      NewPromptVersion(extractNodesAttributesPrompt),
+		extractSummaryPrompt:         NewPromptVersion(extractSummaryPrompt),
+		extractAttributesBatchPrompt: NewPromptVersion(extractAttributesBatchPrompt),
 	}
 }

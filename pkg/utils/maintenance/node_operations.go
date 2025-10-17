@@ -17,6 +17,11 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/utils"
 )
 
+const (
+	// MaxAttributeExtractionBatchSize is the maximum number of nodes to process in a single LLM call
+	MaxAttributeExtractionBatchSize = 20
+)
+
 // NodeOperations provides node-related maintenance operations
 type NodeOperations struct {
 	driver   driver.GraphDriver
@@ -436,20 +441,107 @@ Continue the INCOMPLETE RESPONSE\n
 	return resolvedNodes, uuidMap, filteredDuplicates, nil
 }
 
-// ExtractAttributesFromNodes extracts and updates attributes for nodes using LLM
+// ExtractAttributesFromNodes extracts and updates attributes for nodes using LLM in batches
 func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes []*types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) ([]*types.Node, error) {
-	var updatedNodes []*types.Node
+	if len(nodes) == 0 {
+		return nodes, nil
+	}
 
-	for n, node := range nodes {
-		log.Printf("Extracting attributes %d of %d for entity:  %s", n+1, len(nodes), node.Name)
+	log.Printf("Extracting attributes for %d entities in batches of %d", len(nodes), MaxAttributeExtractionBatchSize)
 
-		updatedNode, err := no.extractAttributesFromNode(ctx, node, episode, previousEpisodes, entityTypes)
-		if err != nil {
-			log.Printf("Warning: failed to extract attributes for node %s: %v", node.Name, err)
-			updatedNodes = append(updatedNodes, node) // Use original node if extraction fails
-		} else {
-			updatedNodes = append(updatedNodes, updatedNode)
+	// Prepare previous episodes content (shared across all batches)
+	previousEpisodeContents := make([]string, len(previousEpisodes))
+	for i, ep := range previousEpisodes {
+		previousEpisodeContents[i] = ep.Summary
+	}
+
+	// Map to store all extracted attributes by original node index
+	allExtractedMap := make(map[int]*prompts.ExtractedNodeAttributes)
+
+	// Process nodes in batches
+	for batchStart := 0; batchStart < len(nodes); batchStart += MaxAttributeExtractionBatchSize {
+		batchEnd := batchStart + MaxAttributeExtractionBatchSize
+		if batchEnd > len(nodes) {
+			batchEnd = len(nodes)
 		}
+
+		batchNodes := nodes[batchStart:batchEnd]
+		log.Printf("Processing batch %d-%d of %d nodes", batchStart, batchEnd, len(nodes))
+
+		// Prepare nodes context for this batch
+		nodesContext := make([]map[string]interface{}, len(batchNodes))
+		for i, node := range batchNodes {
+			nodesContext[i] = map[string]interface{}{
+				"node_id":      i, // Local batch index
+				"name":         node.Name,
+				"summary":      node.Summary,
+				"entity_types": []string{"Entity", node.EntityType},
+				"attributes":   node.Metadata,
+			}
+		}
+
+		// Prepare context for batch LLM call
+		promptContext := map[string]interface{}{
+			"nodes":             nodesContext,
+			"episode_content":   episode.Content,
+			"previous_episodes": previousEpisodeContents,
+			"ensure_ascii":      true,
+		}
+
+		// Call batch extraction prompt
+		messages, err := no.prompts.ExtractNodes().ExtractAttributesBatch().Call(promptContext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create batch extraction prompt: %w", err)
+		}
+
+		response, err := no.llm.Chat(ctx, messages)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract attributes in batch: %w", err)
+		}
+
+		// Handle incomplete responses
+		if !utils.IsLastLineEmpty(response.Content) {
+			messages[len(messages)-1].Content += fmt.Sprintf(`\n
+Continue the INCOMPLETE RESPONSE\n
+<INCOMPLETE RESPONSE>
+%s
+</INCOMPLETE RESPONSE>
+			`, utils.RemoveLastLine(response.Content))
+			response, _ = no.llm.Chat(ctx, messages)
+		}
+
+		// Parse TSV response
+		r := utils.RemoveLastLine(response.Content)
+		r = llm.RemoveThinkTags(r)
+
+		extractedAttributesPtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedNodeAttributes](r, '\t')
+		if err != nil {
+			fmt.Printf("\nresponse:\n %v\n\n", r)
+			return nil, fmt.Errorf("failed to parse batch extraction TSV: %w", err)
+		}
+
+		// Store extracted attributes with global node index
+		for _, ptr := range extractedAttributesPtrs {
+			if ptr != nil {
+				globalIndex := batchStart + ptr.NodeID
+				allExtractedMap[globalIndex] = ptr
+			}
+		}
+	}
+
+	// Update all nodes with extracted summaries
+	var updatedNodes []*types.Node
+	for i, node := range nodes {
+		updatedNode := *node // Copy the node
+		updatedNode.UpdatedAt = time.Now().UTC()
+
+		if extracted, ok := allExtractedMap[i]; ok {
+			updatedNode.Summary = extracted.Summary
+		} else {
+			log.Printf("Warning: no extraction result for node %d (%s), keeping original", i, node.Name)
+		}
+
+		updatedNodes = append(updatedNodes, &updatedNode)
 	}
 
 	// Create embeddings for all updated nodes
@@ -458,87 +550,9 @@ func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes 
 			log.Printf("Warning: failed to create embedding for node %s: %v", node.Name, err)
 		}
 	}
+
+	log.Printf("Successfully extracted attributes for %d entities", len(updatedNodes))
 	return updatedNodes, nil
-}
-
-// extractAttributesFromNode extracts attributes and summary for a single node
-func (no *NodeOperations) extractAttributesFromNode(ctx context.Context, node *types.Node, episode *types.Node, previousEpisodes []*types.Node, entityTypes map[string]interface{}) (*types.Node, error) {
-	// Prepare node context
-	nodeContext := map[string]interface{}{
-		"name":         node.Name,
-		"summary":      node.Summary,
-		"entity_types": []string{"Entity", node.EntityType},
-		"attributes":   node.Metadata,
-	}
-
-	// Prepare previous episodes content
-	previousEpisodeContents := make([]string, len(previousEpisodes))
-	for i, ep := range previousEpisodes {
-		previousEpisodeContents[i] = ep.Summary
-	}
-
-	// Extract summary
-	summaryContext := map[string]interface{}{
-		"node":              nodeContext,
-		"episode_content":   episode.Content,
-		"previous_episodes": previousEpisodeContents,
-		"ensure_ascii":      true,
-	}
-
-	summaryMessages, err := no.prompts.ExtractNodes().ExtractSummary().Call(summaryContext)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create summary prompt: %w", err)
-	}
-
-	summaryResponse, err := no.llm.Chat(ctx, summaryMessages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract summary: %w", err)
-	}
-
-	var entitySummary prompts.EntitySummary
-	entitySummary.Summary = summaryResponse.Content
-
-	// Update node with new summary
-	updatedNode := *node // Copy the node
-	updatedNode.Summary = entitySummary.Summary
-	updatedNode.UpdatedAt = time.Now().UTC()
-
-	// Extract attributes if entity type is defined
-	if entityTypes != nil {
-		// Find the entity type for this node
-		entityTypeName := node.EntityType
-		if entityTypeName == "" {
-			entityTypeName = "Entity"
-		}
-
-		if entityTypeName != "" && entityTypes[entityTypeName] != nil {
-			attributesContext := map[string]interface{}{
-				"node":              nodeContext,
-				"episode_content":   episode.Content,
-				"previous_episodes": previousEpisodeContents,
-				"ensure_ascii":      true,
-			}
-
-			attributesMessages, err := no.prompts.ExtractNodes().ExtractAttributes().Call(attributesContext)
-			if err != nil {
-				log.Printf("Warning: failed to create attributes prompt: %v", err)
-			} else {
-				// For now, we'll use a generic map for attributes since we don't have the specific type
-				attributesResponse, err := no.llm.Chat(ctx, attributesMessages)
-				if err != nil {
-					log.Printf("Warning: failed to extract attributes: %v", err)
-				} else {
-					// Parse the response as a simple string and store in metadata
-					if updatedNode.Metadata == nil {
-						updatedNode.Metadata = make(map[string]interface{})
-					}
-					updatedNode.Metadata["llm_attributes"] = attributesResponse.Content
-				}
-			}
-		}
-	}
-
-	return &updatedNode, nil
 }
 
 // createNodeEmbedding creates an embedding for a node based on its name and summary
