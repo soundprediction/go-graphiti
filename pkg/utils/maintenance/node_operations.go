@@ -118,13 +118,18 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		}
 
 		if !utils.IsLastLineEmpty(response.Content) {
+			originalResponse := response
 			messages[len(messages)-1].Content += fmt.Sprintf(`\n
 Continue the INCOMPLETE RESPONSE\n
 <INCOMPLETE RESPONSE>
 %s
 </INCOMPLETE RESPONSE>
 			`, utils.RemoveLastLine(response.Content))
-			response, _ = no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+			response, err = no.llm.Chat(ctx, messages)
+			if err != nil {
+				log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
+				response = originalResponse
+			}
 		}
 
 		r := utils.RemoveLastLine(response.Content)
@@ -369,13 +374,18 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w", err)
 	}
 	if !utils.IsLastLineEmpty(response.Content) {
+		originalResponse := response
 		messages[len(messages)-1].Content += fmt.Sprintf(`\n
 Continue the INCOMPLETE RESPONSE\n
 <INCOMPLETE RESPONSE>
 %s
 </INCOMPLETE RESPONSE>
 			`, utils.RemoveLastLine(response.Content))
-		response, _ = no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+		response, err = no.llm.Chat(ctx, messages)
+		if err != nil {
+			log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
+			response = originalResponse
+		}
 	}
 	r := llm.RemoveThinkTags(utils.RemoveLastLine(response.Content))
 
@@ -501,13 +511,18 @@ func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes 
 
 		// Handle incomplete responses
 		if !utils.IsLastLineEmpty(response.Content) {
+			originalResponse := response
 			messages[len(messages)-1].Content += fmt.Sprintf(`\n
 Continue the INCOMPLETE RESPONSE\n
 <INCOMPLETE RESPONSE>
 %s
 </INCOMPLETE RESPONSE>
 			`, utils.RemoveLastLine(response.Content))
-			response, _ = no.llm.Chat(ctx, messages)
+			response, err = no.llm.Chat(ctx, messages)
+			if err != nil {
+				log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
+				response = originalResponse
+			}
 		}
 
 		// Parse TSV response
