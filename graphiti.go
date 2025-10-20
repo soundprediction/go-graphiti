@@ -460,7 +460,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	if len(allExtractedEdges) > 0 {
 		// Use the first chunk's episode node as the episode context
 		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
-			allExtractedEdges, chunkEpisodes[0], allResolvedNodes, options.GenerateEmbeddings)
+			allExtractedEdges, chunkEpisodes[0], allResolvedNodes, options.GenerateEmbeddings, options.EdgeTypes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve edges: %w", err)
 		}
@@ -1554,7 +1554,7 @@ func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *t
 
 	// The Go implementation wraps the private resolveExtractedEdge method
 	// We'll use ResolveExtractedEdges which internally calls the same logic
-	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{}, createEmbeddings)
+	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{}, createEmbeddings, c.config.EdgeTypes)
 	if err != nil {
 		return nil, nil, err
 	}

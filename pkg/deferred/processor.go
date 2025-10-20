@@ -322,7 +322,7 @@ func (p *DeferredProcessor) processBatch(ctx context.Context, db *sql.DB, episod
 
 	edgeOps := maintenance.NewEdgeOperations(p.driver, p.llm, p.embedder, prompts.NewLibrary())
 	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx,
-		allExtractedEdges, episodes[0], resolvedNodes, options.GenerateEmbeddings)
+		allExtractedEdges, episodes[0], resolvedNodes, options.GenerateEmbeddings, options.EntityTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve edges: %w", err)
 	}
