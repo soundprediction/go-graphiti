@@ -393,6 +393,24 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		}
 	}
 
+	// EARLY WRITE: Persist deduplicated nodes to enable cross-parallel-run deduplication
+	c.logger.Info("Persisting deduplicated nodes early",
+		"episode_id", episode.ID,
+		"num_nodes", len(allResolvedNodes))
+
+	for _, node := range allResolvedNodes {
+		if err := c.driver.UpsertNode(ctx, node); err != nil {
+			c.logger.Warn("Failed to persist deduplicated node",
+				"episode_id", episode.ID,
+				"node_id", node.ID,
+				"error", err)
+		}
+	}
+
+	c.logger.Info("Deduplicated nodes persisted",
+		"episode_id", episode.ID,
+		"num_nodes", len(allResolvedNodes))
+
 	// PHASE 3: RELATIONSHIP EXTRACTION for all chunks
 	c.logger.Info("Starting bulk relationship extraction",
 		"episode_id", episode.ID,
@@ -442,7 +460,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	if len(allExtractedEdges) > 0 {
 		// Use the first chunk's episode node as the episode context
 		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
-			allExtractedEdges, chunkEpisodes[0], allResolvedNodes, options.GenerateEmbeddings)
+			allExtractedEdges, chunkEpisodes[0], allResolvedNodes, options.GenerateEmbeddings, options.EdgeTypes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve edges: %w", err)
 		}
@@ -452,6 +470,25 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		"episode_id", episode.ID,
 		"resolved_relationships", len(resolvedEdges),
 		"invalidated_relationships", len(invalidatedEdges))
+
+	// EARLY WRITE: Persist resolved edges to enable cross-parallel-run deduplication
+	c.logger.Info("Persisting resolved edges early",
+		"episode_id", episode.ID,
+		"num_edges", len(resolvedEdges)+len(invalidatedEdges))
+
+	allResolvedEdges := append(resolvedEdges, invalidatedEdges...)
+	for _, edge := range allResolvedEdges {
+		if err := c.driver.UpsertEdge(ctx, edge); err != nil {
+			c.logger.Warn("Failed to persist resolved edge",
+				"episode_id", episode.ID,
+				"edge_id", edge.ID,
+				"error", err)
+		}
+	}
+
+	c.logger.Info("Resolved edges persisted",
+		"episode_id", episode.ID,
+		"num_edges", len(allResolvedEdges))
 
 	// PHASE 5: ATTRIBUTE EXTRACTION
 	c.logger.Info("Starting bulk attribute extraction",
@@ -478,14 +515,16 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		allEpisodicEdges = append(allEpisodicEdges, episodicEdges...)
 	}
 
-	// PHASE 7: BULK PERSISTENCE
+	// PHASE 7: FINAL UPDATES
+	// Note: Entity nodes and edges were already persisted after deduplication/resolution
+	// This phase updates them with hydrated attributes and adds episodic edges
 	allEdges := append(resolvedEdges, invalidatedEdges...)
-	c.logger.Info("Starting bulk persistence",
+	c.logger.Info("Starting final updates",
 		"episode_id", episode.ID,
 		"episodic_nodes", len(chunkEpisodes),
-		"entity_nodes", len(hydratedNodes),
-		"entity_edges", len(allEdges),
-		"episodic_edges", len(allEpisodicEdges))
+		"entity_nodes_to_update", len(hydratedNodes),
+		"entity_edges_to_update", len(allEdges),
+		"episodic_edges_to_add", len(allEpisodicEdges))
 
 	_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
 		chunkEpisodes,
@@ -494,7 +533,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		allEdges,
 		c.embedder)
 	if err != nil {
-		return nil, fmt.Errorf("failed to bulk persist data: %w", err)
+		return nil, fmt.Errorf("failed to perform final updates: %w", err)
 	}
 
 	// PHASE 8: COMMUNITY UPDATE (optional)
@@ -1515,7 +1554,7 @@ func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *t
 
 	// The Go implementation wraps the private resolveExtractedEdge method
 	// We'll use ResolveExtractedEdges which internally calls the same logic
-	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{}, createEmbeddings)
+	resolvedEdges, invalidatedEdges, err := edgeOps.ResolveExtractedEdges(ctx, []*types.Edge{extractedEdge}, episode, []*types.Node{}, createEmbeddings, c.config.EdgeTypes)
 	if err != nil {
 		return nil, nil, err
 	}

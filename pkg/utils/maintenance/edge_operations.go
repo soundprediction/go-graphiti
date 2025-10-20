@@ -140,13 +140,18 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return nil, fmt.Errorf("failed to extract edges: %w", err)
 	}
 	if !utils.IsLastLineEmpty(response.Content) {
+		originalResponse := response
 		messages[len(messages)-1].Content += fmt.Sprintf(`\n
 Continue the INCOMPLETE RESPONSE\n
 <INCOMPLETE RESPONSE>
 %s
 </INCOMPLETE RESPONSE>
 			`, utils.RemoveLastLine(response.Content))
-		response, _ = eo.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+		response, err = eo.llm.Chat(ctx, messages)
+		if err != nil {
+			log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
+			response = originalResponse
+		}
 	}
 	r := utils.RemoveLastLine(response.Content)
 	r = llm.RemoveThinkTags(r)
@@ -341,7 +346,7 @@ func (eo *EdgeOperations) convertRecordToEdge(record map[string]interface{}) (*t
 }
 
 // ResolveExtractedEdges resolves newly extracted edges with existing ones in the graph
-func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEdges []*types.Edge, episode *types.Node, entities []*types.Node, createEmbeddings bool) ([]*types.Edge, []*types.Edge, error) {
+func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEdges []*types.Edge, episode *types.Node, entities []*types.Node, createEmbeddings bool, edgeTypes map[string]interface{}) ([]*types.Edge, []*types.Edge, error) {
 	if len(extractedEdges) == 0 {
 		return []*types.Edge{}, []*types.Edge{}, nil
 	}
@@ -377,7 +382,7 @@ func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEd
 		}
 
 		// Resolve the edge against existing ones
-		resolvedEdge, newlyInvalidated, err := eo.resolveExtractedEdge(ctx, extractedEdge, relatedEdges, existingEdges, episode)
+		resolvedEdge, newlyInvalidated, err := eo.resolveExtractedEdge(ctx, extractedEdge, relatedEdges, existingEdges, episode, edgeTypes)
 		if err != nil {
 			log.Printf("Warning: failed to resolve edge: %v", err)
 			// Use the original edge if resolution fails
@@ -484,7 +489,7 @@ func (eo *EdgeOperations) searchRelatedEdges(ctx context.Context, extractedEdge 
 }
 
 // resolveExtractedEdge resolves a single extracted edge against existing edges
-func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node) (*types.Edge, []*types.Edge, error) {
+func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node, edgeTypes map[string]interface{}) (*types.Edge, []*types.Edge, error) {
 	if len(relatedEdges) == 0 && len(existingEdges) == 0 {
 		return extractedEdge, []*types.Edge{}, nil
 	}
@@ -508,6 +513,8 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		}
 	}
 
+	edgeTypesContext, _ := json.Marshal(edgeTypes)
+
 	// Build edge_types_context for deduplication prompt
 	// Note: This context is simpler than the extraction context - it only includes name and description
 	// Equivalent to Python (lines 497-507):
@@ -522,7 +529,7 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 	//     if edge_type_candidates is not None
 	//     else []
 	// )
-	edgeTypesContext := []map[string]interface{}{}
+
 	// For now, we don't have edge_type_candidates in this function
 	// This would need to be passed from the calling code if custom edge types are used
 
@@ -530,12 +537,13 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		"existing_edges":               relatedEdgesContext,
 		"new_edge":                     extractedEdge.Summary,
 		"edge_invalidation_candidates": invalidationCandidatesContext,
-		"edge_types":                   edgeTypesContext,
+		"edge_types":                   string(edgeTypesContext),
 		"ensure_ascii":                 true,
 	}
 
 	// Use LLM to resolve duplicates and contradictions
 	messages, err := eo.prompts.DedupeEdges().ResolveEdge().Call(promptContext)
+	// fmt.Printf("messages[1]:\n %v\n", messages[1])
 	if err != nil {
 		log.Printf("Warning: failed to create dedupe prompt: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
@@ -549,13 +557,18 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 
 	// Handle incomplete responses
 	if !utils.IsLastLineEmpty(response.Content) {
+		originalResponse := response
 		messages[len(messages)-1].Content += fmt.Sprintf(`\n
 Continue the INCOMPLETE RESPONSE\n
 <INCOMPLETE RESPONSE>
 %s
 </INCOMPLETE RESPONSE>
 		`, utils.RemoveLastLine(response.Content))
-		response, _ = eo.llm.Chat(ctx, messages)
+		response, err = eo.llm.Chat(ctx, messages)
+		if err != nil {
+			log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
+			response = originalResponse
+		}
 	}
 
 	// Parse TSV response
