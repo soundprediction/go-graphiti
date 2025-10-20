@@ -196,12 +196,14 @@ Continue the INCOMPLETE RESPONSE\n
 		var validTo *time.Time
 
 		if edgeData.ValidAt != "" {
-			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(edgeData.ValidAt, "Z", "+00:00")); err == nil {
+			// Strip any surrounding quotes (can happen with double JSON encoding)
+			cleanValidAt := strings.Trim(edgeData.ValidAt, "\"")
+			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(cleanValidAt, "Z", "+00:00")); err == nil {
 				validAt = parsed.UTC()
-			} else if edgeData.ValidAt == "null" {
+			} else if cleanValidAt == "null" {
 				validAt = episode.ValidFrom
 			} else {
-				log.Printf("Warning: failed to parse valid_at date: %v", err)
+				log.Printf("Warning: failed to parse valid_at date '%s': %v", cleanValidAt, err)
 				validAt = episode.ValidFrom
 			}
 		} else {
@@ -209,13 +211,15 @@ Continue the INCOMPLETE RESPONSE\n
 		}
 
 		if edgeData.InvalidAt != "" {
-			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(edgeData.InvalidAt, "Z", "+00:00")); err == nil {
+			// Strip any surrounding quotes (can happen with double JSON encoding)
+			cleanInvalidAt := strings.Trim(edgeData.InvalidAt, "\"")
+			if parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(cleanInvalidAt, "Z", "+00:00")); err == nil {
 				parsedUTC := parsed.UTC()
 				validTo = &parsedUTC
-			} else if edgeData.InvalidAt == "null" {
+			} else if cleanInvalidAt == "null" {
 				validTo = nil
 			} else {
-				log.Printf("Warning: failed to parse invalid_at date: %v", err)
+				log.Printf("Warning: failed to parse invalid_at date '%s': %v", cleanInvalidAt, err)
 			}
 		}
 

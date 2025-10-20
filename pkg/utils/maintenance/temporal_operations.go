@@ -77,9 +77,11 @@ func (to *TemporalOperations) ExtractEdgeDates(ctx context.Context, edge *types.
 
 	// Parse valid_at date
 	if edgeDates.ValidAt != nil && *edgeDates.ValidAt != "" {
-		parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(*edgeDates.ValidAt, "Z", "+00:00"))
+		// Strip any surrounding quotes (can happen with double JSON encoding)
+		cleanValidAt := strings.Trim(*edgeDates.ValidAt, "\"")
+		parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(cleanValidAt, "Z", "+00:00"))
 		if err != nil {
-			log.Printf("Warning: failed to parse valid_at date '%s': %v", *edgeDates.ValidAt, err)
+			log.Printf("Warning: failed to parse valid_at date '%s': %v", cleanValidAt, err)
 		} else {
 			utcTime := parsed.UTC()
 			validAt = &utcTime
@@ -88,9 +90,11 @@ func (to *TemporalOperations) ExtractEdgeDates(ctx context.Context, edge *types.
 
 	// Parse invalid_at date
 	if edgeDates.InvalidAt != nil && *edgeDates.InvalidAt != "" {
-		parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(*edgeDates.InvalidAt, "Z", "+00:00"))
+		// Strip any surrounding quotes (can happen with double JSON encoding)
+		cleanInvalidAt := strings.Trim(*edgeDates.InvalidAt, "\"")
+		parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(cleanInvalidAt, "Z", "+00:00"))
 		if err != nil {
-			log.Printf("Warning: failed to parse invalid_at date '%s': %v", *edgeDates.InvalidAt, err)
+			log.Printf("Warning: failed to parse invalid_at date '%s': %v", cleanInvalidAt, err)
 		} else {
 			utcTime := parsed.UTC()
 			invalidAt = &utcTime
