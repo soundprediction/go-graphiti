@@ -537,13 +537,13 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		"existing_edges":               relatedEdgesContext,
 		"new_edge":                     extractedEdge.Summary,
 		"edge_invalidation_candidates": invalidationCandidatesContext,
-		"edge_types":                   edgeTypesContext,
+		"edge_types":                   string(edgeTypesContext),
 		"ensure_ascii":                 true,
 	}
 
 	// Use LLM to resolve duplicates and contradictions
 	messages, err := eo.prompts.DedupeEdges().ResolveEdge().Call(promptContext)
-	fmt.Printf("messages[1]:\n %v\n", messages[1])
+	// fmt.Printf("messages[1]:\n %v\n", messages[1])
 	if err != nil {
 		log.Printf("Warning: failed to create dedupe prompt: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
