@@ -25,7 +25,7 @@ func (e *ExtractEdgesVersions) Reflexion() PromptVersion         { return e.Refl
 func (e *ExtractEdgesVersions) ExtractAttributes() PromptVersion { return e.ExtractAttributesPrompt }
 
 // edgePrompt extracts fact triples from text.
-// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
+// Uses TSV format for episodes and edge types to reduce token usage and improve LLM parsing.
 func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an expert fact extractor that extracts fact triples from text.
 1. Extracted fact triples should also be extracted with relevant date information.
@@ -45,6 +45,11 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
+	edgeTypesTSV, err := ToPromptCSV(edgeTypes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal edge types: %w", err)
+	}
+
 	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
@@ -52,7 +57,7 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 
 	userPrompt := fmt.Sprintf(`
 <FACT TYPES>
-%v
+%s
 </FACT TYPES>
 
 <PREVIOUS_MESSAGES>
@@ -71,7 +76,7 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 %v  # ISO 8601 (UTC); used to resolve relative time mentions
 </REFERENCE_TIME>
 
-Note: PREVIOUS_MESSAGES are provided in TSV (tab-separated values) format.
+Note: FACT TYPES and PREVIOUS_MESSAGES are provided in TSV (tab-separated values) format.
 
 # TASK
 Extract all factual relationships between the given ENTITIES based on the CURRENT MESSAGE.
@@ -126,7 +131,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 0\t"CAUSES"\t2\t"If that pressure is not relieved\tpermanent facial nerve palsy can ensue"\t"Acute Facial Palsy (AFP) causes facial nerve palsy"\t"2025-09-27T00:00:00Z"\tnull
 
 </EXAMPLE>
-`, edgeTypes, previousEpisodesTSV, episodeContent, nodes, referenceTime, customPrompt)
+`, edgeTypesTSV, previousEpisodesTSV, episodeContent, nodes, referenceTime, customPrompt)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

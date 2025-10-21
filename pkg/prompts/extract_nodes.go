@@ -42,7 +42,7 @@ func (e *ExtractNodesVersions) ExtractAttributesBatch() PromptVersion {
 }
 
 // extractMessagePrompt extracts entity nodes from conversational messages.
-// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
+// Uses TSV format for episodes and entity types to reduce token usage and improve LLM parsing.
 func extractMessagePrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an AI assistant that extracts entity nodes from conversational messages.
 Your primary task is to extract and classify the speaker and other significant entities mentioned in the conversation.`
@@ -60,13 +60,18 @@ Your primary task is to extract and classify the speaker and other significant e
 		}
 	}
 
+	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
+	}
+
 	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
 	userPrompt := fmt.Sprintf(`<ENTITY TYPES>
-%v
+%s
 </ENTITY TYPES>
 
 <PREVIOUS MESSAGES>
@@ -77,7 +82,7 @@ Your primary task is to extract and classify the speaker and other significant e
 %v
 </CURRENT MESSAGE>
 
-Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
+Note: ENTITY TYPES and PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
 
 Instructions:
 
@@ -103,7 +108,7 @@ reference entities. Only extract distinct entities from the CURRENT MESSAGE. Don
 5. **Formatting**:
    - Be **explicit and unambiguous** in naming entities (e.g., use full names when available).
 
-%v`, entityTypes, previousEpisodesTSV, episodeContent, customPrompt)
+%v`, entityTypesTSV, previousEpisodesTSV, episodeContent, customPrompt)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -112,8 +117,9 @@ reference entities. Only extract distinct entities from the CURRENT MESSAGE. Don
 }
 
 // extractJSONPrompt extracts entity nodes from JSON.
+// Uses TSV format for entity types to reduce token usage and improve LLM parsing.
 func extractJSONPrompt(context map[string]interface{}) ([]llm.Message, error) {
-	sysPrompt := `You are an AI assistant that extracts entity nodes from JSON. 
+	sysPrompt := `You are an AI assistant that extracts entity nodes from JSON.
 Your primary task is to extract and classify relevant entities from JSON files`
 
 	entityTypes := context["entity_types"]
@@ -121,9 +127,21 @@ Your primary task is to extract and classify relevant entities from JSON files`
 	episodeContent := context["episode_content"]
 	customPrompt := context["custom_prompt"]
 
+	ensureASCII := true
+	if val, ok := context["ensure_ascii"]; ok {
+		if b, ok := val.(bool); ok {
+			ensureASCII = b
+		}
+	}
+
+	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
+	}
+
 	userPrompt := fmt.Sprintf(`
 <ENTITY TYPES>
-%v
+%s
 </ENTITY TYPES>
 
 <SOURCE DESCRIPTION>:
@@ -132,6 +150,8 @@ Your primary task is to extract and classify relevant entities from JSON files`
 <JSON>
 %v
 </JSON>
+
+Note: ENTITY TYPES are provided in TSV (tab-separated values) format.
 
 %v
 
@@ -142,7 +162,7 @@ Indicate the classified entity type by providing its entity_type_id.
 Guidelines:
 1. Always try to extract an entities that the JSON represents. This will often be something like a "name" or "user field
 2. Do NOT extract any properties that contain dates
-`, entityTypes, sourceDescription, episodeContent, customPrompt)
+`, entityTypesTSV, sourceDescription, episodeContent, customPrompt)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -151,22 +171,37 @@ Guidelines:
 }
 
 // extractTextPrompt extracts entity nodes from text.
+// Uses TSV format for entity types to reduce token usage and improve LLM parsing.
 func extractTextPrompt(context map[string]interface{}) ([]llm.Message, error) {
-	sysPrompt := `You are an AI assistant that extracts entity nodes from text. 
+	sysPrompt := `You are an AI assistant that extracts entity nodes from text.
 Your primary task is to extract and classify the speaker and other significant entities mentioned in the provided text.`
 
 	entityTypes := context["entity_types"]
 	episodeContent := context["episode_content"]
 	customPrompt := context["custom_prompt"]
 
+	ensureASCII := true
+	if val, ok := context["ensure_ascii"]; ok {
+		if b, ok := val.(bool); ok {
+			ensureASCII = b
+		}
+	}
+
+	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
+	}
+
 	userPrompt := fmt.Sprintf(`
 <ENTITY TYPES>
-%v
+%s
 </ENTITY TYPES>
 
 <TEXT>
 %v
 </TEXT>
+
+Note: ENTITY TYPES are provided in TSV (tab-separated values) format.
 
 Given the above text, extract entities from the TEXT that are explicitly or implicitly mentioned.
 For each entity extracted, also determine its entity type based on the provided ENTITY TYPES and their descriptions.
@@ -196,7 +231,7 @@ cognitive behavioral therapy\t30
 
 Use the EXAMPLE as a guide
 Finish your response with a new line
-`, entityTypes, episodeContent, customPrompt)
+`, entityTypesTSV, episodeContent, customPrompt)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -250,7 +285,7 @@ extracted.
 }
 
 // classifyNodesPrompt classifies entity nodes.
-// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
+// Uses TSV format for episodes and entity types to reduce token usage and improve LLM parsing.
 func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an AI assistant that classifies entity nodes given the context from which they were extracted`
 
@@ -271,6 +306,11 @@ func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) 
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
+	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
+	}
+
 	userPrompt := fmt.Sprintf(`
 <PREVIOUS MESSAGES>
 %s
@@ -284,10 +324,10 @@ func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) 
 </EXTRACTED ENTITIES>
 
 <ENTITY TYPES>
-%v
+%s
 </ENTITY TYPES>
 
-Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
+Note: PREVIOUS MESSAGES and ENTITY TYPES are provided in TSV (tab-separated values) format.
 
 Given the above conversation, extracted entities, and provided entity types and their descriptions, classify the extracted entities.
 
@@ -295,7 +335,7 @@ Guidelines:
 1. Each entity must have exactly one type
 2. Only use the provided ENTITY TYPES as types, do not use additional types to classify entities.
 3. If none of the provided entity types accurately classify an extracted node, the type should be set to None
-`, previousEpisodesTSV, episodeContent, extractedEntities, entityTypes)
+`, previousEpisodesTSV, episodeContent, extractedEntities, entityTypesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
