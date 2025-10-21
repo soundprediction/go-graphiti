@@ -19,6 +19,7 @@ type ExtractEdgeDatesVersions struct {
 func (e *ExtractEdgeDatesVersions) ExtractDates() PromptVersion { return e.ExtractDatesPrompt }
 
 // extractDatesPrompt extracts dates from edges.
+// Uses TSV format for episodes and edges to reduce token usage and improve LLM parsing.
 func extractDatesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an expert temporal information extractor that identifies valid_at and invalid_at dates for relationships from text.`
 
@@ -34,12 +35,12 @@ func extractDatesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	edgesJSON, err := ToPromptJSON(edges, ensureASCII, 2)
+	edgesTSV, err := ToPromptCSV(edges, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal edges: %w", err)
 	}
@@ -58,6 +59,8 @@ func extractDatesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 %v
 </REFERENCE TIME>
 
+Note: PREVIOUS MESSAGES and EDGES are provided in TSV (tab-separated values) format.
+
 Extract temporal information (valid_at and invalid_at dates) for the given edges based on the messages.
 
 Guidelines:
@@ -66,7 +69,7 @@ Guidelines:
 3. If the relationship has ended, set invalid_at to the end time
 4. Leave null if no temporal information is available
 5. Use reference time to resolve relative temporal expressions
-`, previousEpisodesJSON, episodeContent, edgesJSON, referenceTime)
+`, previousEpisodesTSV, episodeContent, edgesTSV, referenceTime)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

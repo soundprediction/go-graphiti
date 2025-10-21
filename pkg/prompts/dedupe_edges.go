@@ -25,6 +25,7 @@ func (d *DedupeEdgesVersions) EdgeList() PromptVersion    { return d.EdgeListPro
 func (d *DedupeEdgesVersions) ResolveEdge() PromptVersion { return d.ResolveEdgePrompt }
 
 // dedupeEdgePrompt determines if edges are duplicates or contradictory.
+// Uses TSV format for episodes and facts to reduce token usage and improve LLM parsing.
 func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether or not edges extracted from a conversation are duplicates or contradictions of existing edges.`
 
@@ -40,17 +41,17 @@ func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	newFactJSON, err := ToPromptJSON(newFact, ensureASCII, 2)
+	newFactTSV, err := ToPromptCSV(newFact, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal new fact: %w", err)
 	}
 
-	existingFactsJSON, err := ToPromptJSON(existingFacts, ensureASCII, 2)
+	existingFactsTSV, err := ToPromptCSV(existingFacts, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing facts: %w", err)
 	}
@@ -68,6 +69,8 @@ func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 <EXISTING FACTS>
 %s
 </EXISTING FACTS>
+
+Note: PREVIOUS MESSAGES, NEW FACT, and EXISTING FACTS are provided in TSV (tab-separated values) format.
 
 Task:
 You have TWO separate lists of facts. Each list uses 'idx' as its index field, starting from 0.
@@ -102,8 +105,8 @@ duplicated_facts: []int
 contradicted_facts: []int
 fact_type: string
 </SCHEMA>
-`, previousEpisodesJSON, episodeContent, newFactJSON, existingFactsJSON)
-
+`, previousEpisodesTSV, episodeContent, newFactTSV, existingFactsTSV)
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -111,6 +114,7 @@ fact_type: string
 }
 
 // dedupeEdgeListPrompt handles batch edge deduplication.
+// Uses TSV format for edges to reduce token usage and improve LLM parsing.
 func dedupeEdgeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that de-duplicates edges from edge lists.`
 
@@ -123,20 +127,20 @@ func dedupeEdgeListPrompt(context map[string]interface{}) ([]llm.Message, error)
 		}
 	}
 
-	edgesJSON, err := ToPromptJSON(edges, ensureASCII, 2)
+	edgesTSV, err := ToPromptCSV(edges, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal edges: %w", err)
 	}
 
 	userPrompt := fmt.Sprintf(`
-Given the following edges, identify unique facts and remove duplicates:
+Given the following edges, identify unique facts and remove duplicates.
 
-Edges:
+Edges are provided in TSV (tab-separated values) format:
 %s
 
 Task:
 Return a list of unique facts, removing any duplicates.
-`, edgesJSON)
+`, edgesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -165,12 +169,12 @@ func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		return nil, fmt.Errorf("failed to marshal existing edges: %w", err)
 	}
 
-	edgeInvalidationCandidatesJSON, err := ToPromptJSON(edgeInvalidationCandidates, ensureASCII, 2)
+	edgeInvalidationCandidatesTSV, err := ToPromptCSV(edgeInvalidationCandidates, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal edge invalidation candidates: %w", err)
 	}
 
-	edgeTypesJSON, err := ToPromptJSON(edgeTypes, ensureASCII, 2)
+	edgeTypesTSV, err := ToPromptCSV(edgeTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal edge types: %w", err)
 	}
@@ -192,8 +196,10 @@ func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 %s
 </FACT TYPES>
 
+Note: EXISTING FACTS, FACT INVALIDATION CANDIDATES, and FACT TYPES are provided in TSV (tab-separated values) format.
+
 Task:
-You have THREE separate lists: NEW FACT (string), EXISTING FACTS (TSV format with 'id' and 'fact' columns), and FACT INVALIDATION CANDIDATES (with 'id' field starting from 0).
+You have THREE separate lists: NEW FACT (string), EXISTING FACTS (TSV format with 'id' and 'fact' columns), and FACT INVALIDATION CANDIDATES (TSV format with 'id' field).
 
 1. DUPLICATE DETECTION:
    - If the NEW FACT represents identical factual information as any fact in EXISTING FACTS, identify which ones.
@@ -235,7 +241,7 @@ duplicate_facts	contradicted_facts	fact_type
 </EXAMPLE>
 
 Provide only the TSV header and data row. Finish your response with a new line.
-`, newEdge, existingEdgesTSV, edgeInvalidationCandidatesJSON, edgeTypesJSON)
+`, newEdge, existingEdgesTSV, edgeInvalidationCandidatesTSV, edgeTypesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

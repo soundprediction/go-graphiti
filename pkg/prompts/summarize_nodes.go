@@ -27,6 +27,7 @@ func (s *SummarizeNodesVersions) SummaryDescription() PromptVersion {
 }
 
 // summarizePairPrompt combines summaries.
+// Uses TSV format for node summaries to reduce token usage.
 func summarizePairPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that combines summaries.`
 
@@ -38,7 +39,7 @@ func summarizePairPrompt(context map[string]interface{}) ([]llm.Message, error) 
 		}
 	}
 
-	nodeSummariesJSON, err := ToPromptJSON(nodeSummaries, ensureASCII, 2)
+	nodeSummariesTSV, err := ToPromptCSV(nodeSummaries, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal node summaries: %w", err)
 	}
@@ -48,9 +49,9 @@ Synthesize the information from the following two summaries into a single succin
 
 Summaries must be under 250 words.
 
-Summaries:
+Summaries are provided in TSV (tab-separated values) format:
 %s
-`, nodeSummariesJSON)
+`, nodeSummariesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -59,6 +60,7 @@ Summaries:
 }
 
 // summarizeContextPrompt extracts entity properties from provided text.
+// Uses TSV format for episodes and attributes to reduce token usage.
 func summarizeContextPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that extracts entity properties from the provided text.`
 
@@ -75,17 +77,17 @@ func summarizeContextPrompt(context map[string]interface{}) ([]llm.Message, erro
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
+	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}
 
-	attributesJSON, err := ToPromptJSON(attributes, ensureASCII, 2)
+	attributesTSV, err := ToPromptCSV(attributes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal attributes: %w", err)
 	}
@@ -97,7 +99,7 @@ func summarizeContextPrompt(context map[string]interface{}) ([]llm.Message, erro
 %s
 </MESSAGES>
 
-Given the above MESSAGES and the following ENTITY name, create a summary for the ENTITY. Your summary must only use
+Given the above MESSAGES (in TSV format) and the following ENTITY name, create a summary for the ENTITY. Your summary must only use
 information from the provided MESSAGES. Your summary should also only contain information relevant to the
 provided ENTITY. Summaries must be under 250 words.
 
@@ -119,8 +121,8 @@ Guidelines:
 <ATTRIBUTES>
 %s
 </ATTRIBUTES>
-`, previousEpisodesJSON, episodeContentJSON, nodeName, nodeSummary, attributesJSON)
-
+`, previousEpisodesTSV, episodeContentTSV, nodeName, nodeSummary, attributesTSV)
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -128,6 +130,7 @@ Guidelines:
 }
 
 // summaryDescriptionPrompt describes provided contents in a single sentence.
+// Uses TSV format for summary data to reduce token usage.
 func summaryDescriptionPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that describes provided contents in a single sentence.`
 
@@ -139,7 +142,7 @@ func summaryDescriptionPrompt(context map[string]interface{}) ([]llm.Message, er
 		}
 	}
 
-	summaryJSON, err := ToPromptJSON(summary, ensureASCII, 2)
+	summaryTSV, err := ToPromptCSV(summary, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal summary: %w", err)
 	}
@@ -148,9 +151,9 @@ func summaryDescriptionPrompt(context map[string]interface{}) ([]llm.Message, er
 Create a short one sentence description of the summary that explains what kind of information is summarized.
 Summaries must be under 250 words.
 
-Summary:
+Summary (in TSV format):
 %s
-`, summaryJSON)
+`, summaryTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
