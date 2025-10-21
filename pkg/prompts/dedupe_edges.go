@@ -160,7 +160,7 @@ func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	existingEdgesJSON, err := ToPromptJSON(existingEdges, ensureASCII, 2)
+	existingEdgesTSV, err := ToPromptCSV(existingEdges, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing edges: %w", err)
 	}
@@ -193,7 +193,7 @@ func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 </FACT TYPES>
 
 Task:
-You have THREE separate lists: NEW FACT (string), EXISTING FACTS (with 'id' field), and FACT INVALIDATION CANDIDATES (with 'id' field starting from 0).
+You have THREE separate lists: NEW FACT (string), EXISTING FACTS (TSV format with 'id' and 'fact' columns), and FACT INVALIDATION CANDIDATES (with 'id' field starting from 0).
 
 1. DUPLICATE DETECTION:
    - If the NEW FACT represents identical factual information as any fact in EXISTING FACTS, identify which ones.
@@ -235,7 +235,7 @@ duplicate_facts	contradicted_facts	fact_type
 </EXAMPLE>
 
 Provide only the TSV header and data row. Finish your response with a new line.
-`, newEdge, existingEdgesJSON, edgeInvalidationCandidatesJSON, edgeTypesJSON)
+`, newEdge, existingEdgesTSV, edgeInvalidationCandidatesJSON, edgeTypesJSON)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
