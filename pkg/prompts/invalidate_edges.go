@@ -66,7 +66,7 @@ Edges should be invalidated if:
 
 Return a list of edge IDs that should be invalidated.
 `, previousEpisodesJSON, episodeContent, existingEdgesJSON, referenceTime)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

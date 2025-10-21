@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ type NodeOperations struct {
 	llm      llm.Client
 	embedder embedder.Client
 	prompts  prompts.Library
+	logger   *slog.Logger
 }
 
 // NewNodeOperations creates a new NodeOperations instance
@@ -37,7 +39,13 @@ func NewNodeOperations(driver driver.GraphDriver, llm llm.Client, embedder embed
 		llm:      llm,
 		embedder: embedder,
 		prompts:  prompts,
+		logger:   slog.Default(), // Use default logger, can be overridden
 	}
+}
+
+// SetLogger sets a custom logger for the NodeOperations
+func (no *NodeOperations) SetLogger(logger *slog.Logger) {
+	no.logger = logger
 }
 
 // ExtractNodes extracts entity nodes from episode content using LLM
@@ -83,6 +91,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		"entity_types":       entityTypesStr,
 		"source_description": string(episode.EpisodeType),
 		"ensure_ascii":       true,
+		"logger":             no.logger,
 	}
 
 	// Extract entities with reflexion
@@ -257,6 +266,7 @@ func (no *NodeOperations) extractNodesReflexion(ctx context.Context, episode *ty
 		"previous_episodes":  previousEpisodeContents,
 		"extracted_entities": entityNames,
 		"ensure_ascii":       true,
+		"logger":             no.logger,
 	}
 
 	messages, err := no.prompts.ExtractNodes().Reflexion().Call(promptContext)
@@ -361,6 +371,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		"episode_content":   episode.Content,
 		"previous_episodes": previousEpisodeContents,
 		"ensure_ascii":      true,
+		"logger":             no.logger,
 	}
 
 	// Use LLM to resolve duplicates
@@ -496,6 +507,7 @@ func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes 
 			"episode_content":   episode.Content,
 			"previous_episodes": previousEpisodeContents,
 			"ensure_ascii":      true,
+		"logger":             no.logger,
 		}
 
 		// Call batch extraction prompt

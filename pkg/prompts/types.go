@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"sort"
 	"strconv"
@@ -288,4 +289,14 @@ func escapeNonASCII(s string) string {
 		}
 	}
 	return buf.String()
+}
+
+// logPrompts logs system and user prompts at debug level if a logger is available in context.
+// This replaces the fmt.Printf statements throughout the prompts package.
+func logPrompts(context map[string]interface{}, sysPrompt, userPrompt string) {
+	if logger, ok := context["logger"].(*slog.Logger); ok && logger != nil {
+		logger.Debug("Generated prompts",
+			"system_prompt", sysPrompt,
+			"user_prompt", userPrompt)
+	}
 }

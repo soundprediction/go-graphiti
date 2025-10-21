@@ -137,7 +137,7 @@ Edges:
 Task:
 Return a list of unique facts, removing any duplicates.
 `, edgesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -236,7 +236,7 @@ duplicate_facts	contradicted_facts	fact_type
 
 Provide only the TSV header and data row. Finish your response with a new line.
 `, newEdge, existingEdgesJSON, edgeInvalidationCandidatesJSON, edgeTypesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

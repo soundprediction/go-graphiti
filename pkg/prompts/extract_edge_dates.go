@@ -67,7 +67,7 @@ Guidelines:
 4. Leave null if no temporal information is available
 5. Use reference time to resolve relative temporal expressions
 `, previousEpisodesJSON, episodeContent, edgesJSON, referenceTime)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
