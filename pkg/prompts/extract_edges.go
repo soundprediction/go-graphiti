@@ -25,8 +25,9 @@ func (e *ExtractEdgesVersions) Reflexion() PromptVersion         { return e.Refl
 func (e *ExtractEdgesVersions) ExtractAttributes() PromptVersion { return e.ExtractAttributesPrompt }
 
 // edgePrompt extracts fact triples from text.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
-	sysPrompt := `You are an expert fact extractor that extracts fact triples from text. 
+	sysPrompt := `You are an expert fact extractor that extracts fact triples from text.
 1. Extracted fact triples should also be extracted with relevant date information.
 2. Treat the CURRENT TIME as the time the CURRENT MESSAGE was sent. All temporal information should be extracted relative to this time.`
 
@@ -44,7 +45,7 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -69,6 +70,8 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 <REFERENCE_TIME>
 %v  # ISO 8601 (UTC); used to resolve relative time mentions
 </REFERENCE_TIME>
+
+Note: PREVIOUS_MESSAGES are provided in TSV (tab-separated values) format.
 
 # TASK
 Extract all factual relationships between the given ENTITIES based on the CURRENT MESSAGE.
@@ -123,7 +126,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 0\t"CAUSES"\t2\t"If that pressure is not relieved\tpermanent facial nerve palsy can ensue"\t"Acute Facial Palsy (AFP) causes facial nerve palsy"\t"2025-09-27T00:00:00Z"\tnull
 
 </EXAMPLE>
-`, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
+`, edgeTypes, previousEpisodesTSV, episodeContent, nodes, referenceTime, customPrompt)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -132,6 +135,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 }
 
 // extractEdgesReflexionPrompt determines which facts have not been extracted.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an AI assistant that determines which facts have not been extracted from the given context`
 
@@ -147,7 +151,7 @@ func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -168,9 +172,11 @@ func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 %v
 </EXTRACTED FACTS>
 
-Given the above MESSAGES, list of EXTRACTED ENTITIES entities, and list of EXTRACTED FACTS; 
+Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
+
+Given the above MESSAGES, list of EXTRACTED ENTITIES entities, and list of EXTRACTED FACTS;
 determine if any facts haven't been extracted.
-`, previousEpisodesJSON, episodeContent, nodes, extractedFacts)
+`, previousEpisodesTSV, episodeContent, nodes, extractedFacts)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -179,6 +185,7 @@ determine if any facts haven't been extracted.
 }
 
 // extractEdgesAttributesPrompt extracts fact properties from text.
+// Uses TSV format for episode content to reduce token usage and improve LLM parsing.
 func extractEdgesAttributesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that extracts fact properties from the provided text.`
 
@@ -193,7 +200,7 @@ func extractEdgesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 		}
 	}
 
-	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
+	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}
@@ -206,6 +213,8 @@ func extractEdgesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 %v
 </REFERENCE TIME>
 
+Note: MESSAGE is provided in TSV (tab-separated values) format.
+
 Given the above MESSAGE, its REFERENCE TIME, and the following FACT, update any of its attributes based on the information provided
 in MESSAGE. Use the provided attribute descriptions to better understand how each attribute should be determined.
 
@@ -216,7 +225,7 @@ Guidelines:
 <FACT>
 %v
 </FACT>
-`, episodeContentJSON, referenceTime, fact)
+`, episodeContentTSV, referenceTime, fact)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

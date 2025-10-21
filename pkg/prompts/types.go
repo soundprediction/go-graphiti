@@ -262,13 +262,39 @@ func formatValue(v interface{}, ensureASCII bool) string {
 		return strconv.FormatFloat(reflect.ValueOf(val).Float(), 'f', -1, 64)
 	case bool:
 		return strconv.FormatBool(val)
-	default:
-		// For complex types, use JSON representation
-		b, err := json.Marshal(v)
-		if err != nil {
-			result = fmt.Sprint(v)
+	case []string:
+		// Handle string slices by taking the last (most specific) element
+		// For hierarchical types like ["Entity", "ANATOMY"], we want just "ANATOMY"
+		if len(val) > 0 {
+			result = val[len(val)-1]
 		} else {
-			result = string(b)
+			result = ""
+		}
+	case []interface{}:
+		// Handle generic slices by taking the last element
+		if len(val) > 0 {
+			result = formatValue(val[len(val)-1], ensureASCII)
+		} else {
+			result = ""
+		}
+	default:
+		// Check if it's a slice using reflection
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+			// Take the last (most specific) element for hierarchical types
+			if rv.Len() > 0 {
+				result = formatValue(rv.Index(rv.Len()-1).Interface(), ensureASCII)
+			} else {
+				result = ""
+			}
+		} else {
+			// For other complex types, use JSON representation
+			b, err := json.Marshal(v)
+			if err != nil {
+				result = fmt.Sprint(v)
+			} else {
+				result = string(b)
+			}
 		}
 	}
 

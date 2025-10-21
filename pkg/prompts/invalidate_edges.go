@@ -19,6 +19,7 @@ type InvalidateEdgesVersions struct {
 func (i *InvalidateEdgesVersions) Invalidate() PromptVersion { return i.InvalidatePrompt }
 
 // invalidatePrompt determines which edges should be invalidated.
+// Uses TSV format for edge data to reduce token usage and improve LLM parsing.
 func invalidatePrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines which existing edges should be invalidated based on new information.`
 
@@ -34,12 +35,12 @@ func invalidatePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	existingEdgesJSON, err := ToPromptJSON(existingEdges, ensureASCII, 2)
+	existingEdgesTSV, err := ToPromptCSV(existingEdges, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing edges: %w", err)
 	}
@@ -58,14 +59,20 @@ func invalidatePrompt(context map[string]interface{}) ([]llm.Message, error) {
 %v
 </REFERENCE TIME>
 
-Based on the current message, determine which existing edges should be invalidated.
+EXISTING EDGES are provided in TSV (tab-separated values) format with columns including:
+- id: unique identifier for the edge
+- fact: the relationship or fact represented by the edge
+- Additional columns may include source, target, dates, etc.
+
+Based on the CURRENT MESSAGE, determine which EXISTING EDGES should be invalidated.
+
 Edges should be invalidated if:
 1. The current message contradicts the relationship
 2. The relationship has ended according to the message
 3. New information makes the edge no longer accurate
 
-Return a list of edge IDs that should be invalidated.
-`, previousEpisodesJSON, episodeContent, existingEdgesJSON, referenceTime)
+Return a list of edge IDs from EXISTING EDGES that should be invalidated.
+`, previousEpisodesTSV, episodeContent, existingEdgesTSV, referenceTime)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

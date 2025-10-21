@@ -25,6 +25,8 @@ func (d *DedupeNodesVersions) NodeList() PromptVersion { return d.NodeListPrompt
 func (d *DedupeNodesVersions) Nodes() PromptVersion    { return d.NodesPrompt }
 
 // nodePrompt determines if a new entity is a duplicate of existing entities.
+// Note: If entity_type is an array (e.g., ["Entity", "ANATOMY"]), only the last (most specific)
+// element will be used in the TSV output (e.g., "ANATOMY").
 func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether or not a NEW ENTITY is a duplicate of any EXISTING ENTITIES.`
 
@@ -41,22 +43,22 @@ func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	extractedNodeJSON, err := ToPromptCSV(extractedNode, ensureASCII)
+	extractedNodeTSV, err := ToPromptCSV(extractedNode, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extracted node: %w", err)
 	}
 
-	entityTypeDescriptionJSON, err := ToPromptCSV(entityTypeDescription, ensureASCII)
+	entityTypeDescriptionTSV, err := ToPromptCSV(entityTypeDescription, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity type description: %w", err)
 	}
 
-	existingNodesJSON, err := ToPromptCSV(existingNodes, ensureASCII)
+	existingNodesTSV, err := ToPromptCSV(existingNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing nodes: %w", err)
 	}
@@ -79,6 +81,7 @@ func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
 %s
 </EXISTING ENTITIES>
 
+The NEW ENTITY and EXISTING ENTITIES are provided in TSV (tab-separated values) format.
 Given the above EXISTING ENTITIES and their attributes, MESSAGE, and PREVIOUS MESSAGES; Determine if the NEW ENTITY extracted from the conversation
 is a duplicate entity of one of the EXISTING ENTITIES.
 
@@ -97,7 +100,7 @@ Do NOT mark entities as duplicates if:
 
 Also return the full name of the NEW ENTITY (whether it is the name of the NEW ENTITY, a node it
 is a duplicate of, or a combination of the two).
-`, previousEpisodesJSON, episodeContent, extractedNodeJSON, entityTypeDescriptionJSON, existingNodesJSON)
+`, previousEpisodesTSV, episodeContent, extractedNodeTSV, entityTypeDescriptionTSV, existingNodesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -106,6 +109,8 @@ is a duplicate of, or a combination of the two).
 }
 
 // nodesPrompt determines whether entities extracted from a conversation are duplicates.
+// Note: If entity_type is an array (e.g., ["Entity", "ANATOMY"]), only the last (most specific)
+// element will be used in the TSV output (e.g., "ANATOMY").
 func nodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether or not ENTITIES extracted from a conversation are duplicates of existing entities.`
 
@@ -121,17 +126,17 @@ func nodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	extractedNodesJSON, err := ToPromptCSV(extractedNodes, ensureASCII)
+	extractedNodesTSV, err := ToPromptCSV(extractedNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extracted nodes: %w", err)
 	}
 
-	existingNodesJSON, err := ToPromptCSV(existingNodes, ensureASCII)
+	existingNodesTSV, err := ToPromptCSV(existingNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing nodes: %w", err)
 	}
@@ -146,21 +151,12 @@ func nodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 
 
 Each of the following ENTITIES were extracted from the CURRENT MESSAGE.
-Each entity in ENTITIES is represented as a JSON object with the following structure:
-{
-    id: integer id of the entity,
-    name: "name of the entity",
-    entity_type: "ontological classification of the entity",
-    entity_type_description: "Description of what the entity type represents",
-    duplication_candidates: [
-        {
-            idx: integer index of the candidate entity,
-            name: "name of the candidate entity",
-            entity_type: "ontological classification of the candidate entity",
-            ...<additional attributes>
-        }
-    ]
-}
+ENTITIES and EXISTING ENTITIES are provided in TSV (tab-separated values) format with the following columns:
+- id: integer id of the entity
+- name: name of the entity
+- entity_type: ontological classification of the entity
+- entity_type_description: description of what the entity type represents
+- Additional columns may include entity attributes
 
 <ENTITIES>
 %s
@@ -209,7 +205,7 @@ id\tname\tduplicate_idx\tduplicates
 </EXAMPLE>
 
 Finish your response with a new line
-`, previousEpisodesJSON, episodeContent, extractedNodesJSON, existingNodesJSON)
+`, previousEpisodesTSV, episodeContent, extractedNodesTSV, existingNodesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -218,6 +214,8 @@ Finish your response with a new line
 }
 
 // nodeListPrompt de-duplicates nodes from node lists.
+// Note: If entity_type is an array (e.g., ["Entity", "ANATOMY"]), only the last (most specific)
+// element will be used in the TSV output (e.g., "ANATOMY").
 func nodeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that de-duplicates nodes from node lists.`
 
@@ -230,15 +228,15 @@ func nodeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	nodesJSON, err := ToPromptCSV(nodes, ensureASCII)
+	nodesTSV, err := ToPromptCSV(nodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 	}
 
 	userPrompt := fmt.Sprintf(`
-Given the following context, deduplicate a list of nodes:
+Given the following context, deduplicate a list of nodes.
 
-Nodes:
+Nodes are provided in TSV (tab-separated values) format:
 %s
 
 Task:
@@ -259,7 +257,7 @@ Respond with a JSON object in the following format:
         }
     ]
 }
-`, nodesJSON)
+`, nodesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

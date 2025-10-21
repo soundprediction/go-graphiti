@@ -42,8 +42,9 @@ func (e *ExtractNodesVersions) ExtractAttributesBatch() PromptVersion {
 }
 
 // extractMessagePrompt extracts entity nodes from conversational messages.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func extractMessagePrompt(context map[string]interface{}) ([]llm.Message, error) {
-	sysPrompt := `You are an AI assistant that extracts entity nodes from conversational messages. 
+	sysPrompt := `You are an AI assistant that extracts entity nodes from conversational messages.
 Your primary task is to extract and classify the speaker and other significant entities mentioned in the conversation.`
 
 	// Get values from context
@@ -59,7 +60,7 @@ Your primary task is to extract and classify the speaker and other significant e
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -75,6 +76,8 @@ Your primary task is to extract and classify the speaker and other significant e
 <CURRENT MESSAGE>
 %v
 </CURRENT MESSAGE>
+
+Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
 
 Instructions:
 
@@ -100,8 +103,8 @@ reference entities. Only extract distinct entities from the CURRENT MESSAGE. Don
 5. **Formatting**:
    - Be **explicit and unambiguous** in naming entities (e.g., use full names when available).
 
-%v`, entityTypes, previousEpisodesJSON, episodeContent, customPrompt)
-
+%v`, entityTypes, previousEpisodesTSV, episodeContent, customPrompt)
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -202,6 +205,7 @@ Finish your response with a new line
 }
 
 // extractNodesReflexionPrompt determines which entities have not been extracted.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func extractNodesReflexionPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an AI assistant that determines which entities have not been extracted from the given context`
 
@@ -216,7 +220,7 @@ func extractNodesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -233,9 +237,11 @@ func extractNodesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 %v
 </EXTRACTED ENTITIES>
 
+Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
+
 Given the above previous messages, current message, and list of extracted entities; determine if any entities haven't been
 extracted.
-`, previousEpisodesJSON, episodeContent, extractedEntities)
+`, previousEpisodesTSV, episodeContent, extractedEntities)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -244,6 +250,7 @@ extracted.
 }
 
 // classifyNodesPrompt classifies entity nodes.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an AI assistant that classifies entity nodes given the context from which they were extracted`
 
@@ -259,7 +266,7 @@ func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) 
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptCSV(previousEpisodes, ensureASCII)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
@@ -280,13 +287,15 @@ func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) 
 %v
 </ENTITY TYPES>
 
+Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
+
 Given the above conversation, extracted entities, and provided entity types and their descriptions, classify the extracted entities.
 
 Guidelines:
 1. Each entity must have exactly one type
 2. Only use the provided ENTITY TYPES as types, do not use additional types to classify entities.
 3. If none of the provided entity types accurately classify an extracted node, the type should be set to None
-`, previousEpisodesJSON, episodeContent, extractedEntities, entityTypes)
+`, previousEpisodesTSV, episodeContent, extractedEntities, entityTypes)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -295,6 +304,7 @@ Guidelines:
 }
 
 // extractNodesAttributesPrompt extracts entity properties from text.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func extractNodesAttributesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
@@ -307,12 +317,12 @@ func extractNodesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
+	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}
@@ -325,6 +335,8 @@ func extractNodesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 %s
 </MESSAGES>
 
+Note: MESSAGES are provided in TSV (tab-separated values) format.
+
 Given the above MESSAGES and the following ENTITY, update any of its attributes based on the information provided
 in MESSAGES. Use the provided attribute descriptions to better understand how each attribute should be determined.
 
@@ -335,7 +347,7 @@ Guidelines:
 <ENTITY>
 %v
 </ENTITY>
-`, previousEpisodesJSON, episodeContentJSON, node)
+`, previousEpisodesTSV, episodeContentTSV, node)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -344,6 +356,7 @@ Guidelines:
 }
 
 // extractSummaryPrompt extracts entity summaries from text.
+// Uses TSV format for episodes to reduce token usage and improve LLM parsing.
 func extractSummaryPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
@@ -356,12 +369,12 @@ func extractSummaryPrompt(context map[string]interface{}) ([]llm.Message, error)
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
+	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}
@@ -373,6 +386,8 @@ func extractSummaryPrompt(context map[string]interface{}) ([]llm.Message, error)
 %s
 %s
 </MESSAGES>
+
+Note: MESSAGES are provided in TSV (tab-separated values) format.
 
 Given the above MESSAGES and the following ENTITY, update the summary that combines relevant information about the entity
 from the messages and relevant information from the existing summary.
@@ -386,7 +401,7 @@ Guidelines:
 <ENTITY>
 %v
 </ENTITY>
-`, previousEpisodesJSON, episodeContentJSON, node)
+`, previousEpisodesTSV, episodeContentTSV, node)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -395,6 +410,7 @@ Guidelines:
 }
 
 // extractAttributesBatchPrompt extracts attributes and summaries for multiple nodes in batch using TSV output.
+// Uses TSV format for episodes and nodes to reduce token usage and improve LLM parsing.
 func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
@@ -407,17 +423,17 @@ func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message
 		}
 	}
 
-	previousEpisodesJSON, err := ToPromptJSON(previousEpisodes, ensureASCII, 2)
+	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentJSON, err := ToPromptJSON(episodeContent, ensureASCII, 2)
+	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
 	}
 
-	nodesJSON, err := ToPromptJSON(nodes, ensureASCII, 2)
+	nodesTSV, err := ToPromptCSV(nodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 	}
@@ -429,6 +445,8 @@ func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message
 %s
 %s
 </MESSAGES>
+
+Note: MESSAGES and ENTITIES are provided in TSV (tab-separated values) format.
 
 Given the above MESSAGES and the following ENTITIES, update the summary for each entity that combines relevant information
 from the messages and relevant information from the existing summary.
@@ -459,7 +477,7 @@ node_id	summary
 Provide a TSV row for each entity in the ENTITIES list above.
 Use the node_id field from each entity to identify it in your TSV output.
 Finish your response with a new line.
-`, previousEpisodesJSON, episodeContentJSON, nodesJSON)
+`, previousEpisodesTSV, episodeContentTSV, nodesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

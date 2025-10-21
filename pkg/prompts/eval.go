@@ -28,6 +28,7 @@ func (e *EvalVersions) QueryExpansion() PromptVersion        { return e.queryExp
 func (e *EvalVersions) EvalAddEpisodeResults() PromptVersion { return e.evalAddEpisodePrompt }
 
 // queryExpansionPrompt rephrases questions into queries used in a database retrieval system.
+// Uses TSV format for query data to reduce token usage and improve LLM parsing.
 func queryExpansionPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are an expert at rephrasing questions into queries used in a database retrieval system`
 
@@ -39,7 +40,7 @@ func queryExpansionPrompt(context map[string]interface{}) ([]llm.Message, error)
 		}
 	}
 
-	queryJSON, err := ToPromptJSON(query, ensureASCII, 0)
+	queryTSV, err := ToPromptCSV(query, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
@@ -50,8 +51,10 @@ that maintains the relevant context?
 <QUESTION>
 %s
 </QUESTION>
-`, queryJSON)
 
+Note: Query data is provided in TSV (tab-separated values) format.
+`, queryTSV)
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -59,6 +62,7 @@ that maintains the relevant context?
 }
 
 // qaPrompt answers questions from Alice's first person perspective.
+// Uses TSV format for entity summaries and facts to reduce token usage and improve LLM parsing.
 func qaPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are Alice and should respond to all questions from the first person perspective of Alice`
 
@@ -73,12 +77,12 @@ func qaPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	entitySummariesJSON, err := ToPromptJSON(entitySummaries, ensureASCII, 0)
+	entitySummariesTSV, err := ToPromptCSV(entitySummaries, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity summaries: %w", err)
 	}
 
-	factsJSON, err := ToPromptJSON(facts, ensureASCII, 0)
+	factsTSV, err := ToPromptCSV(facts, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal facts: %w", err)
 	}
@@ -86,6 +90,9 @@ func qaPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	userPrompt := fmt.Sprintf(`
 Your task is to briefly answer the question in the way that you think Alice would answer the question.
 You are given the following entity summaries and facts to help you determine the answer to your question.
+
+Note: ENTITY_SUMMARIES and FACTS are provided in TSV (tab-separated values) format.
+
 <ENTITY_SUMMARIES>
 %s
 </ENTITY_SUMMARIES>
@@ -95,7 +102,7 @@ You are given the following entity summaries and facts to help you determine the
 <QUESTION>
 %v
 </QUESTION>
-`, entitySummariesJSON, factsJSON, query)
+`, entitySummariesTSV, factsTSV, query)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -125,7 +132,7 @@ as the gold standard ANSWER. Also include your reasoning for the grade.
 %v
 </RESPONSE>
 `, query, answer, response)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -133,6 +140,7 @@ as the gold standard ANSWER. Also include your reasoning for the grade.
 }
 
 // evalAddEpisodeResultsPrompt determines whether a baseline graph building result is better than a candidate.
+// Uses TSV format for previous messages, baseline, and candidate data to reduce token usage and improve LLM parsing.
 func evalAddEpisodeResultsPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a judge that determines whether a baseline graph building result from a list of messages is better
 than a candidate graph building result based on the same messages.`
@@ -142,6 +150,28 @@ than a candidate graph building result based on the same messages.`
 	baseline := context["baseline"]
 	candidate := context["candidate"]
 
+	ensureASCII := false
+	if val, ok := context["ensure_ascii"]; ok {
+		if b, ok := val.(bool); ok {
+			ensureASCII = b
+		}
+	}
+
+	previousMessagesTSV, err := ToPromptCSV(previousMessages, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal previous messages: %w", err)
+	}
+
+	baselineTSV, err := ToPromptCSV(baseline, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal baseline: %w", err)
+	}
+
+	candidateTSV, err := ToPromptCSV(candidate, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal candidate: %w", err)
+	}
+
 	userPrompt := fmt.Sprintf(`
 Given the following PREVIOUS MESSAGES and MESSAGE, determine if the BASELINE graph data extracted from the
 conversation is higher quality than the CANDIDATE graph data extracted from the conversation.
@@ -150,21 +180,23 @@ Return False if the BASELINE extraction is better, and True otherwise. If the CA
 BASELINE extraction are nearly identical in quality, return True. Add your reasoning for your decision to the reasoning field
 
 <PREVIOUS MESSAGES>
-%v
+%s
 </PREVIOUS MESSAGES>
 <MESSAGE>
 %v
 </MESSAGE>
 
 <BASELINE>
-%v
+%s
 </BASELINE>
 
 <CANDIDATE>
-%v
+%s
 </CANDIDATE>
-`, previousMessages, message, baseline, candidate)
 
+Note: PREVIOUS MESSAGES, BASELINE, and CANDIDATE are provided in TSV (tab-separated values) format.
+`, previousMessagesTSV, message, baselineTSV, candidateTSV)
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
