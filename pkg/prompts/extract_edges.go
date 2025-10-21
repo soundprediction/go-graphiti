@@ -124,7 +124,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 
 </EXAMPLE>
 `, edgeTypes, previousEpisodesJSON, episodeContent, nodes, referenceTime, customPrompt)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -171,7 +171,7 @@ func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 Given the above MESSAGES, list of EXTRACTED ENTITIES entities, and list of EXTRACTED FACTS; 
 determine if any facts haven't been extracted.
 `, previousEpisodesJSON, episodeContent, nodes, extractedFacts)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -217,7 +217,7 @@ Guidelines:
 %v
 </FACT>
 `, episodeContentJSON, referenceTime, fact)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

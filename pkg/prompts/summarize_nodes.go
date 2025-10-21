@@ -15,14 +15,16 @@ type SummarizeNodesPrompt interface {
 
 // SummarizeNodesVersions holds all versions of summarize nodes prompts.
 type SummarizeNodesVersions struct {
-	summarizePairPrompt        PromptVersion
-	summarizeContextPrompt     PromptVersion
-	summaryDescriptionPrompt   PromptVersion
+	summarizePairPrompt      PromptVersion
+	summarizeContextPrompt   PromptVersion
+	summaryDescriptionPrompt PromptVersion
 }
 
-func (s *SummarizeNodesVersions) SummarizePair() PromptVersion        { return s.summarizePairPrompt }
-func (s *SummarizeNodesVersions) SummarizeContext() PromptVersion     { return s.summarizeContextPrompt }
-func (s *SummarizeNodesVersions) SummaryDescription() PromptVersion   { return s.summaryDescriptionPrompt }
+func (s *SummarizeNodesVersions) SummarizePair() PromptVersion    { return s.summarizePairPrompt }
+func (s *SummarizeNodesVersions) SummarizeContext() PromptVersion { return s.summarizeContextPrompt }
+func (s *SummarizeNodesVersions) SummaryDescription() PromptVersion {
+	return s.summaryDescriptionPrompt
+}
 
 // summarizePairPrompt combines summaries.
 func summarizePairPrompt(context map[string]interface{}) ([]llm.Message, error) {
@@ -49,7 +51,7 @@ Summaries must be under 250 words.
 Summaries:
 %s
 `, nodeSummariesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -149,7 +151,7 @@ Summaries must be under 250 words.
 Summary:
 %s
 `, summaryJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

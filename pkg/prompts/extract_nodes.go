@@ -30,14 +30,16 @@ type ExtractNodesVersions struct {
 	extractAttributesBatchPrompt PromptVersion
 }
 
-func (e *ExtractNodesVersions) ExtractMessage() PromptVersion         { return e.extractMessagePrompt }
-func (e *ExtractNodesVersions) ExtractJSON() PromptVersion            { return e.extractJSONPrompt }
-func (e *ExtractNodesVersions) ExtractText() PromptVersion            { return e.extractTextPrompt }
-func (e *ExtractNodesVersions) Reflexion() PromptVersion              { return e.reflexionPrompt }
-func (e *ExtractNodesVersions) ClassifyNodes() PromptVersion          { return e.classifyNodesPrompt }
-func (e *ExtractNodesVersions) ExtractAttributes() PromptVersion      { return e.extractAttributesPrompt }
-func (e *ExtractNodesVersions) ExtractSummary() PromptVersion         { return e.extractSummaryPrompt }
-func (e *ExtractNodesVersions) ExtractAttributesBatch() PromptVersion { return e.extractAttributesBatchPrompt }
+func (e *ExtractNodesVersions) ExtractMessage() PromptVersion    { return e.extractMessagePrompt }
+func (e *ExtractNodesVersions) ExtractJSON() PromptVersion       { return e.extractJSONPrompt }
+func (e *ExtractNodesVersions) ExtractText() PromptVersion       { return e.extractTextPrompt }
+func (e *ExtractNodesVersions) Reflexion() PromptVersion         { return e.reflexionPrompt }
+func (e *ExtractNodesVersions) ClassifyNodes() PromptVersion     { return e.classifyNodesPrompt }
+func (e *ExtractNodesVersions) ExtractAttributes() PromptVersion { return e.extractAttributesPrompt }
+func (e *ExtractNodesVersions) ExtractSummary() PromptVersion    { return e.extractSummaryPrompt }
+func (e *ExtractNodesVersions) ExtractAttributesBatch() PromptVersion {
+	return e.extractAttributesBatchPrompt
+}
 
 // extractMessagePrompt extracts entity nodes from conversational messages.
 func extractMessagePrompt(context map[string]interface{}) ([]llm.Message, error) {
@@ -138,7 +140,7 @@ Guidelines:
 1. Always try to extract an entities that the JSON represents. This will often be something like a "name" or "user field
 2. Do NOT extract any properties that contain dates
 `, entityTypes, sourceDescription, episodeContent, customPrompt)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -192,6 +194,7 @@ cognitive behavioral therapy\t30
 Use the EXAMPLE as a guide
 Finish your response with a new line
 `, entityTypes, episodeContent, customPrompt)
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -233,7 +236,7 @@ func extractNodesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 Given the above previous messages, current message, and list of extracted entities; determine if any entities haven't been
 extracted.
 `, previousEpisodesJSON, episodeContent, extractedEntities)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -284,7 +287,7 @@ Guidelines:
 2. Only use the provided ENTITY TYPES as types, do not use additional types to classify entities.
 3. If none of the provided entity types accurately classify an extracted node, the type should be set to None
 `, previousEpisodesJSON, episodeContent, extractedEntities, entityTypes)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -333,7 +336,7 @@ Guidelines:
 %v
 </ENTITY>
 `, previousEpisodesJSON, episodeContentJSON, node)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -384,7 +387,7 @@ Guidelines:
 %v
 </ENTITY>
 `, previousEpisodesJSON, episodeContentJSON, node)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -457,7 +460,7 @@ Provide a TSV row for each entity in the ENTITIES list above.
 Use the node_id field from each entity to identify it in your TSV output.
 Finish your response with a new line.
 `, previousEpisodesJSON, episodeContentJSON, nodesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

@@ -326,7 +326,9 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 
 	// Initialize maintenance operations
 	nodeOps := maintenance.NewNodeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	nodeOps.SetLogger(c.logger)
 	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	edgeOps.SetLogger(c.logger)
 
 	// PHASE 1: ENTITY EXTRACTION for all chunks
 	c.logger.Info("Starting bulk entity extraction",
@@ -646,6 +648,7 @@ func (c *Client) extractEntities(ctx context.Context, episode types.Episode) ([]
 		"custom_prompt":      "",
 		"source_description": episode.Metadata["source_description"],
 		"ensure_ascii":       false,
+		"logger":             c.logger, // Add logger for debug logging
 	}
 
 	// 2. Call the LLM to extract entities
@@ -1444,6 +1447,7 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 
 	// Step 3: Resolve extracted nodes (lines 1031-1034)
 	nodeOps := maintenance.NewNodeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	nodeOps.SetLogger(c.logger)
 	nodes, uuidMap, _, err := nodeOps.ResolveExtractedNodes(ctx, []*types.Node{sourceNode, targetNode}, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve extracted nodes: %w", err)
@@ -1455,6 +1459,7 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 
 	// Step 5: Get existing edges between nodes (lines 1038-1040)
 	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	edgeOps.SetLogger(c.logger)
 	validEdges, err := edgeOps.GetBetweenNodes(ctx, updatedEdge.SourceID, updatedEdge.TargetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get edges between nodes: %w", err)
@@ -1551,6 +1556,7 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 func (c *Client) resolveExtractedEdgeExact(ctx context.Context, extractedEdge *types.Edge, relatedEdges []*types.Edge, existingEdges []*types.Edge, episode *types.Node, createEmbeddings bool) (*types.Edge, []*types.Edge, error) {
 	// Use the EdgeOperations to resolve the edge exactly as in Python
 	edgeOps := maintenance.NewEdgeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
+	edgeOps.SetLogger(c.logger)
 
 	// The Go implementation wraps the private resolveExtractedEdge method
 	// We'll use ResolveExtractedEdges which internally calls the same logic

@@ -98,7 +98,7 @@ Do NOT mark entities as duplicates if:
 Also return the full name of the NEW ENTITY (whether it is the name of the NEW ENTITY, a node it
 is a duplicate of, or a combination of the two).
 `, previousEpisodesJSON, episodeContent, extractedNodeJSON, entityTypeDescriptionJSON, existingNodesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -210,7 +210,7 @@ id\tname\tduplicate_idx\tduplicates
 
 Finish your response with a new line
 `, previousEpisodesJSON, episodeContent, extractedNodesJSON, existingNodesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -260,7 +260,7 @@ Respond with a JSON object in the following format:
     ]
 }
 `, nodesJSON)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

@@ -16,10 +16,10 @@ type EvalPrompt interface {
 
 // EvalVersions holds all versions of evaluation prompts.
 type EvalVersions struct {
-	qaPrompt              PromptVersion
-	evalPrompt            PromptVersion
-	queryExpansionPrompt  PromptVersion
-	evalAddEpisodePrompt  PromptVersion
+	qaPrompt             PromptVersion
+	evalPrompt           PromptVersion
+	queryExpansionPrompt PromptVersion
+	evalAddEpisodePrompt PromptVersion
 }
 
 func (e *EvalVersions) QAPrompt() PromptVersion              { return e.qaPrompt }
@@ -96,7 +96,7 @@ You are given the following entity summaries and facts to help you determine the
 %v
 </QUESTION>
 `, entitySummariesJSON, factsJSON, query)
-
+	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -170,7 +170,6 @@ BASELINE extraction are nearly identical in quality, return True. Add your reaso
 		llm.NewUserMessage(userPrompt),
 	}, nil
 }
-
 
 // NewEvalVersions creates a new EvalVersions instance.
 func NewEvalVersions() *EvalVersions {

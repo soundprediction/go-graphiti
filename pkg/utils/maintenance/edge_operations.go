@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ type EdgeOperations struct {
 	llm      llm.Client
 	embedder embedder.Client
 	prompts  prompts.Library
+	logger   *slog.Logger
 }
 
 // NewEdgeOperations creates a new EdgeOperations instance
@@ -31,7 +33,13 @@ func NewEdgeOperations(driver driver.GraphDriver, llm llm.Client, embedder embed
 		llm:      llm,
 		embedder: embedder,
 		prompts:  prompts,
+		logger:   slog.Default(), // Use default logger, can be overridden
 	}
+}
+
+// SetLogger sets a custom logger for the EdgeOperations
+func (eo *EdgeOperations) SetLogger(logger *slog.Logger) {
+	eo.logger = logger
 }
 
 // BuildEpisodicEdges creates episodic edges from entity nodes to an episode
