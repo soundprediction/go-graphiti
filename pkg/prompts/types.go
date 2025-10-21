@@ -293,10 +293,16 @@ func escapeNonASCII(s string) string {
 
 // logPrompts logs system and user prompts at debug level if a logger is available in context.
 // This replaces the fmt.Printf statements throughout the prompts package.
+// Prints with actual newlines preserved instead of escaped.
 func logPrompts(context map[string]interface{}, sysPrompt, userPrompt string) {
 	if logger, ok := context["logger"].(*slog.Logger); ok && logger != nil {
-		logger.Debug("Generated prompts",
-			"system_prompt", sysPrompt,
-			"user_prompt", userPrompt)
+		// Log with preserved newlines using structured format
+		logger.Debug("Generated prompts - System Prompt follows")
+		fmt.Println("=== SYSTEM PROMPT ===")
+		fmt.Println(sysPrompt)
+		logger.Debug("Generated prompts - User Prompt follows")
+		fmt.Println("=== USER PROMPT ===")
+		fmt.Println(userPrompt)
+		fmt.Println("=== END PROMPTS ===")
 	}
 }
