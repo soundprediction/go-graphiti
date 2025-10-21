@@ -79,16 +79,14 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		previousEpisodeContents[i] = ep.Summary
 	}
 
-	// Convert entity types context to JSON string
-	entityTypesJson, _ := json.Marshal(entityTypesContext)
-	entityTypesStr := string(entityTypesJson)
 	// Prepare context for LLM
+	// Note: entity_types is passed as a slice for TSV formatting in prompts
 	promptContext := map[string]interface{}{
 		"episode_content":    episode.Content,
 		"episode_timestamp":  episode.ValidFrom.Format(time.RFC3339),
 		"previous_episodes":  previousEpisodeContents,
 		"custom_prompt":      "",
-		"entity_types":       entityTypesStr,
+		"entity_types":       entityTypesContext,
 		"source_description": string(episode.EpisodeType),
 		"ensure_ascii":       true,
 		"logger":             no.logger,
@@ -334,14 +332,30 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		existingNodes = append(existingNodes, node)
 	}
 
+	// Build entity type description lookup map
+	entityTypeDescriptions := make(map[string]string)
+	entityTypeDescriptions["Entity"] = "Default classification. Use this entity type if the entity is not one of the other listed types."
+
+	if entityTypes != nil {
+		for typeName := range entityTypes {
+			entityTypeDescriptions[typeName] = fmt.Sprintf("custom type: %s", typeName)
+		}
+	}
+
 	// Prepare context for LLM deduplication
 	extractedNodesContext := make([]map[string]interface{}, len(extractedNodes))
 	for i, node := range extractedNodes {
+		// Look up the description for this entity type
+		description := entityTypeDescriptions[node.EntityType]
+		if description == "" {
+			description = "Entity description"
+		}
+
 		extractedNodesContext[i] = map[string]interface{}{
 			"id":                      i,
 			"name":                    node.Name,
 			"entity_type":             []string{"Entity", node.EntityType},
-			"entity_type_description": "Entity description", // Simplified
+			"entity_type_description": description,
 		}
 	}
 
