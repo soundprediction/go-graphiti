@@ -619,55 +619,35 @@ Continue the INCOMPLETE RESPONSE\n
 	edgeDuplicateTSV := edgeDuplicateTSVPtrs[0]
 	var edgeDuplicate prompts.EdgeDuplicate
 	edgeDuplicate.FactType = edgeDuplicateTSV.FactType
+	edgeDuplicate.DuplicateFacts = edgeDuplicateTSV.DuplicateFacts
+	edgeDuplicate.ContradictedFacts = edgeDuplicateTSV.ContradictedFacts
 
-	// Parse comma-separated duplicate facts
-	if edgeDuplicateTSV.DuplicateFacts != "" {
-		duplicateFactsStr := strings.Split(edgeDuplicateTSV.DuplicateFacts, ",")
-		for _, idStr := range duplicateFactsStr {
-			idStr = strings.TrimSpace(idStr)
-			if idStr == "" {
-				continue
-			}
-			var id int
-			if _, err := fmt.Sscanf(idStr, "%d", &id); err == nil {
-				edgeDuplicate.DuplicateFacts = append(edgeDuplicate.DuplicateFacts, id)
-			}
-		}
-	}
-
-	// Parse comma-separated contradicted facts
-	if edgeDuplicateTSV.ContradictedFacts != "" {
-		contradictedFactsStr := strings.Split(edgeDuplicateTSV.ContradictedFacts, ",")
-		for _, idStr := range contradictedFactsStr {
-			idStr = strings.TrimSpace(idStr)
-			if idStr == "" {
-				continue
-			}
-			var id int
-			if _, err := fmt.Sscanf(idStr, "%d", &id); err == nil {
-				edgeDuplicate.ContradictedFacts = append(edgeDuplicate.ContradictedFacts, id)
-			}
-		}
-	}
-
-	// Process duplicate facts
+	// Process duplicate facts - find edges by UUID
 	resolvedEdge := extractedEdge
-	for _, duplicateFactID := range edgeDuplicate.DuplicateFacts {
-		if duplicateFactID >= 0 && duplicateFactID < len(relatedEdges) {
-			resolvedEdge = relatedEdges[duplicateFactID]
-			break
+	for _, duplicateFactUUID := range edgeDuplicate.DuplicateFacts {
+		// Find the edge with matching UUID in relatedEdges
+		for _, edge := range relatedEdges {
+			if edge.ID == duplicateFactUUID {
+				resolvedEdge = edge
+				break
+			}
+		}
+		if resolvedEdge != extractedEdge {
+			break // Found a duplicate, stop searching
 		}
 	}
 
-	// Process contradicted facts (invalidation candidates)
+	// Process contradicted facts (invalidation candidates) - find edges by UUID
 	var invalidatedEdges []*types.Edge
-	for _, contradictedFactID := range edgeDuplicate.ContradictedFacts {
-		if contradictedFactID >= 0 && contradictedFactID < len(existingEdges) {
-			candidateEdge := existingEdges[contradictedFactID]
-
-			// Apply temporal logic for invalidation
-			invalidatedEdge := eo.resolveEdgeContradictions(resolvedEdge, []*types.Edge{candidateEdge})
-			invalidatedEdges = append(invalidatedEdges, invalidatedEdge...)
+	for _, contradictedFactUUID := range edgeDuplicate.ContradictedFacts {
+		// Find the edge with matching UUID in existingEdges
+		for _, edge := range existingEdges {
+			if edge.ID == contradictedFactUUID {
+				// Apply temporal logic for invalidation
+				invalidatedEdge := eo.resolveEdgeContradictions(resolvedEdge, []*types.Edge{edge})
+				invalidatedEdges = append(invalidatedEdges, invalidatedEdge...)
+				break
+			}
 		}
 	}
 
