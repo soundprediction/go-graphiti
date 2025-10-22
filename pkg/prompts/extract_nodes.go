@@ -362,20 +362,17 @@ func extractNodesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
-	}
-
 	sysPrompt := `You are a helpful assistant that extracts entity properties from the provided text.`
 
 	userPrompt := fmt.Sprintf(`
-<MESSAGES>
+<PREVIOUS MESSAGES>
 %s
-%s
-</MESSAGES>
+</PREVIOUS MESSAGES>
+<CURRENT MESSAGE>
+%v
+</CURRENT MESSAGE>
 
-Note: MESSAGES are provided in TSV (tab-separated values) format.
+Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
 
 Given the above MESSAGES and the following ENTITY, update any of its attributes based on the information provided
 in MESSAGES. Use the provided attribute descriptions to better understand how each attribute should be determined.
@@ -387,7 +384,7 @@ Guidelines:
 <ENTITY>
 %v
 </ENTITY>
-`, previousEpisodesTSV, episodeContentTSV, node)
+`, previousEpisodesTSV, episodeContent, node)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -414,20 +411,17 @@ func extractSummaryPrompt(context map[string]interface{}) ([]llm.Message, error)
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
-	}
-
 	sysPrompt := `You are a helpful assistant that extracts entity summaries from the provided text.`
 
 	userPrompt := fmt.Sprintf(`
-<MESSAGES>
+<PREVIOUS MESSAGES>
 %s
-%s
-</MESSAGES>
+</PREVIOUS MESSAGES>
+<CURRENT MESSAGE>
+%v
+</CURRENT MESSAGE>
 
-Note: MESSAGES are provided in TSV (tab-separated values) format.
+Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
 
 Given the above MESSAGES and the following ENTITY, update the summary that combines relevant information about the entity
 from the messages and relevant information from the existing summary.
@@ -441,7 +435,7 @@ Guidelines:
 <ENTITY>
 %v
 </ENTITY>
-`, previousEpisodesTSV, episodeContentTSV, node)
+`, previousEpisodesTSV, episodeContent, node)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -468,11 +462,6 @@ func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
-	}
-
 	nodesTSV, err := ToPromptCSV(nodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
@@ -481,12 +470,14 @@ func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message
 	sysPrompt := `You are a helpful assistant that extracts entity summaries and attributes from the provided text.`
 
 	userPrompt := fmt.Sprintf(`
-<MESSAGES>
+<PREVIOUS MESSAGES>
 %s
-%s
-</MESSAGES>
+</PREVIOUS MESSAGES>
+<CURRENT MESSAGE>
+%v
+</CURRENT MESSAGE>
 
-Note: MESSAGES and ENTITIES are provided in TSV (tab-separated values) format.
+Note: PREVIOUS MESSAGES and ENTITIES are provided in TSV (tab-separated values) format.
 
 Given the above MESSAGES and the following ENTITIES, update the summary for each entity that combines relevant information
 from the messages and relevant information from the existing summary.
@@ -517,7 +508,7 @@ node_id	summary
 Provide a TSV row for each entity in the ENTITIES list above.
 Use the node_id field from each entity to identify it in your TSV output.
 Finish your response with a new line.
-`, previousEpisodesTSV, episodeContentTSV, nodesTSV)
+`, previousEpisodesTSV, episodeContent, nodesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

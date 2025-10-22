@@ -82,11 +82,6 @@ func summarizeContextPrompt(context map[string]interface{}) ([]llm.Message, erro
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
-	}
-
 	attributesTSV, err := ToPromptCSV(attributes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal attributes: %w", err)
@@ -94,12 +89,16 @@ func summarizeContextPrompt(context map[string]interface{}) ([]llm.Message, erro
 
 	userPrompt := fmt.Sprintf(`
 
-<MESSAGES>
+<PREVIOUS MESSAGES>
 %s
-%s
-</MESSAGES>
+</PREVIOUS MESSAGES>
+<CURRENT MESSAGE>
+%v
+</CURRENT MESSAGE>
 
-Given the above MESSAGES (in TSV format) and the following ENTITY name, create a summary for the ENTITY. Your summary must only use
+Note: PREVIOUS MESSAGES and ATTRIBUTES are provided in TSV (tab-separated values) format.
+
+Given the above MESSAGES and the following ENTITY name, create a summary for the ENTITY. Your summary must only use
 information from the provided MESSAGES. Your summary should also only contain information relevant to the
 provided ENTITY. Summaries must be under 250 words.
 
@@ -121,7 +120,7 @@ Guidelines:
 <ATTRIBUTES>
 %s
 </ATTRIBUTES>
-`, previousEpisodesTSV, episodeContentTSV, nodeName, nodeSummary, attributesTSV)
+`, previousEpisodesTSV, episodeContent, nodeName, nodeSummary, attributesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

@@ -190,7 +190,6 @@ determine if any facts haven't been extracted.
 }
 
 // extractEdgesAttributesPrompt extracts fact properties from text.
-// Uses TSV format for episode content to reduce token usage and improve LLM parsing.
 func extractEdgesAttributesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 	sysPrompt := `You are a helpful assistant that extracts fact properties from the provided text.`
 
@@ -198,27 +197,13 @@ func extractEdgesAttributesPrompt(context map[string]interface{}) ([]llm.Message
 	referenceTime := context["reference_time"]
 	fact := context["fact"]
 
-	ensureASCII := false
-	if val, ok := context["ensure_ascii"]; ok {
-		if b, ok := val.(bool); ok {
-			ensureASCII = b
-		}
-	}
-
-	episodeContentTSV, err := ToPromptCSV(episodeContent, ensureASCII)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal episode content: %w", err)
-	}
-
 	userPrompt := fmt.Sprintf(`
 <MESSAGE>
-%s
+%v
 </MESSAGE>
 <REFERENCE TIME>
 %v
 </REFERENCE TIME>
-
-Note: MESSAGE is provided in TSV (tab-separated values) format.
 
 Given the above MESSAGE, its REFERENCE TIME, and the following FACT, update any of its attributes based on the information provided
 in MESSAGE. Use the provided attribute descriptions to better understand how each attribute should be determined.
@@ -230,7 +215,7 @@ Guidelines:
 <FACT>
 %v
 </FACT>
-`, episodeContentTSV, referenceTime, fact)
+`, episodeContent, referenceTime, fact)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
