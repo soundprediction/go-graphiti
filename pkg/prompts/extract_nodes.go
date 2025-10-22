@@ -6,6 +6,26 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
 
+// filterEntityTypes removes the entity_type_description field from entity types
+// to reduce redundancy in prompts.
+func filterEntityTypes(entityTypes interface{}) interface{} {
+	// Handle slice of maps
+	if slice, ok := entityTypes.([]map[string]interface{}); ok {
+		filtered := make([]map[string]interface{}, len(slice))
+		for i, m := range slice {
+			filtered[i] = make(map[string]interface{})
+			for k, v := range m {
+				if k != "entity_type_description" {
+					filtered[i][k] = v
+				}
+			}
+		}
+		return filtered
+	}
+	// If not the expected type, return as-is
+	return entityTypes
+}
+
 // ExtractNodesPrompt defines the interface for extract nodes prompts.
 type ExtractNodesPrompt interface {
 	ExtractMessage() PromptVersion
@@ -60,7 +80,9 @@ Your primary task is to extract and classify the speaker and other significant e
 		}
 	}
 
-	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredEntityTypes := filterEntityTypes(entityTypes)
+	entityTypesTSV, err := ToPromptCSV(filteredEntityTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
 	}
@@ -134,7 +156,9 @@ Your primary task is to extract and classify relevant entities from JSON files`
 		}
 	}
 
-	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredEntityTypes := filterEntityTypes(entityTypes)
+	entityTypesTSV, err := ToPromptCSV(filteredEntityTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
 	}
@@ -187,7 +211,9 @@ Your primary task is to extract and classify the speaker and other significant e
 		}
 	}
 
-	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredEntityTypes := filterEntityTypes(entityTypes)
+	entityTypesTSV, err := ToPromptCSV(filteredEntityTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
 	}
@@ -306,7 +332,9 @@ func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) 
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	entityTypesTSV, err := ToPromptCSV(entityTypes, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredEntityTypes := filterEntityTypes(entityTypes)
+	entityTypesTSV, err := ToPromptCSV(filteredEntityTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal entity types: %w", err)
 	}

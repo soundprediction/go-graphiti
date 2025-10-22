@@ -6,6 +6,36 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
 
+// filterNodes removes the entity_type_description field from nodes
+// to reduce redundancy in prompts.
+func filterNodes(nodes interface{}) interface{} {
+	// Handle slice of maps
+	if slice, ok := nodes.([]map[string]interface{}); ok {
+		filtered := make([]map[string]interface{}, len(slice))
+		for i, m := range slice {
+			filtered[i] = make(map[string]interface{})
+			for k, v := range m {
+				if k != "entity_type_description" {
+					filtered[i][k] = v
+				}
+			}
+		}
+		return filtered
+	}
+	// Handle single map
+	if m, ok := nodes.(map[string]interface{}); ok {
+		filtered := make(map[string]interface{})
+		for k, v := range m {
+			if k != "entity_type_description" {
+				filtered[k] = v
+			}
+		}
+		return filtered
+	}
+	// If not the expected type, return as-is
+	return nodes
+}
+
 // DedupeNodesPrompt defines the interface for dedupe nodes prompts.
 type DedupeNodesPrompt interface {
 	Node() PromptVersion
@@ -48,7 +78,9 @@ func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	extractedNodeTSV, err := ToPromptCSV(extractedNode, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredExtractedNode := filterNodes(extractedNode)
+	extractedNodeTSV, err := ToPromptCSV(filteredExtractedNode, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extracted node: %w", err)
 	}
@@ -58,7 +90,8 @@ func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		return nil, fmt.Errorf("failed to marshal entity type description: %w", err)
 	}
 
-	existingNodesTSV, err := ToPromptCSV(existingNodes, ensureASCII)
+	filteredExistingNodes := filterNodes(existingNodes)
+	existingNodesTSV, err := ToPromptCSV(filteredExistingNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing nodes: %w", err)
 	}
@@ -131,12 +164,15 @@ func nodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
-	extractedNodesTSV, err := ToPromptCSV(extractedNodes, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredExtractedNodes := filterNodes(extractedNodes)
+	extractedNodesTSV, err := ToPromptCSV(filteredExtractedNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extracted nodes: %w", err)
 	}
 
-	existingNodesTSV, err := ToPromptCSV(existingNodes, ensureASCII)
+	filteredExistingNodes := filterNodes(existingNodes)
+	existingNodesTSV, err := ToPromptCSV(filteredExistingNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal existing nodes: %w", err)
 	}
@@ -155,7 +191,6 @@ ENTITIES and EXISTING ENTITIES are provided in TSV (tab-separated values) format
 - id: integer id of the entity
 - name: name of the entity
 - entity_type: ontological classification of the entity
-- entity_type_description: description of what the entity type represents
 - Additional columns may include entity attributes
 
 <ENTITIES>
@@ -228,7 +263,9 @@ func nodeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	nodesTSV, err := ToPromptCSV(nodes, ensureASCII)
+	// Filter out entity_type_description to reduce redundancy
+	filteredNodes := filterNodes(nodes)
+	nodesTSV, err := ToPromptCSV(filteredNodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 	}

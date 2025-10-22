@@ -1,0 +1,382 @@
+=== SYSTEM PROMPT ===
+You are a helpful assistant that determines whether or not ENTITIES extracted from a conversation are duplicates of existing entities.
+time=2025-10-22T12:08:34.990-04:00 level=DEBUG msg="Generated prompts - User Prompt follows"
+=== USER PROMPT ===
+
+<PREVIOUS MESSAGES>
+
+</PREVIOUS MESSAGES>
+<CURRENT MESSAGE>
+# Anatomy, Bony Pelvis and Lower Limb: Leg Anterior Compartment
+
+Bradley Lezak, Spencer Summers
+
+## Introduction
+
+The lower leg subdivides into four compartments which are the anterior, lateral, superficial posterior and deep posterior compartments. The anterior compartment contains the tibialis anterior, extensor hallucis longus, extensor digitorum longus, and fibularis tertius muscles, innervated by the deep peroneal nerve and supplied by the anterior tibial artery. The anterior compartment muscles function as the primary extensors of the ankle (dorsiflexion) and extensors of the toes.
+
+The anterior compartment of the lower limb is susceptible to several pathologies including acute compartment syndrome resulting in foot drop, atherosclerotic plaque buildup of the arteries, and deep vein thrombosis. The anterior compartment is the most common site for acute compartment syndrome and is a medical emergency that requires fasciotomy of the involved compartment.[1]
+
+## Structure and Function
+
+The key function of the muscles of the anterior compartment of the lower limb is dorsiflexion of the ankle and extension of the toes. Two of the muscles of the anterior compartment of the lower limb also invert the foot (tibialis anterior, flexor hallucis longus) and one weakly everts the foot (fibularis tertius).
+
+## Embryology
+
+The limb buds of the embryo begin to form about 5 weeks after fertilization as the lateral plate mesoderm migrates into the limb bud region and condenses along the central axis to eventually form the vasculature and skeletal components of the lower limb.[2][3][4] Several factors influence the formation of the limb bud vasculature and musculature including retinoic acid, sonic hedgehog (SHH), HOX genes, apical ectodermal ridge (AER) and the zone of polarizing activity (ZPA). Retinoic acid is a global organizing gradient that initiates the production of transcription factors that specify regional differentiation and limb polarization. The apical ectodermal ridge (AER) produces a fibroblast growth factor (Fgf), which promotes the outgrowth of the limb buds by stimulating mitosis.[2][3][4] The specific fibroblast growth factor involved in hindlimb development is Fgf10, which is stimulated by Tbx4.[5] The zone of polarizing activity (ZPA) produces SHH, promoting the organization of the limb bud along the anterior-posterior axis. SHH activates specific HOX genes – Hoxd-9, Hoxd-10, Hoxd-11, Hoxd-12, Hoxd-13 – which are essential in limb polarization and regional specification.[2][3][4] These genes control patterning and consequently morphology of the developing limb in the human embryo.[5] Errors in Hox gene expression can lead to malformations in the limbs.[5]
+
+## Blood Supply and Lymphatics
+
+The anterior compartment of the lower limb receives its blood supply from the anterior tibial artery, a branch of the popliteal artery. The blood supply of the lower limb originates at the popliteal artery before splitting into the anterior tibial artery and posterior tibial artery. The posterior tibial continues down the posterior aspect of the leg to supply the posterior compartment muscles as well as giving off the peroneal artery, while the anterior tibial artery courses anteriorly between the tibia and fibula, passing through the interosseous membrane to supply the anterior muscles of the lower limb. It courses inferiorly down the leg and into the foot where it eventually becomes the dorsalis pedis artery, which supplies the tarsal bones and the dorsal aspect of the metatarsals. The dorsalis pedis artery eventually anastomoses with the lateral plantar artery to form the deep plantar arch.
+
+## Nerves
+
+The deep peroneal nerve provides nerve supply to the anterior compartment of the leg. It is a branch of the common peroneal nerve, which is a branch of the sciatic nerve. The sciatic nerve branches at the apex of the popliteal fossa into the tibial and common peroneal nerves. The tibial nerve continues its course down the leg, posterior to the tibia supplying the deep muscles of the posterior leg. It terminates by dividing into the medial and lateral plantar nerves of the foot. The common peroneal nerve wraps around the neck of the fibula then divides and terminates into the superficial and deep peroneal nerves. The superficial peroneal will supply the lateral compartment of the leg, and the sensory to the dorsum of the foot. The deep peroneal will supply the motor innervation to the anterior compartment of the leg and sensation to the first dorsal toe webspace.
+
+## Surgical Considerations
+
+The anterior compartment of the lower leg is the most common site for acute compartment syndrome.[1] When the pressure inside the anterior compartment increases, tissue perfusion can be compromised, which may lead to irreversible muscle and nerve damage – muscle necrosis. The most common causes of anterior compartment syndrome are trauma (fractures, crush injuries, contusions, gunshot wounds), tight casts or dressings, extravasation of IV infusion, burns, post-ischemic swelling, bleeding disorders, and arterial injury.[6] Fractures are the most common cause of anterior compartment syndrome, accounting for over 65% of the cases.[1]
+
+Recognition of compartment syndrome is essential for the treatment and prevention of ischemia and necrosis of the neurovascular structures and muscle. The physical exam findings in compartment syndrome are often referred to as the “5 P’s”: pain with passive stretch of the toes/ankle, paresthesias, paralysis, palpable swelling, and pulselessness.[1] Pain with passive stretch is widely considered the most sensitive exam finding, while paralysis and pulselessness are late findings that are often irreversible. While largely a clinical diagnosis, the definitive diagnosis can be made with measurement of compartmental pressures. A resting compartment pressure of greater than 30 mm Hg or a “Delta P less than 300 mm Hg” (Delta P = diastolic blood pressure – compartment pressure) confirms the diagnosis of compartment syndrome.[1] In acute compartment syndrome, time is of the essence—if treated within 6 hours of ischemia, complete recovery is anticipated, whereas, after 6 hours of ischemia, necrosis occurs.[7] Definitive management of acute anterior compartment syndrome is with fasciotomy. Treatment of chronic anterior compartment syndrome can be more conservative involving activity modification, NSAIDs, stretching, orthotics, and physical therapy. Tendon transfers are a therapeutic consideration for patients with resultant foot-drop following missed compartment syndrome.
+
+Another surgical intervention involving the anterior compartment of the leg involves bypass surgery for peripheral arterial disease. The arteries of the lower limb are particularly susceptible to atherosclerotic plaque buildup and peripheral arterial disease where the arterial lumen of the lower extremities becomes progressively occluded by atherosclerotic plaque, which can lead to decreased arterial blood flow.[2][8][9] Initial PAD management is with lifestyle changes and medications; however, if this fails, surgical intervention may be required.[2][8][9] Typical procedures for PAD include angioplasty, clot removal, and bypass surgery.
+
+## Clinical Significance
+
+The anterior compartment of the leg is vital in the dorsiflexion of the foot, the extension of the toes, and inversion/eversion of the foot. For this reason, it is tested during the physical exam to assess the range of motion and motor strength of the ankles and toes. Weakened or absent motor strength can indicate muscle or nerve damage to the anterior compartment of the leg.
+</CURRENT MESSAGE>
+2
+
+Each of the following ENTITIES were extracted from the CURRENT MESSAGE.
+ENTITIES and EXISTING ENTITIES are provided in TSV (tab-separated values) format with the following columns:
+- id: integer id of the entity
+- name: name of the entity
+- entity_type: ontological classification of the entity
+- entity_type_description: description of what the entity type represents
+- Additional columns may include entity attributes
+
+<ENTITIES>
+entity_type,entity_type_description,id,name
+ANATOMY,custom type: ANATOMY,0,anterior compartment of the lower limb
+ANATOMY,custom type: ANATOMY,1,tibialis anterior
+ANATOMY,custom type: ANATOMY,2,extensor hallucis longus
+ANATOMY,custom type: ANATOMY,3,extensor digitorum longus
+ANATOMY,custom type: ANATOMY,4,fibularis tertius
+HORMONE,custom type: HORMONE,5,deep peroneal nerve
+ANATOMY,custom type: ANATOMY,6,anterior tibial artery
+ANATOMY,custom type: ANATOMY,7,popliteal artery
+ANATOMY,custom type: ANATOMY,8,posterior tibial artery
+ANATOMY,custom type: ANATOMY,9,peroneal artery
+ANATOMY,custom type: ANATOMY,10,dorsalis pedis artery
+ANATOMY,custom type: ANATOMY,11,lateral plantar artery
+ANATOMY,custom type: ANATOMY,12,deep plantar arch
+HORMONE,custom type: HORMONE,13,sciatic nerve
+HORMONE,custom type: HORMONE,14,common peroneal nerve
+HORMONE,custom type: HORMONE,15,tibial nerve
+ANATOMY,custom type: ANATOMY,16,medial plantar nerve
+ANATOMY,custom type: ANATOMY,17,lateral plantar nerve
+ANATOMY,custom type: ANATOMY,18,first dorsal toe webspace
+SYMPTOM,custom type: SYMPTOM,19,foot drop
+COMPLICATION,custom type: COMPLICATION,20,acute compartment syndrome
+COMPLICATION,custom type: COMPLICATION,21,chronic anterior compartment syndrome
+COMPLICATION,custom type: COMPLICATION,22,muscle necrosis
+SYMPTOM,custom type: SYMPTOM,23,paralysis
+SYMPTOM,custom type: SYMPTOM,24,paresthesias
+SYMPTOM,custom type: SYMPTOM,25,pulselessness
+SYMPTOM,custom type: SYMPTOM,26,pain with passive stretch
+SYMPTOM,custom type: SYMPTOM,27,palpable swelling
+CONDITION,custom type: CONDITION,28,peripheral arterial disease
+RISK_FACTOR,custom type: RISK_FACTOR,29,atherosclerotic plaque buildup
+COMPLICATION,custom type: COMPLICATION,30,fractures
+COMPLICATION,custom type: COMPLICATION,31,crush injuries
+COMPLICATION,custom type: COMPLICATION,32,contusions
+COMPLICATION,custom type: COMPLICATION,33,gunshot wounds
+MEDICAL_DEVICE,custom type: MEDICAL_DEVICE,34,tight casts
+COMPLICATION,custom type: COMPLICATION,35,extravasation of IV infusion
+COMPLICATION,custom type: COMPLICATION,36,burns
+COMPLICATION,custom type: COMPLICATION,37,post-ischemic swelling
+CONDITION,custom type: CONDITION,38,bleeding disorders
+COMPLICATION,custom type: COMPLICATION,39,arterial injury
+PROCEDURE,custom type: PROCEDURE,40,fasciotomy
+PROCEDURE,custom type: PROCEDURE,41,angioplasty
+PROCEDURE,custom type: PROCEDURE,42,clot removal
+PROCEDURE,custom type: PROCEDURE,43,bypass surgery
+PROCEDURE,custom type: PROCEDURE,44,tendon transfers
+LIFESTYLE_FACTOR,custom type: LIFESTYLE_FACTOR,45,activity modification
+MEDICATION,custom type: MEDICATION,46,NSAIDs
+EXERCISE,custom type: EXERCISE,47,stretching
+MEDICAL_DEVICE,custom type: MEDICAL_DEVICE,48,orthotics
+THERAPY,custom type: THERAPY,49,physical therapy
+MEASUREMENT,custom type: MEASUREMENT,50,range of motion
+MEASUREMENT,custom type: MEASUREMENT,51,motor strength
+ACTIVITY,custom type: ACTIVITY,52,ankle dorsiflexion
+ACTIVITY,custom type: ACTIVITY,53,toe extension
+ACTIVITY,custom type: ACTIVITY,54,foot inversion
+ACTIVITY,custom type: ACTIVITY,55,foot eversion
+ANATOMY,custom type: ANATOMY,56,limb buds
+ANATOMY,custom type: ANATOMY,57,lateral plate mesoderm
+ANATOMY,custom type: ANATOMY,58,vasculature
+ANATOMY,custom type: ANATOMY,59,skeletal components
+HORMONE,custom type: HORMONE,60,retinoic acid
+HORMONE,custom type: HORMONE,61,sonic hedgehog
+HORMONE,custom type: HORMONE,62,HOX genes
+ANATOMY,custom type: ANATOMY,63,apical ectodermal ridge
+ANATOMY,custom type: ANATOMY,64,zone of polarizing activity
+HORMONE,custom type: HORMONE,65,fibroblast growth factor
+HORMONE,custom type: HORMONE,66,Fgf10
+HORMONE,custom type: HORMONE,67,Tbx4
+HORMONE,custom type: HORMONE,68,Hoxd-9
+HORMONE,custom type: HORMONE,69,Hoxd-10
+HORMONE,custom type: HORMONE,70,Hoxd-11
+HORMONE,custom type: HORMONE,71,Hoxd-12
+HORMONE,custom type: HORMONE,72,Hoxd-13
+ANATOMY,custom type: ANATOMY,73,lower leg compartments
+ANATOMY,custom type: ANATOMY,74,anterior compartment muscles
+ANATOMY,custom type: ANATOMY,75,deep muscles of the posterior leg
+ANATOMY,custom type: ANATOMY,76,dorsum of the foot
+ANATOMY,custom type: ANATOMY,77,neck of the fibula
+ANATOMY,custom type: ANATOMY,78,apex of the popliteal fossa
+ANATOMY,custom type: ANATOMY,79,tarsal bones
+ANATOMY,custom type: ANATOMY,80,dorsal aspect of the metatarsals
+ANATOMY,custom type: ANATOMY,81,interosseous membrane
+ANATOMY,custom type: ANATOMY,82,tibia
+ANATOMY,custom type: ANATOMY,83,fibula
+PERSON,custom type: PERSON,84,Bradley Lezak
+PERSON,custom type: PERSON,85,Spencer Summers
+ACTIVITY,custom type: ACTIVITY,86,dorsiflexion
+ACTIVITY,custom type: ACTIVITY,87,extension of the toes
+ACTIVITY,custom type: ACTIVITY,88,inversion of the foot
+ACTIVITY,custom type: ACTIVITY,89,eversion of the foot
+COMPLICATION,custom type: COMPLICATION,90,muscle damage
+COMPLICATION,custom type: COMPLICATION,91,nerve damage
+SYMPTOM,custom type: SYMPTOM,92,compromised tissue perfusion
+COMPLICATION,custom type: COMPLICATION,93,irreversible muscle and nerve damage
+MEASUREMENT,custom type: MEASUREMENT,94,resting compartment pressure
+MEASUREMENT,custom type: MEASUREMENT,95,Delta P
+VITAL_SIGN,custom type: VITAL_SIGN,96,diastolic blood pressure
+COMPLICATION,custom type: COMPLICATION,97,ischemia
+ANATOMY,custom type: ANATOMY,98,clot
+ANATOMY,custom type: ANATOMY,99,arterial lumen
+ANATOMY,custom type: ANATOMY,100,lower extremities
+LIFESTYLE_FACTOR,custom type: LIFESTYLE_FACTOR,101,lifestyle changes
+MEDICATION,custom type: MEDICATION,102,medications
+TEST,custom type: TEST,103,physical exam
+HORMONE,custom type: HORMONE,104,motor innervation
+EMOTION,custom type: EMOTION,105,sensation
+ACTIVITY,custom type: ACTIVITY,106,mitosis
+ANATOMY,custom type: ANATOMY,107,limb polarization
+ANATOMY,custom type: ANATOMY,108,regional differentiation
+HORMONE,custom type: HORMONE,109,transcription factors
+ANATOMY,custom type: ANATOMY,110,patterning
+ANATOMY,custom type: ANATOMY,111,morphology
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,112,embryo
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,113,fertilization
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,114,hindlimb development
+ANATOMY,custom type: ANATOMY,115,neurovascular structures
+MEASUREMENT,custom type: MEASUREMENT,116,tissue perfusion
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,117,complete recovery
+THERAPY,custom type: THERAPY,118,therapeutic consideration
+TREATMENT,custom type: TREATMENT,119,initial PAD management
+PROCEDURE,custom type: PROCEDURE,120,surgical intervention
+TREATMENT,custom type: TREATMENT,121,conservative treatment
+ANATOMY,custom type: ANATOMY,122,bony pelvis
+ANATOMY,custom type: ANATOMY,123,leg anterior compartment
+ANATOMY,custom type: ANATOMY,124,fibularis tertius muscle
+ANATOMY,custom type: ANATOMY,125,extensor hallucis longus muscle
+ANATOMY,custom type: ANATOMY,126,extensor digitorum longus muscle
+ANATOMY,custom type: ANATOMY,127,tibialis anterior muscle
+ANATOMY,custom type: ANATOMY,128,anterior tibial artery supply
+HORMONE,custom type: HORMONE,129,deep peroneal nerve innervation
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,130,lower limb embryology
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,131,embryonic development
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,132,limb bud formation
+ANATOMY,custom type: ANATOMY,133,central axis condensation
+ANATOMY,custom type: ANATOMY,134,vascular development
+ANATOMY,custom type: ANATOMY,135,muscle development
+HORMONE,custom type: HORMONE,136,genetic regulation
+HORMONE,custom type: HORMONE,137,SHH signaling
+HORMONE,custom type: HORMONE,138,Fgf signaling
+HORMONE,custom type: HORMONE,139,ZPA signaling
+HORMONE,custom type: HORMONE,140,AER signaling
+HORMONE,custom type: HORMONE,141,Hox gene expression
+COMPLICATION,custom type: COMPLICATION,142,limb malformations
+ANATOMY,custom type: ANATOMY,143,blood supply origin
+ANATOMY,custom type: ANATOMY,144,arterial branching
+ANATOMY,custom type: ANATOMY,145,interosseous membrane passage
+ANATOMY,custom type: ANATOMY,146,dorsalis pedis artery formation
+ANATOMY,custom type: ANATOMY,147,plantar arch formation
+HORMONE,custom type: HORMONE,148,nerve branching pattern
+HORMONE,custom type: HORMONE,149,sciatic nerve division
+HORMONE,custom type: HORMONE,150,common peroneal nerve division
+HORMONE,custom type: HORMONE,151,deep peroneal nerve function
+HORMONE,custom type: HORMONE,152,sensory innervation
+ACTIVITY,custom type: ACTIVITY,153,motor function
+DIAGNOSIS,custom type: DIAGNOSIS,154,clinical diagnosis
+TEST,custom type: TEST,155,compartment pressure measurement
+PROCEDURE,custom type: PROCEDURE,156,fasciotomy indication
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,157,treatment timing
+GESTATIONAL_AGE,custom type: GESTATIONAL_AGE,158,ischemia duration
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,159,recovery prognosis
+CONDITION,custom type: CONDITION,160,PAD progression
+PROCEDURE,custom type: PROCEDURE,161,angioplasty indication
+PROCEDURE,custom type: PROCEDURE,162,bypass surgery indication
+PROCEDURE,custom type: PROCEDURE,163,tendon transfer indication
+THERAPY,custom type: THERAPY,164,physical therapy indication
+MEDICAL_DEVICE,custom type: MEDICAL_DEVICE,165,orthotics indication
+MEDICATION,custom type: MEDICATION,166,NSAID use
+EXERCISE,custom type: EXERCISE,167,stretching exercise
+LIFESTYLE_FACTOR,custom type: LIFESTYLE_FACTOR,168,activity restriction
+TEST,custom type: TEST,169,muscle function assessment
+TEST,custom type: TEST,170,range of motion testing
+TEST,custom type: TEST,171,motor strength testing
+SYMPTOM,custom type: SYMPTOM,172,physical exam finding
+SYMPTOM,custom type: SYMPTOM,173,late finding
+SYMPTOM,custom type: SYMPTOM,174,sensitive exam finding
+DIAGNOSIS,custom type: DIAGNOSIS,175,definitive diagnosis
+COMPLICATION,custom type: COMPLICATION,176,clinical emergency
+PROCEDURE,custom type: PROCEDURE,177,surgical emergency
+SYMPTOM,custom type: SYMPTOM,178,neurological deficit
+COMPLICATION,custom type: COMPLICATION,179,vascular compromise
+ANATOMY,custom type: ANATOMY,180,muscle compartment
+ANATOMY,custom type: ANATOMY,181,lower limb anatomy
+ANATOMY,custom type: ANATOMY,182,anterior leg muscles
+ANATOMY,custom type: ANATOMY,183,posterior leg muscles
+ANATOMY,custom type: ANATOMY,184,lateral compartment
+ANATOMY,custom type: ANATOMY,185,superficial posterior compartment
+ANATOMY,custom type: ANATOMY,186,deep posterior compartment
+RISK_FACTOR,custom type: RISK_FACTOR,187,compartment syndrome risk
+COMPLICATION,custom type: COMPLICATION,188,trauma-related compartment syndrome
+COMPLICATION,custom type: COMPLICATION,189,cast-related compartment syndrome
+COMPLICATION,custom type: COMPLICATION,190,IV complication
+COMPLICATION,custom type: COMPLICATION,191,burn-related compartment syndrome
+COMPLICATION,custom type: COMPLICATION,192,ischemia-reperfusion injury
+CONDITION,custom type: CONDITION,193,coagulopathy
+COMPLICATION,custom type: COMPLICATION,194,vascular injury
+PROCEDURE,custom type: PROCEDURE,195,surgical management
+TREATMENT,custom type: TREATMENT,196,nonoperative management
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,197,rehabilitation
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,198,functional recovery
+ANATOMY,custom type: ANATOMY,199,anatomical structure
+ANATOMY,custom type: ANATOMY,200,neurovascular bundle
+COMPLICATION,custom type: COMPLICATION,201,arterial occlusion
+RISK_FACTOR,custom type: RISK_FACTOR,202,plaque accumulation
+MEASUREMENT,custom type: MEASUREMENT,203,lumen narrowing
+COMPLICATION,custom type: COMPLICATION,204,tissue ischemia
+COMPLICATION,custom type: COMPLICATION,205,muscle atrophy
+COMPLICATION,custom type: COMPLICATION,206,nerve palsy
+COMPLICATION,custom type: COMPLICATION,207,foot deformity
+SYMPTOM,custom type: SYMPTOM,208,gait abnormality
+SYMPTOM,custom type: SYMPTOM,209,mobility limitation
+SYMPTOM,custom type: SYMPTOM,210,pain assessment
+SYMPTOM,custom type: SYMPTOM,211,sensory deficit
+SYMPTOM,custom type: SYMPTOM,212,motor deficit
+TEST,custom type: TEST,213,neurological examination
+TEST,custom type: TEST,214,vascular examination
+TEST,custom type: TEST,215,diagnostic criterion
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,216,treatment outcome
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,217,patient prognosis
+COMPLICATION,custom type: COMPLICATION,218,medical emergency
+DIAGNOSIS,custom type: DIAGNOSIS,219,clinical recognition
+DIAGNOSIS,custom type: DIAGNOSIS,220,diagnostic delay
+COMPLICATION,custom type: COMPLICATION,221,irreversible damage
+PROCEDURE,custom type: PROCEDURE,222,time-sensitive intervention
+PROCEDURE,custom type: PROCEDURE,223,surgical timing
+PROCEDURE,custom type: PROCEDURE,224,fasciotomy procedure
+PROCEDURE,custom type: PROCEDURE,225,compartment decompression
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,226,limb salvage
+SYMPTOM,custom type: SYMPTOM,227,functional impairment
+SYMPTOM,custom type: SYMPTOM,228,disability
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,229,recovery timeline
+TREATMENT,custom type: TREATMENT,230,long-term management
+CONDITION,custom type: CONDITION,231,chronic condition
+CONDITION,custom type: CONDITION,232,acute condition
+CONDITION,custom type: CONDITION,233,pathological process
+ACTIVITY,custom type: ACTIVITY,234,physiological function
+ANATOMY,custom type: ANATOMY,235,anatomical compartment
+ANATOMY,custom type: ANATOMY,236,muscle group
+HORMONE,custom type: HORMONE,237,nerve plexus
+ANATOMY,custom type: ANATOMY,238,arterial supply
+ANATOMY,custom type: ANATOMY,239,venous drainage
+ANATOMY,custom type: ANATOMY,240,lymphatic drainage
+HORMONE,custom type: HORMONE,241,embryonic signaling pathway
+HORMONE,custom type: HORMONE,242,genetic control of development
+FETAL_DEVELOPMENT,custom type: FETAL_DEVELOPMENT,243,developmental biology
+ANATOMY,custom type: ANATOMY,244,clinical anatomy
+ANATOMY,custom type: ANATOMY,245,surgical anatomy
+COMPLICATION,custom type: COMPLICATION,246,peripheral nerve injury
+COMPLICATION,custom type: COMPLICATION,247,muscle injury
+COMPLICATION,custom type: COMPLICATION,248,vascular injury in lower limb
+COMPLICATION,custom type: COMPLICATION,249,orthopedic trauma
+COMPLICATION,custom type: COMPLICATION,250,soft tissue injury
+COMPLICATION,custom type: COMPLICATION,251,neurological complication
+COMPLICATION,custom type: COMPLICATION,252,vascular complication
+COMPLICATION,custom type: COMPLICATION,253,postoperative complication
+THERAPY,custom type: THERAPY,254,rehabilitation therapy
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,255,physical rehabilitation
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,256,functional rehabilitation
+POSTPARTUM_RECOVERY,custom type: POSTPARTUM_RECOVERY,257,mobility recovery
+EXERCISE,custom type: EXERCISE,258,gait training
+MEDICAL_DEVICE,custom type: MEDICAL_DEVICE,259,orthotic device
+MEDICAL_DEVICE,custom type: MEDICAL_DEVICE,260,assistive device
+MEDICAL_DEVICE,custom type: MEDICAL_DEVICE,261,mobility aid
+TREATMENT,custom type: TREATMENT,262,pain management
+MEDICATION,custom type: MEDICATION,263,anti-inflammatory medication
+MEDICATION,custom type: MEDICATION,264,nonsteroidal anti-inflammatory drugs
+EXERCISE,custom type: EXERCISE,265,exercise program
+EXERCISE,custom type: EXERCISE,266,stretching program
+EXERCISE,custom type: EXERCISE,267,muscle strengthening
+THERAPY,custom type: THERAPY,268,neuromuscular reeducation
+TEST,custom type: TEST,269,gait analysis
+TEST,custom type: TEST,270,motion analysis
+TEST,custom type: TEST,271,strength testing
+TEST,custom type: TEST,272,sensation testing
+TEST,custom type: TEST,273,nerve conduction study
+TEST,custom type: TEST,274,electromyography
+
+</ENTITIES>
+
+<EXISTING ENTITIES>
+
+</EXISTING ENTITIES>
+
+For each of the above ENTITIES, determine if the entity is a duplicate of any of the EXISTING ENTITIES.
+
+Entities should only be considered duplicates if they refer to the *same real-world object or concept*.
+
+Do NOT mark entities as duplicates if:
+- They are related but distinct.
+- They have similar names or purposes but refer to separate instances or concepts.
+
+Task:
+Your response will be json called entity_resolutions with a list that contains one entry for each entity.
+
+For every entity, return an object with the following quantities:
+
+	- "id": integer id from ENTITIES,
+	- "name": the best full name for the entity (preserve the original name unless a duplicate has a more complete name),
+	- "duplicate_idx": the idx of the EXISTING ENTITY that is the best duplicate match, or -1 if there is no duplicate,
+	- "duplicates": a sorted list of all idx values from EXISTING ENTITIES that refer to duplicates (deduplicate the list, use [] when none or unsure)
+
+- Only use idx values that appear in EXISTING ENTITIES.
+- Never fabricate entities or indices.
+- Output TSV; use the SCHEMA
+<SCHEMA>
+id: string
+name: string
+duplicate_idx: int
+duplicates: list[int]
+</SCHEMA>
+
+- Refer to the EXAMPLE
+<EXAMPLE>
+id\tname\tduplicate_idx\tduplicates
+0\t"anterior compartment of the lower leg"\t-1\t[]
+1\t"tibialis anterior"\t-1\t[],
+2\t"extensor hallucis longus"\t-1\t[],
+3\t"anterior tibialis"\t1\t[1]
+
+</EXAMPLE>
+
+Finish your response with a new line
+
+=== END PROMPTS ===
