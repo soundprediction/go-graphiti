@@ -108,7 +108,7 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 
 	// Prepare edge types context as a slice for TSV formatting
 	edgeTypesContext := []map[string]interface{}{}
-	if edgeTypes != nil {
+	if edgeTypeMap != nil {
 		for typeName := range edgeTypes {
 			edgeTypesContext = append(edgeTypesContext, map[string]interface{}{
 				"fact_type_name":        typeName,

@@ -24,6 +24,26 @@ func (e *ExtractEdgesVersions) Edge() PromptVersion              { return e.Edge
 func (e *ExtractEdgesVersions) Reflexion() PromptVersion         { return e.ReflexionPrompt }
 func (e *ExtractEdgesVersions) ExtractAttributes() PromptVersion { return e.ExtractAttributesPrompt }
 
+// filterEdgeTypes removes the fact_type_description field from edge types
+// to reduce redundancy in prompts.
+func filterEdgeTypes(edgeTypes interface{}) interface{} {
+	// Handle slice of maps
+	if slice, ok := edgeTypes.([]map[string]interface{}); ok {
+		filtered := make([]map[string]interface{}, len(slice))
+		for i, m := range slice {
+			filtered[i] = make(map[string]interface{})
+			for k, v := range m {
+				if k != "fact_type_description" {
+					filtered[i][k] = v
+				}
+			}
+		}
+		return filtered
+	}
+	// If not the expected type, return as-is
+	return edgeTypes
+}
+
 // edgePrompt extracts fact triples from text.
 // Uses TSV format for episodes and edge types to reduce token usage and improve LLM parsing.
 func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
@@ -45,7 +65,9 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		}
 	}
 
-	edgeTypesTSV, err := ToPromptCSV(edgeTypes, ensureASCII)
+	// Filter out fact_type_description to reduce redundancy
+	filteredEdgeTypes := filterEdgeTypes(edgeTypes)
+	edgeTypesTSV, err := ToPromptCSV(filteredEdgeTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal edge types: %w", err)
 	}
@@ -53,6 +75,11 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 	previousEpisodesTSV, err := ToPromptCSV(previousEpisodes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
+	}
+
+	nodesTSV, err := ToPromptCSV(nodes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 	}
 
 	userPrompt := fmt.Sprintf(`
@@ -69,14 +96,14 @@ func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 </CURRENT_MESSAGE>
 
 <ENTITIES>
-%v
+%s
 </ENTITIES>
 
 <REFERENCE_TIME>
 %v  # ISO 8601 (UTC); used to resolve relative time mentions
 </REFERENCE_TIME>
 
-Note: FACT TYPES and PREVIOUS_MESSAGES are provided in TSV (tab-separated values) format.
+Note: FACT TYPES, PREVIOUS_MESSAGES, and ENTITIES are provided in TSV (tab-separated values) format.
 
 # TASK
 Extract all factual relationships between the given ENTITIES based on the CURRENT MESSAGE.
@@ -131,7 +158,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 0\t"CAUSES"\t2\t"If that pressure is not relieved\tpermanent facial nerve palsy can ensue"\t"Acute Facial Palsy (AFP) causes facial nerve palsy"\t"2025-09-27T00:00:00Z"\tnull
 
 </EXAMPLE>
-`, edgeTypesTSV, previousEpisodesTSV, episodeContent, nodes, referenceTime, customPrompt)
+`, edgeTypesTSV, previousEpisodesTSV, episodeContent, nodesTSV, referenceTime, customPrompt)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
@@ -161,6 +188,11 @@ func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 		return nil, fmt.Errorf("failed to marshal previous episodes: %w", err)
 	}
 
+	nodesTSV, err := ToPromptCSV(nodes, ensureASCII)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal nodes: %w", err)
+	}
+
 	userPrompt := fmt.Sprintf(`
 <PREVIOUS MESSAGES>
 %s
@@ -170,18 +202,18 @@ func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message,
 </CURRENT MESSAGE>
 
 <EXTRACTED ENTITIES>
-%v
+%s
 </EXTRACTED ENTITIES>
 
 <EXTRACTED FACTS>
 %v
 </EXTRACTED FACTS>
 
-Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
+Note: PREVIOUS MESSAGES and EXTRACTED ENTITIES are provided in TSV (tab-separated values) format.
 
 Given the above MESSAGES, list of EXTRACTED ENTITIES entities, and list of EXTRACTED FACTS;
 determine if any facts haven't been extracted.
-`, previousEpisodesTSV, episodeContent, nodes, extractedFacts)
+`, previousEpisodesTSV, episodeContent, nodesTSV, extractedFacts)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),

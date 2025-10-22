@@ -174,7 +174,9 @@ func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
 		return nil, fmt.Errorf("failed to marshal edge invalidation candidates: %w", err)
 	}
 
-	edgeTypesTSV, err := ToPromptCSV(edgeTypes, ensureASCII)
+	// Filter out fact_type_description to reduce redundancy
+	filteredEdgeTypes := filterEdgeTypes(edgeTypes)
+	edgeTypesTSV, err := ToPromptCSV(filteredEdgeTypes, ensureASCII)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal edge types: %w", err)
 	}
@@ -204,8 +206,8 @@ You have THREE separate lists: NEW FACT (string), EXISTING FACTS (TSV format wit
 1. DUPLICATE DETECTION:
    - If the NEW FACT represents identical factual information as any fact in EXISTING FACTS, identify which ones.
    - Facts with similar information that contain key differences should NOT be marked as duplicates.
-   - Return a comma-separated list of id values from EXISTING FACTS that are duplicates.
-   - If no duplicates, return an empty string.
+   - Return a list of id values from EXISTING FACTS that are duplicates.
+   - If no duplicates, return an empty list.
 
 2. FACT TYPE CLASSIFICATION:
    - Given the predefined FACT TYPES, determine if the NEW FACT should be classified as one of these types.
@@ -213,12 +215,12 @@ You have THREE separate lists: NEW FACT (string), EXISTING FACTS (TSV format wit
 
 3. CONTRADICTION DETECTION:
    - Based on FACT INVALIDATION CANDIDATES and NEW FACT, determine which facts the new fact contradicts.
-   - Return a comma-separated list of id values from FACT INVALIDATION CANDIDATES.
-   - If no contradictions, return an empty string.
+   - Return a list of id values from FACT INVALIDATION CANDIDATES.
+   - If no contradictions, return an empty list.
 
 IMPORTANT:
-- duplicate_facts: Use ONLY 'id' values from EXISTING FACTS as a comma-separated string (e.g., "1,3,5" or "" for none)
-- contradicted_facts: Use ONLY 'id' values from FACT INVALIDATION CANDIDATES as a comma-separated string (e.g., "0,2" or "" for none)
+- duplicate_facts: Use ONLY 'id' values from EXISTING FACTS as a list of strings
+- contradicted_facts: Use ONLY 'id' values from FACT INVALIDATION CANDIDATES as a list of strings
 - These are two separate lists with independent id ranges
 
 Guidelines:
@@ -229,14 +231,14 @@ Output Format:
 Provide your answer as a single-row TSV (tab-separated values) with the following schema:
 
 <SCHEMA>
-duplicate_facts: string (comma-separated integers or empty)
-contradicted_facts: string (comma-separated integers or empty)
+duplicate_facts: list[string] 
+contradicted_facts: list[string]
 fact_type: string
 </SCHEMA>
 
 <EXAMPLE>
-duplicate_facts	contradicted_facts	fact_type
-1,3	0,2	KNOWS
+duplicate_facts\tcontradicted_facts\tfact_type
+["019a0cd8-20db-7334-b493-f7242f062cce","019a0cd8-20db-7353-b922-cfc410ea9396"]\t["000b7f15-aa7b-4270-b517-e433a98e4931"]\tKNOWS
 
 </EXAMPLE>
 
