@@ -1339,6 +1339,12 @@ func (c *Client) Close(ctx context.Context) error {
 	return c.driver.Close()
 }
 
+// ExecuteQuery executes a raw Cypher query against the graph database.
+// This exposes the underlying driver's query execution capability.
+func (c *Client) ExecuteQuery(ctx context.Context, query string, params map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	return c.driver.ExecuteQuery(query, params)
+}
+
 // AddTriplet adds a triplet (subject-predicate-object) directly to the knowledge graph.
 // This is an exact translation of the Python Graphiti.add_triplet() method.
 func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *types.Edge, targetNode *types.Node, createEmbeddings bool) (*types.AddTripletResults, error) {
