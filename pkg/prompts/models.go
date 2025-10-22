@@ -39,7 +39,7 @@ type EntitySummary struct {
 
 // ExtractedNodeAttributes represents extracted attributes and summary for a node
 type ExtractedNodeAttributes struct {
-	NodeID int    `json:"node_id" mapstructure:"node_id" csv:"node_id"`
+	NodeID  int    `json:"node_id" mapstructure:"node_id" csv:"node_id"`
 	Summary string `json:"summary" mapstructure:"summary" csv:"summary"`
 }
 type ExtractedEdge struct {
@@ -79,16 +79,16 @@ type NodeResolutions struct {
 
 // EdgeDuplicate represents edge duplicate detection result
 type EdgeDuplicate struct {
-	DuplicateFacts    []int  `json:"duplicate_facts"`
-	ContradictedFacts []int  `json:"contradicted_facts"`
-	FactType          string `json:"fact_type"`
+	DuplicateFacts    []string `json:"duplicate_facts"`
+	ContradictedFacts []string `json:"contradicted_facts"`
+	FactType          string   `json:"fact_type"`
 }
 
 // EdgeDuplicateTSV represents edge duplicate detection result from TSV
 type EdgeDuplicateTSV struct {
-	DuplicateFacts    string `json:"duplicate_facts" mapstructure:"duplicate_facts" csv:"duplicate_facts"`
-	ContradictedFacts string `json:"contradicted_facts" mapstructure:"contradicted_facts" csv:"contradicted_facts"`
-	FactType          string `json:"fact_type" mapstructure:"fact_type" csv:"fact_type"`
+	DuplicateFacts    []string `json:"duplicate_facts" mapstructure:"duplicate_facts" csv:"duplicate_facts"`
+	ContradictedFacts []string `json:"contradicted_facts" mapstructure:"contradicted_facts" csv:"contradicted_facts"`
+	FactType          string   `json:"fact_type" mapstructure:"fact_type" csv:"fact_type"`
 }
 
 // UniqueFact represents a unique fact
