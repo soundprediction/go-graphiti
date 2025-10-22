@@ -2,7 +2,6 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -107,9 +106,20 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return []*types.Edge{}, nil
 	}
 
-	edgeTypeMapJson, _ := json.Marshal(edgeTypeMap)
+	// Prepare edge types context as a slice for TSV formatting
+	edgeTypesContext := []map[string]interface{}{}
+	if edgeTypes != nil {
+		for typeName := range edgeTypes {
+			edgeTypesContext = append(edgeTypesContext, map[string]interface{}{
+				"fact_type_name":        typeName,
+				"fact_type_description": fmt.Sprintf("custom type: %s", typeName),
+				"fact_type_signature":   edgeTypeMap[typeName], // Include the signature for source/target entity types
+			})
+		}
+	}
 
 	// Prepare context for LLM
+	// Note: Data is passed as slices for TSV formatting in prompts
 	nodeContexts := make([]map[string]interface{}, len(nodes))
 	for i, node := range nodes {
 		nodeContexts[i] = map[string]interface{}{
@@ -119,22 +129,20 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		}
 	}
 
-	nodeContextsJson, _ := json.Marshal(nodeContexts)
-
 	previousEpisodeContents := make([]string, len(previousEpisodes))
 	for i, ep := range previousEpisodes {
 		previousEpisodeContents[i] = ep.Summary
 	}
-	previousEpisodeContentsJson, _ := json.Marshal(previousEpisodeContents)
 
 	promptContext := map[string]interface{}{
 		"episode_content":   episode.Content,
-		"nodes":             string(nodeContextsJson),
-		"previous_episodes": string(previousEpisodeContentsJson),
+		"nodes":             nodeContexts,
+		"previous_episodes": previousEpisodeContents,
 		"reference_time":    episode.ValidFrom,
-		"edge_types":        string(edgeTypeMapJson),
+		"edge_types":        edgeTypesContext,
 		"custom_prompt":     "",
 		"ensure_ascii":      true,
+		"logger":            eo.logger,
 	}
 
 	// Extract edges using LLM
@@ -525,8 +533,6 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 		}
 	}
 
-	edgeTypesContext, _ := json.Marshal(edgeTypes)
-
 	// Build edge_types_context for deduplication prompt
 	// Note: This context is simpler than the extraction context - it only includes name and description
 	// Equivalent to Python (lines 497-507):
@@ -542,15 +548,25 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 	//     else []
 	// )
 
-	// For now, we don't have edge_type_candidates in this function
-	// This would need to be passed from the calling code if custom edge types are used
+	// Convert edge types map to slice format for TSV formatting in prompts
+	edgeTypesContext := []map[string]interface{}{}
+	if edgeTypes != nil {
+		for typeName := range edgeTypes {
+			edgeTypesContext = append(edgeTypesContext, map[string]interface{}{
+				"fact_type_name":        typeName,
+				"fact_type_description": fmt.Sprintf("custom type: %s", typeName),
+			})
+		}
+	}
 
+	// Note: Data is passed as slices for TSV formatting in prompts
 	promptContext := map[string]interface{}{
 		"existing_edges":               relatedEdgesContext,
 		"new_edge":                     extractedEdge.Summary,
 		"edge_invalidation_candidates": invalidationCandidatesContext,
-		"edge_types":                   string(edgeTypesContext),
+		"edge_types":                   edgeTypesContext,
 		"ensure_ascii":                 true,
+		"logger":                       eo.logger,
 	}
 
 	// Use LLM to resolve duplicates and contradictions
