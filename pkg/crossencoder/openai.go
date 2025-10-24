@@ -26,7 +26,7 @@ func NewOpenAIRerankerClient(llmClient llm.Client, config Config) *OpenAIReranke
 	if config.MaxConcurrency <= 0 {
 		config.MaxConcurrency = 10
 	}
-	
+
 	return &OpenAIRerankerClient{
 		client:    llmClient,
 		config:    config,
@@ -50,17 +50,17 @@ func (c *OpenAIRerankerClient) Rank(ctx context.Context, query string, passages 
 
 	results := make([]passageResult, len(passages))
 	var wg sync.WaitGroup
-	
+
 	// Process passages concurrently with semaphore for rate limiting
 	for i, passage := range passages {
 		wg.Add(1)
 		go func(idx int, p string) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			c.semaphore <- struct{}{}
 			defer func() { <-c.semaphore }()
-			
+
 			score, err := c.scorePassage(ctx, query, p)
 			results[idx] = passageResult{
 				passage: p,
@@ -70,9 +70,9 @@ func (c *OpenAIRerankerClient) Rank(ctx context.Context, query string, passages 
 			}
 		}(i, passage)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Check for errors and collect successful results
 	var rankedPassages []RankedPassage
 	for _, result := range results {
@@ -84,12 +84,12 @@ func (c *OpenAIRerankerClient) Rank(ctx context.Context, query string, passages 
 			Score:   result.score,
 		})
 	}
-	
+
 	// Sort by score descending
 	sort.Slice(rankedPassages, func(i, j int) bool {
 		return rankedPassages[i].Score > rankedPassages[j].Score
 	})
-	
+
 	return rankedPassages, nil
 }
 
@@ -105,24 +105,24 @@ func (c *OpenAIRerankerClient) scorePassage(ctx context.Context, query, passage 
 %s
 </QUERY>`, passage, query)),
 	}
-	
+
 	// For now, we'll use a simplified scoring approach since we don't have
 	// direct access to OpenAI's logprobs in our LLM abstraction
 	// This is a placeholder implementation that would need to be enhanced
 	// with actual logprob support or use the raw OpenAI client
-	
+
 	response, err := c.client.Chat(ctx, messages)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get response: %w", err)
 	}
-	
+
 	// Simple heuristic scoring based on response content
 	// In a real implementation, you'd want to use logprobs for better accuracy
 	content := response.Content
 	if len(content) == 0 {
 		return 0.5, nil // neutral score if no response
 	}
-	
+
 	// Check if response starts with "True" (case-insensitive)
 	firstWord := ""
 	for i, r := range content {
@@ -134,12 +134,12 @@ func (c *OpenAIRerankerClient) scorePassage(ctx context.Context, query, passage 
 	if firstWord == "" {
 		firstWord = content
 	}
-	
+
 	switch firstWord {
 	case "True", "true", "TRUE", "Yes", "yes", "YES":
 		return 0.8, nil // High relevance score
 	case "False", "false", "FALSE", "No", "no", "NO":
-		return 0.2, nil // Low relevance score  
+		return 0.2, nil // Low relevance score
 	default:
 		return 0.5, nil // Neutral score for ambiguous responses
 	}

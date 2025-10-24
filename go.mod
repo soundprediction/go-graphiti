@@ -10,12 +10,12 @@ require (
 )
 
 require (
+	github.com/duckdb/duckdb-go/v2 v2.5.0
 	github.com/firebase/genkit/go v1.0.1
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/kaptinlin/jsonrepair v0.2.4
 	github.com/kuzudb/go-kuzu v0.11.3
-	github.com/marcboeker/go-duckdb/v2 v2.4.3
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 )
@@ -35,6 +35,8 @@ require (
 	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.21 // indirect
 	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.21 // indirect
 	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.21 // indirect
+	github.com/duckdb/duckdb-go/arrowmapping v0.0.22 // indirect
+	github.com/duckdb/duckdb-go/mapping v0.0.22 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -55,8 +57,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
-	github.com/marcboeker/go-duckdb/arrowmapping v0.0.21 // indirect
-	github.com/marcboeker/go-duckdb/mapping v0.0.21 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mbleigh/raymond v0.0.0-20250414171441-6b3a58ab9e0a // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect

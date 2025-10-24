@@ -20,13 +20,13 @@ func TestEntityNode(t *testing.T) {
 		{
 			name: "basic entity node",
 			node: &types.Node{
-				ID:        "entity-1",
-				Name:      "test_entity_1",
-				Type:      types.EntityNodeType,
-				GroupID:   groupID,
+				ID:         "entity-1",
+				Name:       "test_entity_1",
+				Type:       types.EntityNodeType,
+				GroupID:    groupID,
 				EntityType: "Person",
-				CreatedAt: now,
-				Summary:   "test_entity_1 summary",
+				CreatedAt:  now,
+				Summary:    "test_entity_1 summary",
 				Metadata: map[string]interface{}{
 					"age":      30,
 					"location": "New York",
@@ -36,35 +36,35 @@ func TestEntityNode(t *testing.T) {
 		{
 			name: "entity with attributes",
 			node: &types.Node{
-				ID:        "entity-2",
-				Name:      "test_entity_2",
-				Type:      types.EntityNodeType,
-				GroupID:   groupID,
+				ID:         "entity-2",
+				Name:       "test_entity_2",
+				Type:       types.EntityNodeType,
+				GroupID:    groupID,
 				EntityType: "Person2",
-				CreatedAt: now,
-				Summary:   "test_entity_2 summary",
+				CreatedAt:  now,
+				Summary:    "test_entity_2 summary",
 				Metadata: map[string]interface{}{
-					"age":         25,
-					"location":    "Los Angeles",
-					"occupation":  "Engineer",
-					"interests":   []string{"AI", "Music", "Sports"},
+					"age":        25,
+					"location":   "Los Angeles",
+					"occupation": "Engineer",
+					"interests":  []string{"AI", "Music", "Sports"},
 				},
 			},
 		},
 		{
 			name: "location entity",
 			node: &types.Node{
-				ID:        "entity-3",
-				Name:      "test_entity_3",
-				Type:      types.EntityNodeType,
-				GroupID:   groupID,
+				ID:         "entity-3",
+				Name:       "test_entity_3",
+				Type:       types.EntityNodeType,
+				GroupID:    groupID,
 				EntityType: "Location",
-				CreatedAt: now,
-				Summary:   "test_entity_3 summary",
+				CreatedAt:  now,
+				Summary:    "test_entity_3 summary",
 				Metadata: map[string]interface{}{
-					"population":  1000000,
-					"country":     "USA",
-					"timezone":    "PST",
+					"population": 1000000,
+					"country":    "USA",
+					"timezone":   "PST",
 				},
 			},
 		},
@@ -93,14 +93,14 @@ func TestEpisodicNode(t *testing.T) {
 		{
 			name: "message episode",
 			node: &types.Node{
-				ID:        "episode-1",
-				Name:      "test_episode",
-				Type:      types.EpisodicNodeType,
-				GroupID:   groupID,
+				ID:          "episode-1",
+				Name:        "test_episode",
+				Type:        types.EpisodicNodeType,
+				GroupID:     groupID,
 				EpisodeType: types.ConversationEpisodeType,
-				CreatedAt: now,
-				Content:   "Alice likes Bob",
-				Reference: now,
+				CreatedAt:   now,
+				Content:     "Alice likes Bob",
+				Reference:   now,
 				Metadata: map[string]interface{}{
 					"source":             "message",
 					"source_description": "conversation message",
@@ -110,14 +110,14 @@ func TestEpisodicNode(t *testing.T) {
 		{
 			name: "document episode",
 			node: &types.Node{
-				ID:        "episode-2",
-				Name:      "test_episode_2",
-				Type:      types.EpisodicNodeType,
-				GroupID:   groupID,
+				ID:          "episode-2",
+				Name:        "test_episode_2",
+				Type:        types.EpisodicNodeType,
+				GroupID:     groupID,
 				EpisodeType: types.DocumentEpisodeType,
-				CreatedAt: now,
-				Content:   "Bob adores Alice",
-				Reference: now,
+				CreatedAt:   now,
+				Content:     "Bob adores Alice",
+				Reference:   now,
 				Metadata: map[string]interface{}{
 					"source":             "document",
 					"source_description": "meeting notes",
@@ -236,8 +236,8 @@ func TestNodeValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.node.ID != "" && 
-				tt.node.Name != "" && 
+			isValid := tt.node.ID != "" &&
+				tt.node.Name != "" &&
 				tt.node.GroupID != ""
 
 			assert.Equal(t, tt.isValid, isValid)
@@ -303,10 +303,10 @@ func TestNodeTimeOperations(t *testing.T) {
 		Type:      types.EntityNodeType,
 		GroupID:   "group",
 		CreatedAt: now,
-		ValidFrom:  now,
-		UpdatedAt:  past,
+		ValidFrom: now,
+		UpdatedAt: past,
 		Metadata: map[string]interface{}{
-			"expires_at":  future,
+			"expires_at": future,
 		},
 	}
 
@@ -344,12 +344,12 @@ func TestNodeLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			node := &types.Node{
-				ID:        "labeled-node",
-				Name:      "Labeled Node",
-				Type:      types.EntityNodeType,
-				GroupID:   "group",
+				ID:         "labeled-node",
+				Name:       "Labeled Node",
+				Type:       types.EntityNodeType,
+				GroupID:    "group",
 				EntityType: "Labeled",
-				CreatedAt: time.Now(),
+				CreatedAt:  time.Now(),
 			}
 
 			// Test that node was created successfully

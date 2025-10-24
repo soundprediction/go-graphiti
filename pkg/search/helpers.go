@@ -71,7 +71,7 @@ func SearchResultsToContextString(results *HybridSearchResult, ensureASCII bool)
 			}
 			episodeJSON = append(episodeJSON, map[string]interface{}{
 				"source_description": sourceDesc,
-				"content":           node.Content,
+				"content":            node.Content,
 			})
 		}
 	}
@@ -182,22 +182,22 @@ func GetDefaultSearchConfig() *SearchConfig {
 // GetSearchConfigByName returns a predefined search configuration by name
 func GetSearchConfigByName(name string) *SearchConfig {
 	configs := map[string]*SearchConfig{
-		"combined_hybrid_rrf":             CombinedHybridSearchRRF,
-		"combined_hybrid_mmr":             CombinedHybridSearchMMR,
-		"combined_hybrid_cross_encoder":   CombinedHybridSearchCrossEncoder,
-		"edge_hybrid_rrf":                 EdgeHybridSearchRRF,
-		"edge_hybrid_mmr":                 EdgeHybridSearchMMR,
-		"edge_hybrid_node_distance":       EdgeHybridSearchNodeDistance,
-		"edge_hybrid_episode_mentions":    EdgeHybridSearchEpisodeMentions,
-		"edge_hybrid_cross_encoder":       EdgeHybridSearchCrossEncoder,
-		"node_hybrid_rrf":                 NodeHybridSearchRRF,
-		"node_hybrid_mmr":                 NodeHybridSearchMMR,
-		"node_hybrid_node_distance":       NodeHybridSearchNodeDistance,
-		"node_hybrid_episode_mentions":    NodeHybridSearchEpisodeMentions,
-		"node_hybrid_cross_encoder":       NodeHybridSearchCrossEncoder,
-		"community_hybrid_rrf":            CommunityHybridSearchRRF,
-		"community_hybrid_mmr":            CommunityHybridSearchMMR,
-		"community_hybrid_cross_encoder":  CommunityHybridSearchCrossEncoder,
+		"combined_hybrid_rrf":            CombinedHybridSearchRRF,
+		"combined_hybrid_mmr":            CombinedHybridSearchMMR,
+		"combined_hybrid_cross_encoder":  CombinedHybridSearchCrossEncoder,
+		"edge_hybrid_rrf":                EdgeHybridSearchRRF,
+		"edge_hybrid_mmr":                EdgeHybridSearchMMR,
+		"edge_hybrid_node_distance":      EdgeHybridSearchNodeDistance,
+		"edge_hybrid_episode_mentions":   EdgeHybridSearchEpisodeMentions,
+		"edge_hybrid_cross_encoder":      EdgeHybridSearchCrossEncoder,
+		"node_hybrid_rrf":                NodeHybridSearchRRF,
+		"node_hybrid_mmr":                NodeHybridSearchMMR,
+		"node_hybrid_node_distance":      NodeHybridSearchNodeDistance,
+		"node_hybrid_episode_mentions":   NodeHybridSearchEpisodeMentions,
+		"node_hybrid_cross_encoder":      NodeHybridSearchCrossEncoder,
+		"community_hybrid_rrf":           CommunityHybridSearchRRF,
+		"community_hybrid_mmr":           CommunityHybridSearchMMR,
+		"community_hybrid_cross_encoder": CommunityHybridSearchCrossEncoder,
 	}
 
 	return configs[name]

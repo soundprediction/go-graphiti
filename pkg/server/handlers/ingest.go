@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/server/dto"
 	"github.com/soundprediction/go-graphiti/pkg/types"
-	"github.com/soundprediction/go-graphiti"
 )
 
 // IngestHandler handles data ingestion requests

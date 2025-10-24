@@ -34,7 +34,7 @@ func main() {
 	// 1. Create Kuzu Driver (Embedded Graph Database)
 	// ========================================
 	log.Println("\n📊 Setting up Kuzu embedded graph database...")
-	
+
 	kuzuDriver, err := driver.NewKuzuDriver("./example_graph.db")
 	if err != nil {
 		log.Fatalf("Failed to create Kuzu driver: %v", err)
@@ -53,14 +53,14 @@ func main() {
 	// 2. Create Ollama LLM Client (Local Inference)
 	// ========================================
 	log.Println("\n🧠 Setting up Ollama local LLM client...")
-	
+
 	// Create Ollama client using OpenAI-compatible API
 	// Assumes Ollama is running locally with a model like llama2:7b
 	ollama, err := llm.NewOpenAIClient("", llm.Config{
 		BaseURL:     "http://localhost:11434", // Ollama's OpenAI-compatible endpoint
 		Model:       "llama2:7b",              // Popular 7B parameter model
-		Temperature: &[]float32{0.7}[0],      // Balanced creativity
-		MaxTokens:   &[]int{1000}[0],         // Reasonable response length
+		Temperature: &[]float32{0.7}[0],       // Balanced creativity
+		MaxTokens:   &[]int{1000}[0],          // Reasonable response length
 	})
 	if err != nil {
 		log.Fatalf("Failed to create Ollama client: %v", err)
@@ -76,14 +76,14 @@ func main() {
 	// 3. Create Embedder (OpenAI for now, could be local)
 	// ========================================
 	log.Println("\n🔤 Setting up embedding client...")
-	
+
 	// For this example, we'll use OpenAI embeddings
 	// In a fully local setup, you could replace this with a local embedding service
 	embedderConfig := embedder.Config{
 		Model:     "text-embedding-3-small",
 		BatchSize: 50,
 	}
-	
+
 	// Note: Requires OPENAI_API_KEY environment variable
 	// For fully local setup, replace with local embedding service
 	embedderClient := embedder.NewOpenAIEmbedder("", embedderConfig) // Empty string uses env var
@@ -96,7 +96,7 @@ func main() {
 	// 4. Create Graphiti Client
 	// ========================================
 	log.Println("\n🌐 Setting up Graphiti client with local components...")
-	
+
 	graphitiConfig := &graphiti.Config{
 		GroupID:  "kuzu-ollama-example",
 		TimeZone: time.UTC,
@@ -167,18 +167,18 @@ func main() {
 
 	for _, query := range searchQueries {
 		log.Printf("   Searching for: '%s'", query)
-		
+
 		// Note: In current implementation, this will show the API structure
 		// but actual search won't work until Kuzu is fully implemented
 		results, err := client.Search(ctx, query, &types.SearchConfig{
 			Limit: 5,
 		})
-		
+
 		if err != nil {
 			log.Printf("     ⚠️  Expected error with stub: %v", err)
 		} else {
 			log.Printf("     ✅ Found %d nodes, %d edges", len(results.Nodes), len(results.Edges))
-			
+
 			// Display results
 			for i, node := range results.Nodes {
 				if i >= 2 { // Limit output
@@ -201,7 +201,7 @@ func main() {
 	}
 
 	log.Println("   Sending query to Ollama...")
-	
+
 	// Note: This will only work if Ollama is actually running
 	response, err := ollama.Chat(ctx, testMessages)
 	if err != nil {
@@ -210,7 +210,7 @@ func main() {
 	} else {
 		log.Println("   ✅ Ollama response received:")
 		log.Printf("     %s", truncateString(response.Content, 200))
-		
+
 		if response.TokensUsed != nil {
 			log.Printf("     Used %d tokens", response.TokensUsed.TotalTokens)
 		}

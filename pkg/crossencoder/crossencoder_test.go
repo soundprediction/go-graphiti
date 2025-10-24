@@ -94,10 +94,10 @@ func TestEmptyPassages(t *testing.T) {
 
 func TestNewClient(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         ClientConfig
-		expectError    bool
-		expectedType   string
+		name         string
+		config       ClientConfig
+		expectError  bool
+		expectedType string
 	}{
 		{
 			name: "mock provider",
@@ -138,24 +138,24 @@ func TestNewClient(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client, err := NewClient(tt.config)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error, got nil")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Expected no error, got: %v", err)
 				return
 			}
-			
+
 			if client == nil {
 				t.Errorf("Expected client, got nil")
 				return
 			}
-			
+
 			// Clean up
 			client.Close()
 		})
@@ -192,7 +192,7 @@ func TestDefaultConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(string(tt.provider), func(t *testing.T) {
 			config := DefaultConfig(tt.provider)
-			
+
 			if config.Model != tt.expected.Model {
 				t.Errorf("Expected model %s, got %s", tt.expected.Model, config.Model)
 			}

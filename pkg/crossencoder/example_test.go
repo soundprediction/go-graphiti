@@ -91,15 +91,15 @@ func ExampleLocalRerankerClient() {
 func ExampleOpenAIRerankerClient() {
 	// Note: This example requires a valid OpenAI API key
 	// In practice, you would get this from environment variables or configuration
-	
+
 	// Create LLM client (example - replace with actual implementation)
 	llmConfig := llm.Config{
 		Model: "gpt-4o-mini",
 	}
-	
+
 	// This is a conceptual example - actual implementation depends on your LLM client
 	// llmClient := llm.NewOpenAIClient("your-api-key", llmConfig)
-	// 
+	//
 	// reranker := crossencoder.NewOpenAIRerankerClient(llmClient, crossencoder.Config{
 	//     MaxConcurrency: 3,
 	// })
@@ -134,7 +134,7 @@ func ExampleRankedPassage() {
 	topResult := results[0]
 	fmt.Printf("Top result score: %.3f\n", topResult.Score)
 	fmt.Printf("Results are sorted: %t\n", results[0].Score >= results[1].Score)
-	
+
 	// Output:
 	// Top result score: 0.900
 	// Results are sorted: true

@@ -8,10 +8,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/db"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // Neo4jDriver implements the GraphDriver interface for Neo4j databases.
@@ -1250,9 +1250,9 @@ func (s *Neo4jDriverSession) Provider() GraphProvider {
 
 func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 	props := node.Props
-	
+
 	result := &types.Node{}
-	
+
 	if id, ok := props["id"].(string); ok {
 		result.ID = id
 	}
@@ -1275,7 +1275,7 @@ func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 			result.UpdatedAt = t
 		}
 	}
-	
+
 	return result
 }
 
@@ -1287,7 +1287,7 @@ func (n *Neo4jDriver) nodeToProperties(node *types.Node) map[string]any {
 		"group_id":   node.GroupID,
 		"created_at": node.CreatedAt.Format(time.RFC3339),
 	}
-	
+
 	if node.EntityType != "" {
 		props["entity_type"] = node.EntityType
 	}
@@ -1313,18 +1313,18 @@ func (n *Neo4jDriver) nodeToProperties(node *types.Node) map[string]any {
 			props["source_ids"] = string(sourceIDsJSON)
 		}
 	}
-	
+
 	return props
 }
 
 func (n *Neo4jDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID, targetID string) *types.Edge {
 	props := relation.Props
-	
+
 	result := &types.Edge{
 		SourceID: sourceID,
 		TargetID: targetID,
 	}
-	
+
 	if id, ok := props["id"].(string); ok {
 		result.ID = id
 	}
@@ -1344,7 +1344,7 @@ func (n *Neo4jDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID,
 			result.UpdatedAt = t
 		}
 	}
-	
+
 	return result
 }
 
@@ -1355,7 +1355,7 @@ func (n *Neo4jDriver) edgeToProperties(edge *types.Edge) map[string]any {
 		"group_id":   edge.GroupID,
 		"created_at": edge.CreatedAt.Format(time.RFC3339),
 	}
-	
+
 	if edge.Name != "" {
 		props["name"] = edge.Name
 	}

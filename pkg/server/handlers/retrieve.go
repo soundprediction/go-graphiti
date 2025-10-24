@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/server/dto"
 	"github.com/soundprediction/go-graphiti/pkg/types"
-	"github.com/soundprediction/go-graphiti"
 )
 
 // RetrieveHandler handles data retrieval requests
@@ -80,7 +80,7 @@ func (h *RetrieveHandler) Search(c *gin.Context) {
 			UUID:         node.ID,
 			Fact:         h.nodeToFactDescription(node),
 			SourceName:   node.Name,
-			TargetName:   "",  // Nodes don't have targets
+			TargetName:   "", // Nodes don't have targets
 			RelationType: string(node.Type),
 			CreatedAt:    node.CreatedAt,
 			ValidAt:      &node.ValidFrom,

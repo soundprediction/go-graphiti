@@ -323,10 +323,10 @@ func extractFromSingleEpisode(
 	// Use LLM to extract entities (simplified)
 	// Build context for the prompt
 	promptContext := map[string]interface{}{
-		"episode_content":    content,
-		"entity_types":       entityTypes,
+		"episode_content":       content,
+		"entity_types":          entityTypes,
 		"excluded_entity_types": excludedEntityTypes,
-		"previous_episodes":  episodeTuple.PreviousEpisodes,
+		"previous_episodes":     episodeTuple.PreviousEpisodes,
 	}
 
 	entityMessages, err := clients.Prompts.ExtractNodes().ExtractMessage().Call(promptContext)

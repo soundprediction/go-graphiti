@@ -36,7 +36,7 @@ func init() {
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.graphiti.yaml)")
 	rootCmd.PersistentFlags().String("log-level", "info", "log level (debug, info, warn, error)")
-	
+
 	// Bind flags to viper
 	viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level"))
 }

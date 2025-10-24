@@ -6,7 +6,7 @@ based on their relevance to a query.
 
 Cross-encoders are neural models used in information retrieval and natural language
 processing to compute relevance scores between a query and candidate passages. Unlike
-bi-encoders that encode queries and documents separately, cross-encoders process 
+bi-encoders that encode queries and documents separately, cross-encoders process
 query-document pairs together, often resulting in better ranking accuracy at the cost
 of increased computational overhead.
 
@@ -24,7 +24,7 @@ used to compute relevance scores.
 	reranker := crossencoder.NewOpenAIRerankerClient(llmClient, crossencoder.Config{
 		MaxConcurrency: 5,
 	})
-	
+
 	results, err := reranker.Rank(ctx, "search query", passages)
 
 ## Local Reranker (LocalRerankerClient)

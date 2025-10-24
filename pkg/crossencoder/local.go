@@ -93,7 +93,7 @@ func (c *LocalRerankerClient) calculateCosineTextSimilarity(query, passage strin
 func (c *LocalRerankerClient) tokenize(text string) []string {
 	// Simple tokenization - could be enhanced with proper NLP libraries
 	text = strings.ToLower(text)
-	
+
 	// Remove punctuation and split on whitespace
 	var tokens []string
 	words := strings.FieldsFunc(text, func(r rune) bool {

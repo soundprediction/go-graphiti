@@ -46,7 +46,7 @@ type geminiEmbeddingRequest struct {
 
 // geminiEmbedRequest represents a single embedding request.
 type geminiEmbedRequest struct {
-	Model   string            `json:"model"`
+	Model   string             `json:"model"`
 	Content geminiEmbedContent `json:"content"`
 }
 

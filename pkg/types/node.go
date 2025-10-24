@@ -53,7 +53,7 @@ func GetEpisodicNodeByUUID(ctx context.Context, driver NodeOperations, uuid stri
 	if sourceDesc, ok := record["source_description"].(string); ok {
 		episode.Summary = sourceDesc // Map to summary field
 	}
-	
+
 	// Handle entity_edges - this is critical for the remove_episode logic
 	if entityEdges, ok := record["entity_edges"].([]interface{}); ok {
 		edges := make([]string, len(entityEdges))
@@ -96,7 +96,7 @@ func DeleteNodesByUUIDs(ctx context.Context, driver NodeOperations, uuids []stri
 	// Match the Python Node.delete_by_uuids implementation
 	// Try different node labels as in the Python version
 	labels := []string{"Entity", "Episodic", "Community"}
-	
+
 	for _, label := range labels {
 		query := fmt.Sprintf(`
 			MATCH (n:%s)

@@ -12,14 +12,14 @@ import (
 type ComparisonOperator string
 
 const (
-	Equals             ComparisonOperator = "="
-	NotEquals          ComparisonOperator = "<>"
-	GreaterThan        ComparisonOperator = ">"
-	LessThan           ComparisonOperator = "<"
-	GreaterThanEqual   ComparisonOperator = ">="
-	LessThanEqual      ComparisonOperator = "<="
-	IsNull             ComparisonOperator = "IS NULL"
-	IsNotNull          ComparisonOperator = "IS NOT NULL"
+	Equals           ComparisonOperator = "="
+	NotEquals        ComparisonOperator = "<>"
+	GreaterThan      ComparisonOperator = ">"
+	LessThan         ComparisonOperator = "<"
+	GreaterThanEqual ComparisonOperator = ">="
+	LessThanEqual    ComparisonOperator = "<="
+	IsNull           ComparisonOperator = "IS NULL"
+	IsNotNull        ComparisonOperator = "IS NOT NULL"
 )
 
 // DateFilter represents a date-based filter with comparison operator
@@ -30,22 +30,22 @@ type DateFilter struct {
 
 // EnhancedSearchFilters provides more sophisticated filtering capabilities
 type EnhancedSearchFilters struct {
-	GroupIDs    []string                `json:"group_ids,omitempty"`
-	NodeTypes   []types.NodeType        `json:"node_types,omitempty"`
-	EdgeTypes   []types.EdgeType        `json:"edge_types,omitempty"`
-	EntityTypes []string                `json:"entity_types,omitempty"`
-	TimeRange   *types.TimeRange        `json:"time_range,omitempty"`
+	GroupIDs    []string         `json:"group_ids,omitempty"`
+	NodeTypes   []types.NodeType `json:"node_types,omitempty"`
+	EdgeTypes   []types.EdgeType `json:"edge_types,omitempty"`
+	EntityTypes []string         `json:"entity_types,omitempty"`
+	TimeRange   *types.TimeRange `json:"time_range,omitempty"`
 
 	// Date filters with comparison operators
-	ValidFrom   [][]DateFilter          `json:"valid_from,omitempty"`
-	ValidTo     [][]DateFilter          `json:"valid_to,omitempty"`
-	CreatedAt   [][]DateFilter          `json:"created_at,omitempty"`
-	UpdatedAt   [][]DateFilter          `json:"updated_at,omitempty"`
+	ValidFrom [][]DateFilter `json:"valid_from,omitempty"`
+	ValidTo   [][]DateFilter `json:"valid_to,omitempty"`
+	CreatedAt [][]DateFilter `json:"created_at,omitempty"`
+	UpdatedAt [][]DateFilter `json:"updated_at,omitempty"`
 }
 
 // FilterQueryResult contains the constructed query parts and parameters
 type FilterQueryResult struct {
-	Queries    []string           `json:"queries"`
+	Queries    []string               `json:"queries"`
 	Parameters map[string]interface{} `json:"parameters"`
 }
 

@@ -49,7 +49,7 @@ type GraphDriver interface {
 	DeleteNode(ctx context.Context, nodeID, groupID string) error
 	GetNodes(ctx context.Context, nodeIDs []string, groupID string) ([]*types.Node, error)
 
-	// Edge operations  
+	// Edge operations
 	GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error)
 	UpsertEdge(ctx context.Context, edge *types.Edge) error
 	DeleteEdge(ctx context.Context, edgeID, groupID string) error
@@ -86,37 +86,37 @@ type GraphDriver interface {
 
 // GraphStats holds statistics about the graph.
 type GraphStats struct {
-	NodeCount            int64            `json:"node_count"`
-	EdgeCount            int64            `json:"edge_count"`
-	NodesByType          map[string]int64 `json:"nodes_by_type"`
-	EdgesByType          map[string]int64 `json:"edges_by_type"`
-	CommunityCount       int64            `json:"community_count"`
-	LastUpdated          time.Time        `json:"last_updated"`
+	NodeCount      int64            `json:"node_count"`
+	EdgeCount      int64            `json:"edge_count"`
+	NodesByType    map[string]int64 `json:"nodes_by_type"`
+	EdgesByType    map[string]int64 `json:"edges_by_type"`
+	CommunityCount int64            `json:"community_count"`
+	LastUpdated    time.Time        `json:"last_updated"`
 }
 
 // QueryOptions holds options for database queries.
 type QueryOptions struct {
-	Limit      int
-	Offset     int
-	SortBy     string
-	SortOrder  string
-	Filters    map[string]interface{}
+	Limit     int
+	Offset    int
+	SortBy    string
+	SortOrder string
+	Filters   map[string]interface{}
 }
 
 // SearchOptions holds options for text-based search operations.
 type SearchOptions struct {
-	Limit       int                  `json:"limit"`
-	UseFullText bool                 `json:"use_fulltext"`
-	NodeTypes   []types.NodeType     `json:"node_types,omitempty"`
-	EdgeTypes   []types.EdgeType     `json:"edge_types,omitempty"`
-	TimeRange   *types.TimeRange     `json:"time_range,omitempty"`
+	Limit       int              `json:"limit"`
+	UseFullText bool             `json:"use_fulltext"`
+	NodeTypes   []types.NodeType `json:"node_types,omitempty"`
+	EdgeTypes   []types.EdgeType `json:"edge_types,omitempty"`
+	TimeRange   *types.TimeRange `json:"time_range,omitempty"`
 }
 
 // VectorSearchOptions holds options for vector similarity search operations.
 type VectorSearchOptions struct {
-	Limit     int                  `json:"limit"`
-	MinScore  float64              `json:"min_score"`
-	NodeTypes []types.NodeType     `json:"node_types,omitempty"`
-	EdgeTypes []types.EdgeType     `json:"edge_types,omitempty"`
-	TimeRange *types.TimeRange     `json:"time_range,omitempty"`
+	Limit     int              `json:"limit"`
+	MinScore  float64          `json:"min_score"`
+	NodeTypes []types.NodeType `json:"node_types,omitempty"`
+	EdgeTypes []types.EdgeType `json:"edge_types,omitempty"`
+	TimeRange *types.TimeRange `json:"time_range,omitempty"`
 }

@@ -9,10 +9,10 @@ import (
 type Client interface {
 	// Chat sends a chat completion request and returns the response.
 	Chat(ctx context.Context, messages []Message) (*Response, error)
-	
+
 	// ChatWithStructuredOutput sends a chat completion request with structured output.
 	ChatWithStructuredOutput(ctx context.Context, messages []Message, schema any) (json.RawMessage, error)
-	
+
 	// Close cleans up any resources.
 	Close() error
 }
@@ -60,7 +60,7 @@ type Config struct {
 	TopK        *int     `json:"top_k,omitempty"`
 	MinP        *float32 `json:"min_p,omitempty"`
 	Stop        []string `json:"stop,omitempty"`
-	BaseURL     string   `json:"base_url,omitempty"`    // Custom base URL for OpenAI-compatible services
+	BaseURL     string   `json:"base_url,omitempty"` // Custom base URL for OpenAI-compatible services
 }
 
 // NewMessage creates a new message with the specified role and content.

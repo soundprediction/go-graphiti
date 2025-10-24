@@ -266,7 +266,7 @@ func (b *Builder) hierarchicalSummarize(ctx context.Context, summaries []string)
 func (b *Builder) summarizePair(ctx context.Context, left, right string) (string, error) {
 	messages := []llm.Message{
 		{
-			Role: llm.RoleSystem,
+			Role:    llm.RoleSystem,
 			Content: `You are an expert at synthesizing information. Given two entity summaries, create a single comprehensive summary that captures the key information from both. The summary should be concise (under 250 words) and maintain the most important details.`,
 		},
 		{
@@ -293,7 +293,7 @@ Provide a single summary that captures the essential information from both:`, le
 func (b *Builder) generateCommunityName(ctx context.Context, summary string) (string, error) {
 	messages := []llm.Message{
 		{
-			Role: llm.RoleSystem,
+			Role:    llm.RoleSystem,
 			Content: `You are an expert at creating concise, descriptive names. Given a summary, create a brief descriptive name (1-5 words) that captures the essence of the content.`,
 		},
 		{

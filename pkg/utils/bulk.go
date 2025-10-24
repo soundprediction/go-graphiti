@@ -155,7 +155,7 @@ func ResolveEdgePointers(edges []*types.Edge, uuidMap map[string]string) {
 
 // EpisodeTuple represents an episode with its previous episodes for context
 type EpisodeTuple struct {
-	Episode         *types.Episode
+	Episode          *types.Episode
 	PreviousEpisodes []*types.Episode
 }
 
@@ -271,8 +271,8 @@ func FindSimilarEdges(edge *types.Edge, candidates []*types.Edge, minScore float
 // GroupDuplicatesByEpisode groups duplicates back into episode-specific collections
 func GroupDuplicatesByEpisode(
 	originalItems map[string][]string, // episode UUID -> item UUIDs
-	compressedMap map[string]string,   // old UUID -> new UUID
-	itemMap map[string]interface{},    // UUID -> item
+	compressedMap map[string]string, // old UUID -> new UUID
+	itemMap map[string]interface{}, // UUID -> item
 ) map[string][]interface{} {
 	result := make(map[string][]interface{})
 
@@ -304,9 +304,9 @@ func GroupDuplicatesByEpisode(
 
 // BatchProcessor processes items in batches with concurrent execution
 type BatchProcessor[T any, R any] struct {
-	BatchSize       int
-	MaxConcurrency  int
-	ProcessBatch    func(ctx context.Context, batch []T) ([]R, error)
+	BatchSize      int
+	MaxConcurrency int
+	ProcessBatch   func(ctx context.Context, batch []T) ([]R, error)
 }
 
 // NewBatchProcessor creates a new batch processor

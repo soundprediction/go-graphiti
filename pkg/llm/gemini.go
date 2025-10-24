@@ -49,10 +49,10 @@ type geminiPart struct {
 
 // geminiGenerationConfig represents generation configuration.
 type geminiGenerationConfig struct {
-	Temperature  float64 `json:"temperature,omitempty"`
-	MaxTokens    int     `json:"maxOutputTokens,omitempty"`
-	TopP         float64 `json:"topP,omitempty"`
-	TopK         int     `json:"topK,omitempty"`
+	Temperature float64 `json:"temperature,omitempty"`
+	MaxTokens   int     `json:"maxOutputTokens,omitempty"`
+	TopP        float64 `json:"topP,omitempty"`
+	TopK        int     `json:"topK,omitempty"`
 }
 
 // geminiResponse represents the response from Gemini API.
@@ -91,7 +91,7 @@ func (g *GeminiClient) Chat(ctx context.Context, messages []Message) (string, er
 			// Gemini doesn't have a system role, prepend to first user message
 			if len(contents) == 0 {
 				contents = append(contents, geminiContent{
-					Role: "user",
+					Role:  "user",
 					Parts: []geminiPart{{Text: msg.Content}},
 				})
 				continue

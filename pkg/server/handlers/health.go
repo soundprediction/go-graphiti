@@ -71,9 +71,9 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 			if ctx.Err() != nil {
 				// Context timeout or cancellation indicates connection issues
 				checks["database"] = gin.H{
-					"status":    "unhealthy",
-					"error":     "database connection timeout",
-					"duration":  dbDuration.String(),
+					"status":   "unhealthy",
+					"error":    "database connection timeout",
+					"duration": dbDuration.String(),
 				}
 				allHealthy = false
 			} else {
@@ -150,14 +150,14 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 
 	startTime := time.Now()
 	response := gin.H{
-		"status":      "healthy",
-		"service":     "go-graphiti",
-		"version":     Version,
+		"status":  "healthy",
+		"service": "go-graphiti",
+		"version": Version,
 		"build_info": gin.H{
 			"git_commit": GitCommit,
 			"build_time": BuildTime,
 		},
-		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"environment": gin.H{
 			"go_version": GoVersion,
 		},
@@ -246,12 +246,12 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 	// Add system health metrics
 	systemMetrics := h.getSystemMetrics()
 	checks["system"] = gin.H{
-		"status":         "healthy",
-		"memory_usage":   systemMetrics.MemoryUsage,
-		"goroutines":     systemMetrics.Goroutines,
-		"gc_cycles":      systemMetrics.GCCycles,
-		"heap_objects":   systemMetrics.HeapObjects,
-		"stack_usage":    systemMetrics.StackUsage,
+		"status":       "healthy",
+		"memory_usage": systemMetrics.MemoryUsage,
+		"goroutines":   systemMetrics.Goroutines,
+		"gc_cycles":    systemMetrics.GCCycles,
+		"heap_objects": systemMetrics.HeapObjects,
+		"stack_usage":  systemMetrics.StackUsage,
 	}
 
 	// Set final response
@@ -269,11 +269,11 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 
 // SystemMetrics holds system runtime metrics
 type SystemMetrics struct {
-	MemoryUsage  string `json:"memory_usage"`
-	Goroutines   int    `json:"goroutines"`
-	GCCycles     uint32 `json:"gc_cycles"`
-	HeapObjects  uint64 `json:"heap_objects"`
-	StackUsage   string `json:"stack_usage"`
+	MemoryUsage string `json:"memory_usage"`
+	Goroutines  int    `json:"goroutines"`
+	GCCycles    uint32 `json:"gc_cycles"`
+	HeapObjects uint64 `json:"heap_objects"`
+	StackUsage  string `json:"stack_usage"`
 }
 
 // getSystemMetrics collects current system runtime metrics
@@ -286,10 +286,10 @@ func (h *HealthHandler) getSystemMetrics() SystemMetrics {
 	stackUsage := fmt.Sprintf("%.2f MB", float64(m.StackSys)/(1024*1024))
 
 	return SystemMetrics{
-		MemoryUsage:  memoryUsage,
-		Goroutines:   runtime.NumGoroutine(),
-		GCCycles:     m.NumGC,
-		HeapObjects:  m.HeapObjects,
-		StackUsage:   stackUsage,
+		MemoryUsage: memoryUsage,
+		Goroutines:  runtime.NumGoroutine(),
+		GCCycles:    m.NumGC,
+		HeapObjects: m.HeapObjects,
+		StackUsage:  stackUsage,
 	}
 }

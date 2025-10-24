@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/config"
 	"github.com/soundprediction/go-graphiti/pkg/server/handlers"
-	"github.com/soundprediction/go-graphiti"
 )
 
 // Server represents the HTTP server
@@ -31,18 +31,18 @@ func New(cfg *config.Config, graphitiClient graphiti.Graphiti) *Server {
 func (s *Server) Setup() {
 	// Set gin mode
 	gin.SetMode(s.config.Server.Mode)
-	
+
 	// Create router
 	s.router = gin.New()
-	
+
 	// Add middleware
 	s.router.Use(gin.Logger())
 	s.router.Use(gin.Recovery())
 	s.router.Use(corsMiddleware())
-	
+
 	// Setup routes
 	s.setupRoutes()
-	
+
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port)
 	s.server = &http.Server{
@@ -57,14 +57,14 @@ func (s *Server) setupRoutes() {
 	healthHandler := handlers.NewHealthHandler(s.graphiti)
 	ingestHandler := handlers.NewIngestHandler(s.graphiti)
 	retrieveHandler := handlers.NewRetrieveHandler(s.graphiti)
-	
+
 	// Health endpoints
 	s.router.GET("/health", healthHandler.HealthCheck)
 	s.router.GET("/healthcheck", healthHandler.HealthCheck) // Legacy endpoint
 	s.router.GET("/ready", healthHandler.ReadinessCheck)
-	s.router.GET("/live", healthHandler.LivenessCheck)       // Kubernetes liveness probe
+	s.router.GET("/live", healthHandler.LivenessCheck) // Kubernetes liveness probe
 	s.router.GET("/health/detailed", healthHandler.DetailedHealthCheck)
-	
+
 	// API v1 routes
 	v1 := s.router.Group("/api/v1")
 	{
@@ -75,14 +75,14 @@ func (s *Server) setupRoutes() {
 			ingest.POST("/entity", ingestHandler.AddEntityNode)
 			ingest.DELETE("/clear", ingestHandler.ClearData)
 		}
-		
+
 		// Retrieve routes
 		v1.POST("/search", retrieveHandler.Search)
 		v1.GET("/entity-edge/:uuid", retrieveHandler.GetEntityEdge)
 		v1.GET("/episodes/:group_id", retrieveHandler.GetEpisodes)
 		v1.POST("/get-memory", retrieveHandler.GetMemory)
 	}
-	
+
 	// Legacy routes for compatibility with Python server
 	s.router.POST("/search", retrieveHandler.Search)
 	s.router.GET("/entity-edge/:uuid", retrieveHandler.GetEntityEdge)
