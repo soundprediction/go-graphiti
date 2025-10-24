@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -82,16 +85,100 @@ const KuzuSchemaQueries = `
 
 // KuzuDriver implements the GraphDriver interface for Kuzu databases exactly like Python implementation
 type KuzuDriver struct {
-	provider GraphProvider
-	db       *kuzu.Database
-	client   *kuzu.Connection // Note: Python uses AsyncConnection, but Go kuzu doesn't have async
-	dbPath   string
+	provider     GraphProvider
+	db           *kuzu.Database
+	client       *kuzu.Connection // Note: Python uses AsyncConnection, but Go kuzu doesn't have async
+	dbPath       string
+	tempDbPath   string // If non-empty, this is a temp copy that should be cleaned up
+	originalPath string // Original path before copying to temp
+}
+
+// copyDir recursively copies a directory from src to dst
+func copyDir(src, dst string) error {
+	// Get properties of source dir
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	// Create destination directory
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return err
+	}
+
+	// Read directory contents
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			// Recursively copy subdirectory
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			// Copy file
+			if err := copyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// copyFile copies a single file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	// Copy file permissions
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	return os.Chmod(dst, srcInfo.Mode())
+}
+
+// isLockError checks if an error is due to a file lock
+func isLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "lock") ||
+		strings.Contains(errStr, "locked") ||
+		strings.Contains(errStr, "LOCK") ||
+		strings.Contains(errStr, "in use") ||
+		strings.Contains(errStr, "busy")
 }
 
 // NewKuzuDriver creates a new Kuzu driver instance with exact same signature as Python
 // Parameters:
 //   - db: Database path (defaults to ":memory:" like Python)
 //   - maxConcurrentQueries: Maximum concurrent queries (defaults to 1 like Python)
+//
+// If the database is locked by another process, this function will automatically copy
+// the database to a temporary location and open the copy instead, allowing read-only
+// access even while another process is writing to the original.
 func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 	if db == "" {
 		db = ":memory:"
@@ -100,16 +187,48 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 		maxConcurrentQueries = 1
 	}
 
-	// Create the Kuzu database
+	originalPath := db
+	tempDbPath := ""
+
+	// Try to open the database normally
 	database, err := kuzu.OpenDatabase(db, kuzu.DefaultSystemConfig())
-	if err != nil {
+	if err != nil && isLockError(err) && db != ":memory:" {
+		// Database is locked, try to copy it to a temp location
+		log.Printf("Database at %s is locked, attempting to create temporary copy...", db)
+
+		// Create temp directory
+		tempDir, err := os.MkdirTemp("", "kuzu_readonly_*")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temp directory: %w", err)
+		}
+
+		// Copy database to temp location
+		tempDbPath = filepath.Join(tempDir, filepath.Base(db))
+		if err := copyDir(db, tempDbPath); err != nil {
+			os.RemoveAll(tempDir)
+			return nil, fmt.Errorf("failed to copy database to temp location: %w", err)
+		}
+
+		log.Printf("Successfully copied database to temporary location: %s", tempDbPath)
+
+		// Try to open the temp copy
+		database, err = kuzu.OpenDatabase(tempDbPath, kuzu.DefaultSystemConfig())
+		if err != nil {
+			os.RemoveAll(tempDir)
+			return nil, fmt.Errorf("failed to open temporary database copy: %w", err)
+		}
+
+		db = tempDbPath // Use temp path for the rest of initialization
+	} else if err != nil {
 		return nil, fmt.Errorf("failed to open kuzu database: %w", err)
 	}
 
 	driver := &KuzuDriver{
-		provider: GraphProviderKuzu,
-		db:       database,
-		dbPath:   db,
+		provider:     GraphProviderKuzu,
+		db:           database,
+		dbPath:       db,
+		tempDbPath:   tempDbPath,
+		originalPath: originalPath,
 	}
 
 	// Setup schema exactly like Python
@@ -235,6 +354,16 @@ func (k *KuzuDriver) Session(database *string) GraphDriverSession {
 
 // Close closes the driver exactly like Python implementation
 func (k *KuzuDriver) Close() error {
+	// Clean up temporary database copy if it was created
+	if k.tempDbPath != "" {
+		tempDir := filepath.Dir(k.tempDbPath)
+		if err := os.RemoveAll(tempDir); err != nil {
+			log.Printf("Warning: Failed to clean up temporary database at %s: %v", tempDir, err)
+		} else {
+			log.Printf("Cleaned up temporary database copy at %s", tempDir)
+		}
+	}
+
 	// Do not explicitly close the connection, instead rely on GC (matching Python comment)
 	return nil
 }

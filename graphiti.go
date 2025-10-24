@@ -185,6 +185,16 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 		return &types.AddBulkEpisodeResults{}, nil
 	}
 
+	// Print initial database statistics
+	if stats, err := c.GetStats(ctx); err == nil {
+		c.logger.Info("Initial database state",
+			"node_count", stats.NodeCount,
+			"edge_count", stats.EdgeCount,
+			"episodes_to_add", len(episodes))
+	} else {
+		c.logger.Warn("Failed to retrieve initial database stats", "error", err)
+	}
+
 	result := &types.AddBulkEpisodeResults{
 		Episodes:       []*types.Node{},
 		EpisodicEdges:  []*types.Edge{},
