@@ -372,45 +372,89 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		}
 	}
 
-	// Create episode nodes for each chunk
+	// Create a single episode node and append chunks to it
+	var mainEpisodeNode *types.Node
 	chunkEpisodes := make([]*types.Node, len(chunks))
 	episodeTuples := make([]utils.EpisodeTuple, len(chunks))
 
+	// Convert previous episodes to Episode type for EpisodeTuple (reused for all chunks)
+	prevEps := make([]*types.Episode, len(previousEpisodes))
+	for j, prevNode := range previousEpisodes {
+		prevEps[j] = &types.Episode{
+			ID:        prevNode.ID,
+			Name:      prevNode.Name,
+			Content:   prevNode.Content,
+			Reference: prevNode.ValidFrom,
+			CreatedAt: prevNode.CreatedAt,
+			GroupID:   prevNode.GroupID,
+			Metadata:  prevNode.Metadata,
+		}
+	}
+
 	for i, chunk := range chunks {
-		// Create episode node for this chunk
-		chunkEpisode := types.Episode{
-			ID:        fmt.Sprintf("%s_chunk_%d", episode.ID, i),
-			Name:      fmt.Sprintf("%s (chunk %d/%d)", episode.Name, i+1, len(chunks)),
-			Content:   chunk,
-			Reference: episode.Reference,
-			CreatedAt: episode.CreatedAt,
-			GroupID:   episode.GroupID,
-			Metadata:  episode.Metadata,
-		}
-
-		chunkNode, err := c.createEpisodeNode(ctx, chunkEpisode, options)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create episode node for chunk %d: %w", i, err)
-		}
-		chunkEpisodes[i] = chunkNode
-
-		// Convert previous episodes to Episode type for EpisodeTuple
-		prevEps := make([]*types.Episode, len(previousEpisodes))
-		for j, prevNode := range previousEpisodes {
-			prevEps[j] = &types.Episode{
-				ID:        prevNode.ID,
-				Name:      prevNode.Name,
-				Content:   prevNode.Content,
-				Reference: prevNode.ValidFrom,
-				CreatedAt: prevNode.CreatedAt,
-				GroupID:   prevNode.GroupID,
-				Metadata:  prevNode.Metadata,
+		if i == 0 {
+			// First chunk: Create the main episode node with original episode.ID
+			firstChunkEpisode := types.Episode{
+				ID:        episode.ID,
+				Name:      episode.Name,
+				Content:   chunk,
+				Reference: episode.Reference,
+				CreatedAt: episode.CreatedAt,
+				GroupID:   episode.GroupID,
+				Metadata:  episode.Metadata,
 			}
-		}
 
-		episodeTuples[i] = utils.EpisodeTuple{
-			Episode:          &chunkEpisode,
-			PreviousEpisodes: prevEps,
+			var err error
+			mainEpisodeNode, err = c.createEpisodeNode(ctx, firstChunkEpisode, options)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create episode node for first chunk: %w", err)
+			}
+			chunkEpisodes[0] = mainEpisodeNode
+
+			episodeTuples[0] = utils.EpisodeTuple{
+				Episode:          &firstChunkEpisode,
+				PreviousEpisodes: prevEps,
+			}
+		} else {
+			// Subsequent chunks: Append to the main episode node
+			updatedContent := mainEpisodeNode.Content
+			if updatedContent != "" {
+				updatedContent += "\n"
+			}
+			updatedContent += chunk
+
+			mainEpisodeNode.Content = updatedContent
+			mainEpisodeNode.UpdatedAt = time.Now()
+
+			// Save the updated episode node
+			if err := c.driver.UpsertNode(ctx, mainEpisodeNode); err != nil {
+				return nil, fmt.Errorf("failed to append chunk %d to episode: %w", i, err)
+			}
+
+			c.logger.Info("Appended chunk to episode",
+				"episode_id", episode.ID,
+				"chunk_index", i,
+				"chunk_length", len(chunk),
+				"new_total_length", len(mainEpisodeNode.Content))
+
+			// Use the same episode node for all chunks
+			chunkEpisodes[i] = mainEpisodeNode
+
+			// Create episode tuple with just this chunk's content for extraction
+			chunkEpisode := types.Episode{
+				ID:        episode.ID,
+				Name:      episode.Name,
+				Content:   chunk, // Just this chunk's content for extraction
+				Reference: episode.Reference,
+				CreatedAt: episode.CreatedAt,
+				GroupID:   episode.GroupID,
+				Metadata:  episode.Metadata,
+			}
+
+			episodeTuples[i] = utils.EpisodeTuple{
+				Episode:          &chunkEpisode,
+				PreviousEpisodes: prevEps,
+			}
 		}
 	}
 
@@ -520,22 +564,18 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		}
 	}
 
-	for i, chunkNode := range chunkEpisodes {
-		// Get resolved nodes for this chunk
-		chunkNodes := dedupeResult.NodesByEpisode[chunkNode.ID]
-		if len(chunkNodes) == 0 {
-			continue
-		}
-
-		extractedEdges, err := edgeOps.ExtractEdges(ctx, chunkNode, chunkNodes,
+	// Since all chunks share the same episode ID, get nodes once and extract edges
+	episodeNodes := dedupeResult.NodesByEpisode[mainEpisodeNode.ID]
+	if len(episodeNodes) > 0 {
+		extractedEdges, err := edgeOps.ExtractEdges(ctx, mainEpisodeNode, episodeNodes,
 			previousEpisodes, edgeTypeMap, options.EdgeTypes, episode.GroupID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract edges from chunk %d: %w", i, err)
+			return nil, fmt.Errorf("failed to extract edges: %w", err)
 		}
 
 		// Apply UUID mapping to edge pointers
 		utils.ResolveEdgePointers(extractedEdges, dedupeResult.UUIDMap)
-		allExtractedEdges = append(allExtractedEdges, extractedEdges...)
+		allExtractedEdges = extractedEdges
 	}
 
 	c.logger.Info("Bulk relationship extraction completed",
@@ -550,9 +590,9 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	var resolvedEdges []*types.Edge
 	var invalidatedEdges []*types.Edge
 	if len(allExtractedEdges) > 0 {
-		// Use the first chunk's episode node as the episode context
+		// Use the main episode node as the episode context
 		resolvedEdges, invalidatedEdges, err = edgeOps.ResolveExtractedEdges(ctx,
-			allExtractedEdges, chunkEpisodes[0], allResolvedNodes, options.GenerateEmbeddings, options.EdgeTypes)
+			allExtractedEdges, mainEpisodeNode, allResolvedNodes, options.GenerateEmbeddings, options.EdgeTypes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve edges: %w", err)
 		}
@@ -588,7 +628,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		"entities_to_hydrate", len(allResolvedNodes))
 
 	hydratedNodes, err := nodeOps.ExtractAttributesFromNodes(ctx,
-		allResolvedNodes, chunkEpisodes[0], previousEpisodes, options.EntityTypes)
+		allResolvedNodes, mainEpisodeNode, previousEpisodes, options.EntityTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract attributes: %w", err)
 	}
@@ -597,14 +637,10 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		"episode_id", episode.ID,
 		"hydrated_entities", len(hydratedNodes))
 
-	// PHASE 6: BUILD EPISODIC EDGES for all chunks
-	var allEpisodicEdges []*types.Edge
-	for _, chunkNode := range chunkEpisodes {
-		episodicEdges, err := edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, chunkNode.ID, now)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build episodic edges for chunk %s: %w", chunkNode.ID, err)
-		}
-		allEpisodicEdges = append(allEpisodicEdges, episodicEdges...)
+	// PHASE 6: BUILD EPISODIC EDGES (once for the single episode)
+	episodicEdges, err := edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, mainEpisodeNode.ID, now)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build episodic edges: %w", err)
 	}
 
 	// PHASE 7: FINAL UPDATES
@@ -613,14 +649,14 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	allEdges := append(resolvedEdges, invalidatedEdges...)
 	c.logger.Info("Starting final updates",
 		"episode_id", episode.ID,
-		"episodic_nodes", len(chunkEpisodes),
+		"episodic_nodes", 1,
 		"entity_nodes_to_update", len(hydratedNodes),
 		"entity_edges_to_update", len(allEdges),
-		"episodic_edges_to_add", len(allEpisodicEdges))
+		"episodic_edges_to_add", len(episodicEdges))
 
 	_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver,
-		chunkEpisodes,
-		allEpisodicEdges,
+		[]*types.Node{mainEpisodeNode}, // Single episode node
+		episodicEdges,
 		hydratedNodes,
 		allEdges,
 		c.embedder)
@@ -630,8 +666,8 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 
 	// PHASE 8: COMMUNITY UPDATE (optional)
 	result := &types.AddEpisodeResults{
-		Episode:        chunkEpisodes[0], // Return first chunk as main episode
-		EpisodicEdges:  allEpisodicEdges,
+		Episode:        mainEpisodeNode, // Return the single main episode
+		EpisodicEdges:  episodicEdges,
 		Nodes:          hydratedNodes,
 		Edges:          allEdges,
 		Communities:    []*types.Node{},
