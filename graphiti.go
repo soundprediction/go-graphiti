@@ -232,6 +232,86 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	return c.addEpisodeChunked(ctx, episode, options, maxCharacters)
 }
 
+// AddToEpisode expands an existing episode with additional content.
+// It retrieves the existing episode, processes the additional content through entity
+// and edge extraction, and appends the additional content to the episode's content field.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - episodeID: The UUID of the existing episode to expand
+//   - additionalContent: The new content to add and process
+//   - options: Options for processing (entity types, embeddings, etc.)
+//
+// Returns:
+//   - AddEpisodeResults containing the newly extracted entities and edges
+//   - Error if the episode doesn't exist or processing fails
+func (c *Client) AddToEpisode(ctx context.Context, episodeID string, additionalContent string, options *AddEpisodeOptions) (*types.AddEpisodeResults, error) {
+	if options == nil {
+		options = &AddEpisodeOptions{}
+	}
+
+	// Use the client's configured group ID
+	groupID := c.config.GroupID
+
+	// 1. Retrieve the existing episode
+	existingEpisode, err := c.driver.GetNode(ctx, episodeID, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve episode %s: %w", episodeID, err)
+	}
+	if existingEpisode == nil {
+		return nil, fmt.Errorf("episode %s not found", episodeID)
+	}
+	if existingEpisode.Type != types.EpisodicNodeType {
+		return nil, fmt.Errorf("node %s is not an episode (type: %s)", episodeID, existingEpisode.Type)
+	}
+
+	// 2. Create a temporary episode structure with the additional content for processing
+	tempEpisode := types.Episode{
+		ID:        episodeID, // Use the same ID to link entities/edges to this episode
+		Name:      existingEpisode.Name,
+		Content:   additionalContent,
+		GroupID:   groupID,
+		Reference: existingEpisode.Reference,
+		Metadata:  existingEpisode.Metadata,
+	}
+
+	// 3. Process the additional content through entity and edge extraction
+	maxCharacters := 8192
+	if options.MaxCharacters > 0 {
+		maxCharacters = options.MaxCharacters
+	}
+
+	results, err := c.addEpisodeChunked(ctx, tempEpisode, options, maxCharacters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process additional content: %w", err)
+	}
+
+	// 4. Update the existing episode's content by appending the additional content
+	// Append with a newline separator if original content isn't empty
+	updatedContent := existingEpisode.Content
+	if updatedContent != "" {
+		updatedContent += "\n"
+	}
+	updatedContent += additionalContent
+
+	existingEpisode.Content = updatedContent
+	existingEpisode.UpdatedAt = time.Now()
+
+	// 5. Save the updated episode node
+	if err := c.driver.UpsertNode(ctx, existingEpisode); err != nil {
+		return nil, fmt.Errorf("failed to update episode content: %w", err)
+	}
+
+	c.logger.Info("Successfully expanded episode",
+		"episode_id", episodeID,
+		"additional_content_length", len(additionalContent),
+		"new_total_length", len(updatedContent),
+		"new_entities", len(results.Nodes),
+		"new_edges", len(results.Edges))
+
+	return results, nil
+}
+
 // addEpisodeChunked chunks long episode content and uses bulk deduplication
 // processing across all chunks to efficiently handle large episodes.
 func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, options *AddEpisodeOptions, maxCharacters int) (*types.AddEpisodeResults, error) {
@@ -991,6 +1071,11 @@ func (c *Client) GetNode(ctx context.Context, nodeID string) (*types.Node, error
 // GetEdge retrieves an edge by ID.
 func (c *Client) GetEdge(ctx context.Context, edgeID string) (*types.Edge, error) {
 	return c.driver.GetEdge(ctx, edgeID, c.config.GroupID)
+}
+
+// GetStats retrieves statistics about the knowledge graph.
+func (c *Client) GetStats(ctx context.Context) (*driver.GraphStats, error) {
+	return c.driver.GetStats(ctx, c.config.GroupID)
 }
 
 // RetrieveEpisodes retrieves episodes from the knowledge graph with temporal filtering.
