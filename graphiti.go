@@ -1073,6 +1073,11 @@ func (c *Client) GetEdge(ctx context.Context, edgeID string) (*types.Edge, error
 	return c.driver.GetEdge(ctx, edgeID, c.config.GroupID)
 }
 
+// GetStats retrieves statistics about the knowledge graph.
+func (c *Client) GetStats(ctx context.Context) (*driver.GraphStats, error) {
+	return c.driver.GetStats(ctx, c.config.GroupID)
+}
+
 // RetrieveEpisodes retrieves episodes from the knowledge graph with temporal filtering.
 // This is an exact translation of the Python retrieve_episodes() function from
 // graphiti_core/utils/maintenance/graph_data_operations.py:122-181
