@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
-	_ "github.com/marcboeker/go-duckdb/v2"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 )
 

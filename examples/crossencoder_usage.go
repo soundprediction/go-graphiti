@@ -50,7 +50,7 @@ func main() {
 	// Example 2: Using Jina AI reranking service
 	fmt.Println("2. Using Jina AI Reranker (requires API key)")
 	jinaReranker := crossencoder.NewJinaRerankerClient(
-		"your-jina-api-key",       // API key from Jina AI
+		"your-jina-api-key",        // API key from Jina AI
 		"jina-reranker-v1-base-en", // Jina reranker model
 	)
 	defer jinaReranker.Close()

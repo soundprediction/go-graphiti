@@ -414,4 +414,4 @@ go test -run TestDeferredProcessorStats -v
 
 ## Dependencies
 
-- `github.com/marcboeker/go-duckdb/v2` - DuckDB driver for Go
+- `github.com/duckdb/duckdb-go` - DuckDB driver for Go

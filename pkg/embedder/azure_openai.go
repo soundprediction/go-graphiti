@@ -53,11 +53,11 @@ type azureEmbeddingRequest struct {
 
 // azureEmbeddingResponse represents the response from Azure OpenAI embeddings API.
 type azureEmbeddingResponse struct {
-	Object string                    `json:"object"`
-	Data   []azureEmbeddingData      `json:"data"`
-	Model  string                    `json:"model"`
-	Usage  azureEmbeddingUsage       `json:"usage"`
-	Error  *azureEmbeddingError      `json:"error,omitempty"`
+	Object string               `json:"object"`
+	Data   []azureEmbeddingData `json:"data"`
+	Model  string               `json:"model"`
+	Usage  azureEmbeddingUsage  `json:"usage"`
+	Error  *azureEmbeddingError `json:"error,omitempty"`
 }
 
 // azureEmbeddingData represents a single embedding in the response.

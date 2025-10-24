@@ -79,7 +79,7 @@ func TestEdgeOperations(t *testing.T) {
 		// Test edge uniqueness check
 		allEdges := append(relatedEdges, existingEdges...)
 		allEdges = append(allEdges, extractedEdge)
-		
+
 		uniqueEdgeIDs := make(map[string]bool)
 		for _, edge := range allEdges {
 			assert.False(t, uniqueEdgeIDs[edge.BaseEdge.ID], "Edge ID should be unique: %s", edge.BaseEdge.ID)
@@ -117,7 +117,7 @@ func TestCommunityOperations(t *testing.T) {
 
 		// Test community determination logic
 		assert.Len(t, entities, 2)
-		
+
 		// In a real implementation, this would use clustering algorithms
 		// to determine which entities belong to the same community
 		for _, entity := range entities {
@@ -161,7 +161,7 @@ func TestCommunityOperations(t *testing.T) {
 		for _, community := range communities {
 			assert.Equal(t, types.CommunityNodeType, community.Type)
 			assert.Greater(t, community.Level, -1)
-			
+
 			entities, ok := community.Metadata["entities"]
 			require.True(t, ok)
 			entitiesSlice, ok := entities.([]string)
@@ -436,11 +436,11 @@ func processText(input string) string {
 	result = strings.ReplaceAll(result, "?", "")
 	result = strings.ReplaceAll(result, "\n", " ")
 	result = strings.ReplaceAll(result, "\t", " ")
-	
+
 	// Normalize multiple spaces to single space
 	for strings.Contains(result, "  ") {
 		result = strings.ReplaceAll(result, "  ", " ")
 	}
-	
+
 	return strings.TrimSpace(result)
 }

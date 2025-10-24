@@ -14,12 +14,12 @@ import (
 
 // Constants for deduplication heuristics
 const (
-	NameEntropyThreshold    = 1.5
-	MinNameLength           = 6
-	MinTokenCount           = 2
-	FuzzyJaccardThreshold   = 0.9
-	MinHashPermutations     = 32
-	MinHashBandSize         = 4
+	NameEntropyThreshold  = 1.5
+	MinNameLength         = 6
+	MinTokenCount         = 2
+	FuzzyJaccardThreshold = 0.9
+	MinHashPermutations   = 32
+	MinHashBandSize       = 4
 )
 
 var (
@@ -209,19 +209,19 @@ type NodePair struct {
 
 // DedupCandidateIndexes holds precomputed lookup structures that drive entity deduplication heuristics
 type DedupCandidateIndexes struct {
-	ExistingNodes      []*types.Node
-	NodesByUUID        map[string]*types.Node
-	NormalizedExisting map[string][]*types.Node // normalized name -> nodes
-	ShinglesByCandidate map[string][]string     // uuid -> shingles
-	LSHBuckets         map[string][]string      // band key -> []uuid
+	ExistingNodes       []*types.Node
+	NodesByUUID         map[string]*types.Node
+	NormalizedExisting  map[string][]*types.Node // normalized name -> nodes
+	ShinglesByCandidate map[string][]string      // uuid -> shingles
+	LSHBuckets          map[string][]string      // band key -> []uuid
 }
 
 // DedupResolutionState holds mutable resolution bookkeeping shared across deterministic and LLM passes
 type DedupResolutionState struct {
-	ResolvedNodes    []*types.Node
-	UUIDMap          map[string]string
+	ResolvedNodes     []*types.Node
+	UUIDMap           map[string]string
 	UnresolvedIndices []int
-	DuplicatePairs   []NodePair
+	DuplicatePairs    []NodePair
 }
 
 // BuildCandidateIndexes precomputes exact and fuzzy lookup structures once per dedupe run

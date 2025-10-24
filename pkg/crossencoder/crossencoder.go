@@ -15,13 +15,13 @@ Usage:
 	reranker := crossencoder.NewOpenAIRerankerClient(llmClient, crossencoder.Config{
 		MaxConcurrency: 5,
 	})
-	
+
 	// Rank passages
 	results, err := reranker.Rank(ctx, "search query", []string{
 		"passage 1 text",
 		"passage 2 text",
 	})
-	
+
 	// Using Jina-compatible reranker (works with vLLM, LocalAI, etc.)
 	vllmReranker := crossencoder.NewVLLMRerankerClient("http://localhost:8000/v1", "BAAI/bge-reranker-large")
 	results, err := vllmReranker.Rank(ctx, query, passages)
@@ -70,9 +70,9 @@ const (
 type ClientConfig struct {
 	Provider        Provider         `json:"provider"`
 	Config          Config           `json:"config"`
-	LLMClient       llm.Client       `json:"-"` // Not serialized, passed at runtime
-	EmbedderClient  embedder.Client  `json:"-"` // Required for embedding provider
-	RerankerConfig  *RerankerConfig  `json:"reranker_config,omitempty"` // Jina-compatible reranker config
+	LLMClient       llm.Client       `json:"-"`                          // Not serialized, passed at runtime
+	EmbedderClient  embedder.Client  `json:"-"`                          // Required for embedding provider
+	RerankerConfig  *RerankerConfig  `json:"reranker_config,omitempty"`  // Jina-compatible reranker config
 	EmbeddingConfig *EmbeddingConfig `json:"embedding_config,omitempty"` // Embedding-specific config
 }
 

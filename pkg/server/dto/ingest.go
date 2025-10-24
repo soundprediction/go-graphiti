@@ -4,8 +4,8 @@ import "time"
 
 // AddMessagesRequest represents a request to add messages to the knowledge graph
 type AddMessagesRequest struct {
-	GroupID   string    `json:"group_id" binding:"required"`
-	Messages  []Message `json:"messages" binding:"required"`
+	GroupID   string     `json:"group_id" binding:"required"`
+	Messages  []Message  `json:"messages" binding:"required"`
 	Reference *time.Time `json:"reference,omitempty"`
 }
 

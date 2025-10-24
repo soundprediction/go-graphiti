@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestNewOpenAIEmbedder(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -130,8 +129,8 @@ func TestEmbedderErrorHandling(t *testing.T) {
 
 func TestEmbedderConfig(t *testing.T) {
 	tests := []struct {
-		name   string
-		config embedder.Config
+		name         string
+		config       embedder.Config
 		expectedDims int
 	}{
 		{
@@ -159,7 +158,7 @@ func TestEmbedderConfig(t *testing.T) {
 		{
 			name: "custom dimensions",
 			config: embedder.Config{
-				Model: "custom-model",
+				Model:      "custom-model",
 				Dimensions: 512,
 			},
 			expectedDims: 512,

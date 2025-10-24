@@ -18,14 +18,14 @@ Usage:
 
 	library := prompts.NewLibrary()
 	extractNodes := library.ExtractNodes()
-	
+
 	// Use the prompt with context
 	context := map[string]interface{}{
 		"entity_types": entityTypes,
 		"episode_content": message,
 		"custom_prompt": customInstructions,
 	}
-	
+
 	messages, err := extractNodes.ExtractMessage().Call(context)
 	if err != nil {
 		// handle error

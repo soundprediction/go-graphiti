@@ -11,9 +11,9 @@ import (
 
 // mockClient is a mock LLM client for testing
 type mockClient struct {
-	callCount      int
-	failUntilCall  int
-	errorToReturn  error
+	callCount        int
+	failUntilCall    int
+	errorToReturn    error
 	responseToReturn *Response
 }
 

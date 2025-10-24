@@ -22,7 +22,6 @@ const (
 	DefaultRankConstant = 60
 )
 
-
 // SearchUtilities provides utility functions for graph search operations
 type SearchUtilities struct {
 	driver driver.GraphDriver
@@ -76,7 +75,7 @@ func FulltextQuery(query string, groupIDs []string) string {
 
 	// For Neo4j-like fulltext search syntax
 	sanitizedQuery := sanitizeQuery(query)
-	
+
 	if len(groupIDs) > 0 {
 		groupFilter := ""
 		for i, groupID := range groupIDs {
@@ -419,8 +418,6 @@ func toFloat32Slice(v interface{}) []float32 {
 	return nil
 }
 
-
-
 // MMRRerank performs Maximal Marginal Relevance reranking to reduce redundancy
 func MMRRerank(entities []*types.Node, queryEmbedding []float32, lambdaParam float64, topK int) []*types.Node {
 	if len(entities) == 0 || len(queryEmbedding) == 0 {
@@ -453,7 +450,7 @@ func MMRRerank(entities []*types.Node, queryEmbedding []float32, lambdaParam flo
 			var maxSimilarity float64
 			for _, selectedEntity := range selected {
 				if selectedEntity.Embedding != nil && len(selectedEntity.Embedding) > 0 &&
-				   entity.Embedding != nil && len(entity.Embedding) > 0 {
+					entity.Embedding != nil && len(entity.Embedding) > 0 {
 					similarity := CalculateCosineSimilarity(entity.Embedding, selectedEntity.Embedding)
 					if similarity > maxSimilarity {
 						maxSimilarity = similarity
@@ -477,5 +474,3 @@ func MMRRerank(entities []*types.Node, queryEmbedding []float32, lambdaParam flo
 
 	return selected
 }
-
-

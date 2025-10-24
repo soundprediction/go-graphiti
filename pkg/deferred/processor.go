@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"time"
 
-	_ "github.com/marcboeker/go-duckdb/v2"
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 // TestKuzuDriverImplementedMethods tests the newly implemented methods
 func TestKuzuDriverImplementedMethods(t *testing.T) {
 	ctx := context.Background()
@@ -55,7 +54,7 @@ func TestKuzuDriverImplementedMethods(t *testing.T) {
 			// The error should be related to actual database operations
 			assert.True(t,
 				err.Error() != "" &&
-				!assert.ObjectsAreEqual("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency", err.Error()),
+					!assert.ObjectsAreEqual("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency", err.Error()),
 				"Error should not be the 'not implemented' message")
 		}
 	})
@@ -75,7 +74,7 @@ func TestKuzuDriverImplementedMethods(t *testing.T) {
 			// The error should be related to actual database operations
 			assert.True(t,
 				err.Error() != "" &&
-				!assert.ObjectsAreEqual("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency", err.Error()),
+					!assert.ObjectsAreEqual("KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency", err.Error()),
 				"Error should not be the 'not implemented' message")
 		}
 	})

@@ -57,12 +57,12 @@ type azureOpenAIMessage struct {
 
 // azureOpenAIResponse represents the response from Azure OpenAI API.
 type azureOpenAIResponse struct {
-	ID      string                 `json:"id"`
-	Object  string                 `json:"object"`
-	Created int64                  `json:"created"`
-	Model   string                 `json:"model"`
-	Choices []azureOpenAIChoice    `json:"choices"`
-	Error   *azureOpenAIError      `json:"error,omitempty"`
+	ID      string              `json:"id"`
+	Object  string              `json:"object"`
+	Created int64               `json:"created"`
+	Model   string              `json:"model"`
+	Choices []azureOpenAIChoice `json:"choices"`
+	Error   *azureOpenAIError   `json:"error,omitempty"`
 }
 
 // azureOpenAIChoice represents a choice in the response.

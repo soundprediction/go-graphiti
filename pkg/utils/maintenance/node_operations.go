@@ -385,7 +385,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		"episode_content":   episode.Content,
 		"previous_episodes": previousEpisodeContents,
 		"ensure_ascii":      true,
-		"logger":             no.logger,
+		"logger":            no.logger,
 	}
 
 	// Use LLM to resolve duplicates
@@ -521,7 +521,7 @@ func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes 
 			"episode_content":   episode.Content,
 			"previous_episodes": previousEpisodeContents,
 			"ensure_ascii":      true,
-		"logger":             no.logger,
+			"logger":            no.logger,
 		}
 
 		// Call batch extraction prompt

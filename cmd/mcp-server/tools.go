@@ -13,23 +13,23 @@ import (
 
 // AddMemoryRequest represents the parameters for adding memory
 type AddMemoryRequest struct {
-	Name               string `json:"name"`
-	EpisodeBody        string `json:"episode_body"`
-	GroupID            string `json:"group_id,omitempty"`
-	Source             string `json:"source,omitempty"`
-	SourceDescription  string `json:"source_description,omitempty"`
-	UUID               string `json:"uuid,omitempty"`
+	Name              string `json:"name"`
+	EpisodeBody       string `json:"episode_body"`
+	GroupID           string `json:"group_id,omitempty"`
+	Source            string `json:"source,omitempty"`
+	SourceDescription string `json:"source_description,omitempty"`
+	UUID              string `json:"uuid,omitempty"`
 }
 
 // SearchRequest represents search parameters
 type SearchRequest struct {
-	Query           string   `json:"query"`
-	Limit           int      `json:"limit,omitempty"`
-	GroupIDs        []string `json:"group_ids,omitempty"`
-	MaxNodes        int      `json:"max_nodes,omitempty"`
-	MaxFacts        int      `json:"max_facts,omitempty"`
-	CenterNodeUUID  string   `json:"center_node_uuid,omitempty"`
-	Entity          string   `json:"entity,omitempty"` // Single entity type to filter results
+	Query          string   `json:"query"`
+	Limit          int      `json:"limit,omitempty"`
+	GroupIDs       []string `json:"group_ids,omitempty"`
+	MaxNodes       int      `json:"max_nodes,omitempty"`
+	MaxFacts       int      `json:"max_facts,omitempty"`
+	CenterNodeUUID string   `json:"center_node_uuid,omitempty"`
+	Entity         string   `json:"entity,omitempty"` // Single entity type to filter results
 }
 
 // GetEpisodesRequest represents parameters for retrieving episodes

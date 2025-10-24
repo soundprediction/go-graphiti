@@ -21,8 +21,8 @@ type BGERerankerClient struct {
 // BGEConfig extends Config with BGE-specific settings
 type BGEConfig struct {
 	Config
-	BaseURL string `json:"base_url"`
-	APIKey  string `json:"api_key,omitempty"`
+	BaseURL string            `json:"base_url"`
+	APIKey  string            `json:"api_key,omitempty"`
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
@@ -48,10 +48,10 @@ func NewBGERerankerClient(config BGEConfig) *BGERerankerClient {
 
 // bgeRerankRequest represents the request structure for BGE reranking API
 type bgeRerankRequest struct {
-	Model    string     `json:"model"`
-	Query    string     `json:"query"`
-	Passages []string   `json:"passages"`
-	TopK     int        `json:"top_k,omitempty"`
+	Model    string   `json:"model"`
+	Query    string   `json:"query"`
+	Passages []string `json:"passages"`
+	TopK     int      `json:"top_k,omitempty"`
 }
 
 // bgeRerankResponse represents the response from BGE reranking API
@@ -62,9 +62,9 @@ type bgeRerankResponse struct {
 
 // bgeRerankResult represents a single reranking result
 type bgeRerankResult struct {
-	Index     int     `json:"index"`
-	Document  string  `json:"document"`
-	Score     float64 `json:"relevance_score"`
+	Index    int     `json:"index"`
+	Document string  `json:"document"`
+	Score    float64 `json:"relevance_score"`
 }
 
 // bgeError represents an error response

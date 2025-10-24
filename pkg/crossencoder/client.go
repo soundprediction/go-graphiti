@@ -15,7 +15,7 @@ type Client interface {
 	// Rank ranks the given passages based on their relevance to the query.
 	// Returns a list of RankedPassage sorted in descending order of relevance.
 	Rank(ctx context.Context, query string, passages []string) ([]RankedPassage, error)
-	
+
 	// Close cleans up any resources used by the client
 	Close() error
 }
@@ -24,10 +24,10 @@ type Client interface {
 type Config struct {
 	// Model specifies the model to use for ranking
 	Model string `json:"model,omitempty"`
-	
+
 	// BatchSize specifies how many passages to process at once
 	BatchSize int `json:"batch_size,omitempty"`
-	
+
 	// MaxConcurrency limits the number of concurrent requests
 	MaxConcurrency int `json:"max_concurrency,omitempty"`
 }

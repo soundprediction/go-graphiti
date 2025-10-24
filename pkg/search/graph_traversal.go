@@ -415,10 +415,10 @@ func convertRecordsToEdges(records []map[string]interface{}) []*types.Edge {
 
 		// Convert EntityEdge to Edge (base type) for return
 		baseEdge := &types.Edge{
-			BaseEdge: edge.BaseEdge,
-			Fact: edge.Fact,
+			BaseEdge:      edge.BaseEdge,
+			Fact:          edge.Fact,
 			FactEmbedding: edge.FactEmbedding,
-			Episodes: edge.Episodes,
+			Episodes:      edge.Episodes,
 		}
 
 		edges = append(edges, baseEdge)

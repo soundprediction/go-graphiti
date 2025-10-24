@@ -266,7 +266,7 @@ All core functionality is implemented and tested:
 
 ## Dependencies
 
-- `github.com/marcboeker/go-duckdb/v2` - DuckDB driver (already in go.mod)
+- `github.com/duckdb/duckdb-go` - DuckDB driver (already in go.mod)
 - No new external dependencies required
 
 ## Migration Guide

@@ -302,7 +302,7 @@ func normalizeL2(vector []float32) []float32 {
 func CrossEncoderReranker(ctx context.Context, query string, candidates []*types.Node, minScore float64, limit int) ([]*types.Node, []float64, error) {
 	// This would use an LLM to score each candidate against the query
 	// For now, return the candidates as-is with default scores
-	
+
 	if len(candidates) > limit {
 		candidates = candidates[:limit]
 	}

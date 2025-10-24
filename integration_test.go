@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package graphiti_test
@@ -23,34 +24,34 @@ func TestGraphitiIntegration(t *testing.T) {
 
 	// This test would require actual database setup
 	t.Skip("Skip until actual database driver is implemented")
-	
+
 	// In a real integration test, you would:
 	// 1. Set up a test database (Kuzu/Neo4j)
 	// 2. Create real LLM and embedder clients
 	// 3. Test full functionality
-	
+
 	// Example setup (would need real implementations):
 	// driver, err := driver.NewKuzuDriver("./test_integration_db")
 	// require.NoError(t, err)
 	// defer driver.Close(ctx)
-	
+
 	// llmClient, err := llm.NewOpenAIClient("test-key", llm.Config{
 	//     Model: "gpt-4o-mini",
 	// })
 	// require.NoError(t, err)
 	// defer llmClient.Close()
-	
+
 	// embedder, err := embedder.NewOpenAIEmbedder("test-key", embedder.Config{
 	//     Model: "text-embedding-ada-002",
 	// })
 	// require.NoError(t, err)
 	// defer embedder.Close()
-	
+
 	// client := graphiti.NewClient(driver, llmClient, embedder, &graphiti.Config{
 	//     GroupID: "test-integration",
 	//     TimeZone: time.UTC,
 	// })
-	
+
 	// Test search functionality
 	// searchOpts := &types.SearchOptions{
 	//     Filters: &types.SearchFilters{
@@ -61,7 +62,7 @@ func TestGraphitiIntegration(t *testing.T) {
 	//         },
 	//     },
 	// }
-	
+
 	// results, err := client.Search(ctx, "Who is Tania", searchOpts)
 	// require.NoError(t, err)
 	// assert.NotNil(t, results)

@@ -76,7 +76,7 @@ func (c *MockRerankerClient) calculateSimilarity(queryLower string, queryWords [
 	// Jaccard similarity with some adjustments
 	overlap := float64(matchCount)
 	union := float64(len(queryWords) + len(passageWords) - matchCount)
-	
+
 	if union == 0 {
 		return 0.0
 	}
@@ -86,7 +86,7 @@ func (c *MockRerankerClient) calculateSimilarity(queryLower string, queryWords [
 	// Add some randomness based on content hash for consistent but varied results
 	hash := md5.Sum([]byte(passage))
 	randomFactor := float64(hash[0]) / 255.0 * 0.1 // 0-0.1 range
-	
+
 	return similarity + randomFactor
 }
 

@@ -47,11 +47,11 @@ type voyageEmbeddingRequest struct {
 
 // voyageEmbeddingResponse represents the response from Voyage AI embeddings API.
 type voyageEmbeddingResponse struct {
-	Object string                    `json:"object"`
-	Data   []voyageEmbeddingData     `json:"data"`
-	Model  string                    `json:"model"`
-	Usage  voyageEmbeddingUsage      `json:"usage"`
-	Error  *voyageEmbeddingError     `json:"error,omitempty"`
+	Object string                `json:"object"`
+	Data   []voyageEmbeddingData `json:"data"`
+	Model  string                `json:"model"`
+	Usage  voyageEmbeddingUsage  `json:"usage"`
+	Error  *voyageEmbeddingError `json:"error,omitempty"`
 }
 
 // voyageEmbeddingData represents a single embedding in the response.
