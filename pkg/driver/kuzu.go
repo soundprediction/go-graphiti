@@ -192,8 +192,18 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 	originalPath := db
 	tempDbPath := ""
 
-	// Try to open the database normally
-	database, err := kuzu.OpenDatabase(db, kuzu.DefaultSystemConfig())
+	// Create a SystemConfig manually to avoid version mismatch issues with DefaultSystemConfig()
+	// These are safe, conservative defaults that work with kuzu v0.11.2
+	systemConfig := kuzu.SystemConfig{
+		BufferPoolSize:    1024 * 1024 * 1024, // 1GB buffer pool
+		MaxNumThreads:     uint64(maxConcurrentQueries),
+		EnableCompression: true,
+		ReadOnly:          false,
+		MaxDbSize:         1 << 43, // 8TB max database size
+	}
+
+	// Try to open the database with our custom config
+	database, err := kuzu.OpenDatabase(db, systemConfig)
 	if err != nil && isLockError(err) && db != ":memory:" {
 		// Database is locked, try to copy it to a temp location
 		log.Printf("Database at %s is locked, attempting to create temporary copy...", db)
@@ -213,8 +223,8 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 
 		log.Printf("Successfully copied database to temporary location: %s", tempDbPath)
 
-		// Try to open the temp copy
-		database, err = kuzu.OpenDatabase(tempDbPath, kuzu.DefaultSystemConfig())
+		// Try to open the temp copy with the same config
+		database, err = kuzu.OpenDatabase(tempDbPath, systemConfig)
 		if err != nil {
 			os.RemoveAll(tempDir)
 			return nil, fmt.Errorf("failed to open temporary database copy: %w", err)
@@ -676,7 +686,34 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 		}
 	}
 
-	query := `
+	// Build query dynamically to handle empty arrays with explicit CASTs
+	var factEmbeddingValue string
+	var episodesValue string
+
+	params := make(map[string]interface{})
+
+	// Handle fact_embedding
+	if len(edge.FactEmbedding) > 0 {
+		factEmbeddingValue = "$fact_embedding"
+		// Convert float32 to float64 for Kuzu
+		embedding := make([]float64, len(edge.FactEmbedding))
+		for i, v := range edge.FactEmbedding {
+			embedding[i] = float64(v)
+		}
+		params["fact_embedding"] = embedding
+	} else {
+		factEmbeddingValue = "CAST([] AS FLOAT[])"
+	}
+
+	// Handle episodes
+	if len(edge.Episodes) > 0 {
+		episodesValue = "$episodes"
+		params["episodes"] = edge.Episodes
+	} else {
+		episodesValue = "CAST([] AS STRING[])"
+	}
+
+	query := fmt.Sprintf(`
 		MATCH (a:Entity {uuid: $source_uuid, group_id: $group_id})
 		MATCH (b:Entity {uuid: $target_uuid, group_id: $group_id})
 		CREATE (rel:RelatesToNode_ {
@@ -685,8 +722,8 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 			created_at: $created_at,
 			name: $name,
 			fact: $fact,
-			fact_embedding: [],
-			episodes: [],
+			fact_embedding: %s,
+			episodes: %s,
 			expired_at: $expired_at,
 			valid_at: $valid_at,
 			invalid_at: $invalid_at,
@@ -694,9 +731,8 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 		})
 		CREATE (a)-[:RELATES_TO]->(rel)
 		CREATE (rel)-[:RELATES_TO]->(b)
-	`
+	`, factEmbeddingValue, episodesValue)
 
-	params := make(map[string]interface{})
 	params["source_uuid"] = edge.SourceID
 	params["target_uuid"] = edge.TargetID
 	params["group_id"] = edge.GroupID
@@ -1656,7 +1692,18 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 
 	switch tableName {
 	case "Episodic":
-		query = `
+		// Build query dynamically based on whether entity_edges is empty
+		// For empty arrays, use CAST([] AS STRING[]) to explicitly type them
+		var entityEdgesValue string
+		if len(node.EntityEdges) > 0 {
+			entityEdgesValue = "$entity_edges"
+			params["entity_edges"] = node.EntityEdges
+		} else {
+			// Use explicit cast for empty array to avoid go-kuzu type inference issues
+			entityEdgesValue = "CAST([] AS STRING[])"
+		}
+
+		query = fmt.Sprintf(`
 			CREATE (n:Episodic {
 				uuid: $uuid,
 				name: $name,
@@ -1666,9 +1713,10 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 				source_description: $source_description,
 				content: $content,
 				valid_at: $valid_at,
-				entity_edges: []
+				entity_edges: %s
 			})
-		`
+		`, entityEdgesValue)
+
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
@@ -1678,36 +1726,78 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["content"] = node.Content
 		params["valid_at"] = node.ValidFrom
 	case "Entity":
-		query = `
+		// Build query dynamically to handle empty arrays with explicit CASTs
+		var labelsValue string
+		var embeddingValue string
+
+		// Handle labels
+		if node.EntityType != "" {
+			labelsValue = "$labels"
+			params["labels"] = []string{node.EntityType}
+		} else {
+			labelsValue = "CAST([] AS STRING[])"
+		}
+
+		// Handle name_embedding
+		if len(node.NameEmbedding) > 0 {
+			embeddingValue = "$name_embedding"
+			// Convert float32 to float64 for Kuzu
+			embedding := make([]float64, len(node.NameEmbedding))
+			for i, v := range node.NameEmbedding {
+				embedding[i] = float64(v)
+			}
+			params["name_embedding"] = embedding
+		} else {
+			embeddingValue = "CAST([] AS FLOAT[])"
+		}
+
+		query = fmt.Sprintf(`
 			CREATE (n:Entity {
 				uuid: $uuid,
 				name: $name,
 				group_id: $group_id,
-				labels: $labels,
+				labels: %s,
 				created_at: $created_at,
-				name_embedding: [],
+				name_embedding: %s,
 				summary: $summary,
 				attributes: $attributes
 			})
-		`
+		`, labelsValue, embeddingValue)
+
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
-		params["labels"] = []string{node.EntityType}
 		params["created_at"] = node.CreatedAt
 		params["summary"] = node.Summary
 		params["attributes"] = metadataJSON
 	case "Community":
-		query = `
+		// Build query dynamically to handle empty arrays with explicit CASTs
+		var embeddingValue string
+
+		// Handle name_embedding
+		if len(node.NameEmbedding) > 0 {
+			embeddingValue = "$name_embedding"
+			// Convert float32 to float64 for Kuzu
+			embedding := make([]float64, len(node.NameEmbedding))
+			for i, v := range node.NameEmbedding {
+				embedding[i] = float64(v)
+			}
+			params["name_embedding"] = embedding
+		} else {
+			embeddingValue = "CAST([] AS FLOAT[])"
+		}
+
+		query = fmt.Sprintf(`
 			CREATE (n:Community {
 				uuid: $uuid,
 				name: $name,
 				group_id: $group_id,
 				created_at: $created_at,
-				name_embedding: [],
+				name_embedding: %s,
 				summary: $summary
 			})
-		`
+		`, embeddingValue)
+
 		params["uuid"] = node.ID
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
