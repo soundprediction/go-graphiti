@@ -15,7 +15,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/kaptinlin/jsonrepair v0.2.4
-	github.com/kuzudb/go-kuzu v0.11.3
+	github.com/kuzudb/go-kuzu v0.11.2
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 )

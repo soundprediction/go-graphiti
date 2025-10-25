@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kuzudb/go-kuzu"
@@ -91,6 +92,7 @@ type KuzuDriver struct {
 	dbPath       string
 	tempDbPath   string // If non-empty, this is a temp copy that should be cleaned up
 	originalPath string // Original path before copying to temp
+	mu           sync.Mutex // Mutex to protect database operations from concurrent access
 }
 
 // copyDir recursively copies a directory from src to dst
@@ -255,6 +257,10 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 // ExecuteQuery executes a query with parameters, exactly matching Python signature
 // Returns (results, summary, keys) tuple like Python, though summary and keys are unused in Kuzu
 func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	// Lock to prevent concurrent database access (Kuzu C++ library is not thread-safe)
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
 	// Filter parameters exactly like Python implementation
 	params := make(map[string]any) // Use 'any' instead of 'interface{}' for go-kuzu compatibility
 	for key, value := range kwargs {
