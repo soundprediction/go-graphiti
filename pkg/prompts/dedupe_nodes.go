@@ -210,7 +210,7 @@ Do NOT mark entities as duplicates if:
 - They have similar names or purposes but refer to separate instances or concepts.
 
 Task:
-Your response will be json called entity_resolutions with a list that contains one entry for each entity.
+Your response will be in TSV.
 
 For every entity, return an object with the following quantities:
 
@@ -221,7 +221,7 @@ For every entity, return an object with the following quantities:
 
 - Only use idx values that appear in EXISTING ENTITIES.
 - Never fabricate entities or indices.
-- Output TSV; use the SCHEMA
+- Use the SCHEMA
 <SCHEMA>
 id: string
 name: string
@@ -285,15 +285,18 @@ Guidelines:
 1. Each uuid from the list of nodes should appear EXACTLY once in your response
 2. If a node has no duplicates, it should appear in the response in a list of only one uuid
 
-Respond with a JSON object in the following format:
-{
-    "nodes": [
-        {
-            "uuids": ["5d643020624c42fa9de13f97b1b3fa39", "node that is a duplicate of 5d643020624c42fa9de13f97b1b3fa39"],
-            "summary": "Brief summary of the node summaries that appear in the list of names."
-        }
-    ]
-}
+Respond with a TSV with schema:
+<SCHEMA>
+uuids: list[string]
+summary: string
+</SCHEMA>
+
+where 
+
+- uuids: ["5d643020624c42fa9de13f97b1b3fa39", "node that is a duplicate of 5d643020624c42fa9de13f97b1b3fa39"]
+- summary: "Brief summary of the node summaries that appear in the list of names."
+
+conclude your response with a new line
 `, nodesTSV)
 	logPrompts(context, sysPrompt, userPrompt)
 	return []llm.Message{

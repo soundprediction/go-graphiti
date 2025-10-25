@@ -438,14 +438,21 @@ func DedupeNodesBulk(
 
 	for i, nodes := range extractedNodesByEpisode {
 		idx := i
-		nodesCopy := nodes
+		// Make a proper copy of the slice to avoid sharing references across closures
+		nodesCopy := make([]*types.Node, len(nodes))
+		copy(nodesCopy, nodes)
+
+		// Capture episode data at closure creation time, not execution time
+		episodeCopy := episodeTuples[idx].Episode
+		prevEpisodesCopy := episodeTuples[idx].PreviousEpisodes
+
 		functions[idx] = func() (firstPassResult, error) {
 			if idx >= len(episodeTuples) {
 				return firstPassResult{}, fmt.Errorf("episode tuple index %d out of range", idx)
 			}
 
-			episode := episodeTuples[idx].Episode
-			previousEpisodes := episodeTuples[idx].PreviousEpisodes
+			episode := episodeCopy
+			previousEpisodes := prevEpisodesCopy
 
 			// Convert Episode to Node for compatibility
 			episodeNode := &types.Node{
