@@ -372,9 +372,10 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		}
 	}
 
-	// Create a single episode node and append chunks to it
+	// Create a single episode node and use it for all chunks
+	// For entity extraction, we'll create temporary nodes with individual chunk content
 	var mainEpisodeNode *types.Node
-	chunkEpisodes := make([]*types.Node, len(chunks))
+	chunkEpisodeNodes := make([]*types.Node, len(chunks))
 	episodeTuples := make([]utils.EpisodeTuple, len(chunks))
 
 	// Convert previous episodes to Episode type for EpisodeTuple (reused for all chunks)
@@ -391,72 +392,51 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		}
 	}
 
+	// Create temporary episode nodes for entity extraction (one per chunk)
+	// These all have the same ID but different content (individual chunks)
 	for i, chunk := range chunks {
+		chunkEpisode := types.Episode{
+			ID:        episode.ID,
+			Name:      episode.Name,
+			Content:   chunk, // Individual chunk content for extraction
+			Reference: episode.Reference,
+			CreatedAt: episode.CreatedAt,
+			GroupID:   episode.GroupID,
+			Metadata:  episode.Metadata,
+		}
+
+		// Create temporary episode node for this chunk's extraction
+		chunkNode := &types.Node{
+			ID:          episode.ID,
+			Name:        episode.Name,
+			Type:        types.EpisodicNodeType,
+			Content:     chunk, // Just this chunk's content
+			GroupID:     episode.GroupID,
+			Metadata:    episode.Metadata,
+			ValidFrom:   episode.Reference,
+			CreatedAt:   episode.CreatedAt,
+		}
+		chunkEpisodeNodes[i] = chunkNode
+
+		episodeTuples[i] = utils.EpisodeTuple{
+			Episode:          &chunkEpisode,
+			PreviousEpisodes: prevEps,
+		}
+
 		if i == 0 {
-			// First chunk: Create the main episode node with original episode.ID
-			firstChunkEpisode := types.Episode{
-				ID:        episode.ID,
-				Name:      episode.Name,
-				Content:   chunk,
-				Reference: episode.Reference,
-				CreatedAt: episode.CreatedAt,
-				GroupID:   episode.GroupID,
-				Metadata:  episode.Metadata,
-			}
-
+			// Create the actual persisted episode node with first chunk
 			var err error
-			mainEpisodeNode, err = c.createEpisodeNode(ctx, firstChunkEpisode, options)
+			mainEpisodeNode, err = c.createEpisodeNode(ctx, chunkEpisode, options)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create episode node for first chunk: %w", err)
-			}
-			chunkEpisodes[0] = mainEpisodeNode
-
-			episodeTuples[0] = utils.EpisodeTuple{
-				Episode:          &firstChunkEpisode,
-				PreviousEpisodes: prevEps,
-			}
-		} else {
-			// Subsequent chunks: Append to the main episode node
-			updatedContent := mainEpisodeNode.Content
-			if updatedContent != "" {
-				updatedContent += "\n"
-			}
-			updatedContent += chunk
-
-			mainEpisodeNode.Content = updatedContent
-			mainEpisodeNode.UpdatedAt = time.Now()
-
-			// Save the updated episode node
-			if err := c.driver.UpsertNode(ctx, mainEpisodeNode); err != nil {
-				return nil, fmt.Errorf("failed to append chunk %d to episode: %w", i, err)
-			}
-
-			c.logger.Info("Appended chunk to episode",
-				"episode_id", episode.ID,
-				"chunk_index", i,
-				"chunk_length", len(chunk),
-				"new_total_length", len(mainEpisodeNode.Content))
-
-			// Use the same episode node for all chunks
-			chunkEpisodes[i] = mainEpisodeNode
-
-			// Create episode tuple with just this chunk's content for extraction
-			chunkEpisode := types.Episode{
-				ID:        episode.ID,
-				Name:      episode.Name,
-				Content:   chunk, // Just this chunk's content for extraction
-				Reference: episode.Reference,
-				CreatedAt: episode.CreatedAt,
-				GroupID:   episode.GroupID,
-				Metadata:  episode.Metadata,
-			}
-
-			episodeTuples[i] = utils.EpisodeTuple{
-				Episode:          &chunkEpisode,
-				PreviousEpisodes: prevEps,
+				return nil, fmt.Errorf("failed to create episode node: %w", err)
 			}
 		}
 	}
+
+	// After all chunks are processed, update the main episode with full content
+	fullContent := strings.Join(chunks, "\n")
+	mainEpisodeNode.Content = fullContent
+	mainEpisodeNode.UpdatedAt = time.Now()
 
 	// Initialize maintenance operations
 	nodeOps := maintenance.NewNodeOperations(c.driver, c.llm, c.embedder, prompts.NewLibrary())
@@ -470,7 +450,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		"num_chunks", len(chunks))
 
 	extractedNodesByChunk := make([][]*types.Node, len(chunks))
-	for i, chunkNode := range chunkEpisodes {
+	for i, chunkNode := range chunkEpisodeNodes {
 		extractedNodes, err := nodeOps.ExtractNodes(ctx, chunkNode, previousEpisodes,
 			options.EntityTypes, options.ExcludedEntityTypes)
 		if err != nil {

@@ -250,6 +250,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 	conversationTurn := fmt.Sprintf("User: %s\n", input)
 
 	// Add to episode (create or append)
+	// Run in background to avoid freezing the chat
 	if session.EpisodeID == "" {
 		// First message - create initial episode with UUID v7
 		episodeID, err := uuid.NewV7()
@@ -266,19 +267,26 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 			Reference: time.Now(),
 		}
 
-		result, err := clients.UserGraphiti.Add(ctx, []types.Episode{episode}, nil)
-		if err != nil {
-			fmt.Printf("⚠️  Warning: Failed to create episode: %v\n", err)
-		} else if result != nil && len(result.Episodes) > 0 {
-			session.EpisodeID = result.Episodes[0].ID
-			fmt.Printf("✨ Created episode: %s\n", session.EpisodeID)
-		}
+		// Set the episode ID immediately so subsequent messages can reference it
+		session.EpisodeID = episode.ID
+
+		// Create episode in background
+		go func(ep types.Episode) {
+			result, err := clients.UserGraphiti.Add(ctx, []types.Episode{ep}, nil)
+			if err != nil {
+				fmt.Printf("⚠️  Background: Failed to create episode: %v\n", err)
+			} else if result != nil && len(result.Episodes) > 0 {
+				fmt.Printf("✨ Background: Created episode %s\n", result.Episodes[0].ID)
+			}
+		}(episode)
 	} else {
-		// Subsequent messages - append to existing episode
-		_, err := clients.UserGraphiti.AddToEpisode(ctx, session.EpisodeID, conversationTurn, nil)
-		if err != nil {
-			fmt.Printf("⚠️  Warning: Failed to append to episode: %v\n", err)
-		}
+		// Subsequent messages - append to existing episode in background
+		go func(episodeID, content string) {
+			_, err := clients.UserGraphiti.AddToEpisode(ctx, episodeID, content, nil)
+			if err != nil {
+				fmt.Printf("⚠️  Background: Failed to append to episode: %v\n", err)
+			}
+		}(session.EpisodeID, conversationTurn)
 	}
 
 	// Search global knowledge base if available
@@ -339,13 +347,15 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 	}
 	session.Messages = append(session.Messages, message)
 
-	// Append assistant response to episode
+	// Append assistant response to episode in background
 	if session.EpisodeID != "" {
-		assistantTurn := fmt.Sprintf("Assistant: %s\n", response)
-		_, err := clients.UserGraphiti.AddToEpisode(ctx, session.EpisodeID, assistantTurn, nil)
-		if err != nil {
-			fmt.Printf("⚠️  Warning: Failed to append assistant response: %v\n", err)
-		}
+		go func(episodeID, resp string) {
+			assistantTurn := fmt.Sprintf("Assistant: %s\n", resp)
+			_, err := clients.UserGraphiti.AddToEpisode(ctx, episodeID, assistantTurn, nil)
+			if err != nil {
+				fmt.Printf("⚠️  Background: Failed to append assistant response: %v\n", err)
+			}
+		}(session.EpisodeID, response)
 	}
 }
 
