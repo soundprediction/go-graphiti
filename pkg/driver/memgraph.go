@@ -904,27 +904,24 @@ func (m *MemgraphDriver) CreateIndices(ctx context.Context) error {
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		// Create indices for commonly queried properties
-		// Note: Memgraph syntax may differ slightly from Neo4j
-		indices := []string{
-			"CREATE INDEX ON :Node(id, group_id)",
-			"CREATE INDEX ON :Node(created_at)",
-			"CREATE INDEX ON :Node(type)",
+	// Create indices for commonly queried properties
+	// Note: Memgraph requires index creation to use auto-commit (implicit) transactions
+	// rather than explicit transactions. Using session.Run() directly instead of ExecuteWrite.
+	indices := []string{
+		"CREATE INDEX ON :Node(id, group_id)",
+		"CREATE INDEX ON :Node(created_at)",
+		"CREATE INDEX ON :Node(type)",
+	}
+
+	for _, indexQuery := range indices {
+		_, err := session.Run(ctx, indexQuery, nil)
+		if err != nil {
+			// Continue with other indices even if one fails (index may already exist)
+			continue
 		}
+	}
 
-		for _, indexQuery := range indices {
-			_, err := tx.Run(ctx, indexQuery, nil)
-			if err != nil {
-				// Continue with other indices even if one fails
-				continue
-			}
-		}
-
-		return nil, nil
-	})
-
-	return err
+	return nil
 }
 
 func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphStats, error) {
