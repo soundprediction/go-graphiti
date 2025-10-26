@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -131,32 +130,10 @@ func (b *Builder) UpdateCommunity(ctx context.Context, entity *types.Node) (*Upd
 
 // getExistingCommunity checks if an entity is already part of a community
 func (b *Builder) getExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
-	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
-		return b.getExistingCommunityKuzu(ctx, kuzuDriver, entityUUID)
-	}
-
-	return nil, fmt.Errorf("non-Kuzu drivers not yet supported for getting existing community")
-}
-
-// getExistingCommunityKuzu gets existing community for Kuzu database
-func (b *Builder) getExistingCommunityKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver, entityUUID string) (*types.Node, error) {
-	// This would need proper implementation based on your Kuzu driver
-	// For now, returning nil to indicate no existing community
-	return nil, nil
+	return b.driver.GetExistingCommunity(ctx, entityUUID)
 }
 
 // findModalCommunity finds the most common community among connected entities
 func (b *Builder) findModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
-	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
-		return b.findModalCommunityKuzu(ctx, kuzuDriver, entityUUID)
-	}
-
-	return nil, fmt.Errorf("non-Kuzu drivers not yet supported for finding modal community")
-}
-
-// findModalCommunityKuzu finds modal community for Kuzu database
-func (b *Builder) findModalCommunityKuzu(ctx context.Context, kuzuDriver interface{}, entityUUID string) (*types.Node, error) {
-	// This would need proper implementation based on your Kuzu driver
-	// For now, returning nil to indicate no modal community found
-	return nil, nil
+	return b.driver.FindModalCommunity(ctx, entityUUID)
 }

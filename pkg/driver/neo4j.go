@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"reflect"
 	"sort"
 	"time"
 
@@ -900,6 +901,147 @@ func (n *Neo4jDriver) BuildCommunities(ctx context.Context, groupID string) erro
 	})
 
 	return err
+}
+
+// GetExistingCommunity checks if an entity is already part of a community
+func (n *Neo4jDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	query := `
+		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		RETURN c
+		LIMIT 1
+	`
+
+	params := map[string]interface{}{
+		"entity_uuid": entityUUID,
+	}
+
+	result, _, _, err := n.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing community: %w", err)
+	}
+
+	nodes, err := n.parseCommunityNodesFromRecords(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse existing community: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		return nodes[0], nil
+	}
+
+	return nil, nil
+}
+
+// FindModalCommunity finds the most common community among connected entities
+func (n *Neo4jDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	query := `
+		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
+		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		WITH c, count(*) AS count
+		ORDER BY count DESC
+		LIMIT 1
+		RETURN c
+	`
+
+	params := map[string]interface{}{
+		"entity_uuid": entityUUID,
+	}
+
+	result, _, _, err := n.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query modal community: %w", err)
+	}
+
+	nodes, err := n.parseCommunityNodesFromRecords(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse modal community: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		return nodes[0], nil
+	}
+
+	return nil, nil
+}
+
+// parseCommunityNodesFromRecords parses community nodes from Neo4j query records
+func (n *Neo4jDriver) parseCommunityNodesFromRecords(result interface{}) ([]*types.Node, error) {
+	var nodes []*types.Node
+
+	// Use reflection to handle Neo4j driver records
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		// Call Get("c") method on the record to get the community node
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			continue
+		}
+
+		results := getMethod.Call([]reflect.Value{reflect.ValueOf("c")})
+		if len(results) < 1 {
+			continue
+		}
+
+		nodeInterface := results[0].Interface()
+
+		// Convert the node using reflection
+		nodeValue := reflect.ValueOf(nodeInterface)
+		if nodeValue.Kind() == reflect.Ptr {
+			nodeValue = nodeValue.Elem()
+		}
+
+		// Try to get Props or Properties method
+		propsMethod := nodeValue.MethodByName("Props")
+		if !propsMethod.IsValid() {
+			propsMethod = nodeValue.MethodByName("Properties")
+		}
+
+		if !propsMethod.IsValid() {
+			continue
+		}
+
+		// Call Props() or Properties()
+		propsResults := propsMethod.Call(nil)
+		if len(propsResults) == 0 {
+			continue
+		}
+
+		props, ok := propsResults[0].Interface().(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Create node from properties
+		node := &types.Node{
+			Type:     types.CommunityNodeType,
+			Metadata: make(map[string]interface{}),
+		}
+
+		if uuid, ok := props["uuid"].(string); ok {
+			node.ID = uuid
+		}
+		if name, ok := props["name"].(string); ok {
+			node.Name = name
+		}
+		if summary, ok := props["summary"].(string); ok {
+			node.Summary = summary
+		}
+		if createdAt, ok := props["created_at"].(time.Time); ok {
+			node.CreatedAt = createdAt
+		}
+
+		if node.ID != "" {
+			nodes = append(nodes, node)
+		}
+	}
+
+	return nodes, nil
 }
 
 func (n *Neo4jDriver) CreateIndices(ctx context.Context) error {

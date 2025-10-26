@@ -79,6 +79,8 @@ type GraphDriver interface {
 	// Community operations
 	GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error)
 	BuildCommunities(ctx context.Context, groupID string) error
+	GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error)
+	FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error)
 
 	// Database maintenance
 	CreateIndices(ctx context.Context) error

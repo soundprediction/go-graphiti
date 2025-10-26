@@ -3,6 +3,7 @@ package community
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/types"
@@ -127,9 +128,8 @@ func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string
 		return b.getNodeNeighborsKuzu(ctx, kuzuDriver, nodeUUID, groupID)
 	}
 
-	// For other drivers, we'd need to implement the query execution
-	// This is a simplified version - in a real implementation, you'd handle this properly
-	return nil, fmt.Errorf("non-Kuzu drivers not yet supported for neighbor queries")
+	// For Neo4j/Memgraph drivers
+	return b.getNodeNeighborsNeo4j(ctx, nodeUUID, groupID)
 }
 
 // getNodeNeighborsKuzu gets neighbors specifically for Kuzu database
@@ -175,7 +175,8 @@ func (b *Builder) getAllGroupIDs(ctx context.Context) ([]string, error) {
 		return b.getAllGroupIDsKuzu(ctx, kuzuDriver)
 	}
 
-	return nil, fmt.Errorf("non-Kuzu drivers not yet supported for getting group IDs")
+	// For Neo4j/Memgraph drivers
+	return b.getAllGroupIDsNeo4j(ctx)
 }
 
 // getAllGroupIDsKuzu gets all group IDs specifically for Kuzu
@@ -222,7 +223,8 @@ func (b *Builder) getEntityNodesByGroup(ctx context.Context, groupID string) ([]
 		return b.getEntityNodesByGroupKuzu(ctx, kuzuDriver, groupID)
 	}
 
-	return nil, fmt.Errorf("non-Kuzu drivers not yet supported for getting entity nodes")
+	// For Neo4j/Memgraph drivers
+	return b.getEntityNodesByGroupNeo4j(ctx, groupID)
 }
 
 // getEntityNodesByGroupKuzu gets entity nodes specifically for Kuzu
@@ -278,6 +280,212 @@ func (b *Builder) getNodesByUUIDs(ctx context.Context, uuids []string, groupID s
 			continue // Skip nodes that can't be found
 		}
 		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
+}
+
+// ====== Neo4j/Memgraph Implementations ======
+
+// getNodeNeighborsNeo4j gets neighbors for Neo4j/Memgraph databases
+func (b *Builder) getNodeNeighborsNeo4j(ctx context.Context, nodeUUID, groupID string) ([]Neighbor, error) {
+	query := `
+		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
+		WITH count(e) AS count, m.uuid AS uuid
+		RETURN uuid, count
+	`
+
+	params := map[string]interface{}{
+		"uuid":     nodeUUID,
+		"group_id": groupID,
+	}
+
+	result, _, _, err := b.driver.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
+	}
+
+	return b.parseNeighborsFromRecords(result)
+}
+
+// getAllGroupIDsNeo4j gets all group IDs for Neo4j/Memgraph
+func (b *Builder) getAllGroupIDsNeo4j(ctx context.Context) ([]string, error) {
+	query := `
+		MATCH (n:Entity)
+		WHERE n.group_id IS NOT NULL
+		RETURN collect(DISTINCT n.group_id) AS group_ids
+	`
+
+	result, _, _, err := b.driver.ExecuteQuery(query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
+	}
+
+	return b.parseGroupIDsFromRecords(result)
+}
+
+// getEntityNodesByGroupNeo4j gets entity nodes for Neo4j/Memgraph
+func (b *Builder) getEntityNodesByGroupNeo4j(ctx context.Context, groupID string) ([]*types.Node, error) {
+	query := `
+		MATCH (n:Entity {group_id: $group_id})
+		RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, n.created_at AS created_at
+	`
+
+	params := map[string]interface{}{
+		"group_id": groupID,
+	}
+
+	result, _, _, err := b.driver.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
+	}
+
+	return b.parseEntityNodesFromRecords(result, groupID)
+}
+
+// ====== Record Parsing Helpers ======
+
+// parseNeighborsFromRecords parses Neo4j/Memgraph records into neighbors
+func (b *Builder) parseNeighborsFromRecords(result interface{}) ([]Neighbor, error) {
+	var neighbors []Neighbor
+
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		// Get uuid field
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			continue
+		}
+
+		// Get uuid
+		uuidResults := getMethod.Call([]reflect.Value{reflect.ValueOf("uuid")})
+		if len(uuidResults) < 1 {
+			continue
+		}
+
+		// Get count
+		countResults := getMethod.Call([]reflect.Value{reflect.ValueOf("count")})
+		if len(countResults) < 1 {
+			continue
+		}
+
+		uuidInterface := uuidResults[0].Interface()
+		countInterface := countResults[0].Interface()
+
+		if uuid, ok := uuidInterface.(string); ok {
+			count := int64(0)
+			switch c := countInterface.(type) {
+			case int64:
+				count = c
+			case int:
+				count = int64(c)
+			}
+
+			neighbors = append(neighbors, Neighbor{
+				NodeUUID:  uuid,
+				EdgeCount: int(count),
+			})
+		}
+	}
+
+	return neighbors, nil
+}
+
+// parseGroupIDsFromRecords parses group IDs from Neo4j/Memgraph records
+func (b *Builder) parseGroupIDsFromRecords(result interface{}) ([]string, error) {
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	if value.Len() == 0 {
+		return []string{}, nil
+	}
+
+	// Get first record
+	record := value.Index(0)
+	getMethod := record.MethodByName("Get")
+	if !getMethod.IsValid() {
+		return []string{}, nil
+	}
+
+	// Get group_ids field
+	results := getMethod.Call([]reflect.Value{reflect.ValueOf("group_ids")})
+	if len(results) < 1 {
+		return []string{}, nil
+	}
+
+	groupIDsInterface := results[0].Interface()
+
+	// Handle different types
+	switch gids := groupIDsInterface.(type) {
+	case []interface{}:
+		var groupIDs []string
+		for _, gid := range gids {
+			if gidStr, ok := gid.(string); ok {
+				groupIDs = append(groupIDs, gidStr)
+			}
+		}
+		return groupIDs, nil
+	case []string:
+		return gids, nil
+	}
+
+	return []string{}, nil
+}
+
+// parseEntityNodesFromRecords parses entity nodes from Neo4j/Memgraph records
+func (b *Builder) parseEntityNodesFromRecords(result interface{}, groupID string) ([]*types.Node, error) {
+	var nodes []*types.Node
+
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			continue
+		}
+
+		node := &types.Node{
+			Type:    types.EntityNodeType,
+			GroupID: groupID,
+		}
+
+		// Get uuid
+		if uuidResults := getMethod.Call([]reflect.Value{reflect.ValueOf("uuid")}); len(uuidResults) > 0 {
+			if uuid, ok := uuidResults[0].Interface().(string); ok {
+				node.ID = uuid
+			}
+		}
+
+		// Get name
+		if nameResults := getMethod.Call([]reflect.Value{reflect.ValueOf("name")}); len(nameResults) > 0 {
+			if name, ok := nameResults[0].Interface().(string); ok {
+				node.Name = name
+			}
+		}
+
+		// Get summary
+		if summaryResults := getMethod.Call([]reflect.Value{reflect.ValueOf("summary")}); len(summaryResults) > 0 {
+			if summary, ok := summaryResults[0].Interface().(string); ok {
+				node.Summary = summary
+			}
+		}
+
+		if node.ID != "" {
+			nodes = append(nodes, node)
+		}
 	}
 
 	return nodes, nil
