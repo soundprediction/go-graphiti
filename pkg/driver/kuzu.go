@@ -497,6 +497,11 @@ func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*type
 }
 
 func (k *KuzuDriver) NodeExists(ctx context.Context, node *types.Node) bool {
+	// Handle nil node
+	if node == nil {
+		return false
+	}
+
 	tableName := k.getTableNameForNodeType(node.Type)
 
 	query := fmt.Sprintf(`
@@ -525,6 +530,12 @@ func (k *KuzuDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 
 // UpsertNode creates or updates a node in the appropriate table based on node type.
 func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
+	// Handle nil node
+	if node == nil {
+		return fmt.Errorf("cannot upsert nil node")
+	}
+
+	// Safely handle timestamps with nil checks
 	if node.CreatedAt.IsZero() {
 		node.CreatedAt = time.Now()
 	}
@@ -1680,6 +1691,11 @@ func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error)
 }
 
 func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) error {
+	// Defensive nil check for node
+	if node == nil {
+		return fmt.Errorf("cannot create nil node")
+	}
+
 	var metadataJSON string
 	if node.Metadata != nil {
 		if data, err := json.Marshal(node.Metadata); err == nil {
@@ -1812,6 +1828,11 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 }
 
 func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) error {
+	// Defensive nil check for node
+	if node == nil {
+		return fmt.Errorf("cannot update nil node")
+	}
+
 	var metadataJSON string
 	if node.Metadata != nil {
 		if data, err := json.Marshal(node.Metadata); err == nil {

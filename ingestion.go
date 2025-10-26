@@ -152,9 +152,15 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 
 	// Print initial database statistics
 	if stats, err := c.GetStats(ctx); err == nil {
+		episodesInDB := int64(0)
+		if stats.NodesByType != nil {
+			episodesInDB = stats.NodesByType["Episodic"]
+		}
 		c.logger.Info("Initial database state",
 			"node_count", stats.NodeCount,
 			"edge_count", stats.EdgeCount,
+			"episodes_in_db", episodesInDB,
+			"communities", stats.CommunityCount,
 			"episodes_to_add", len(episodes))
 	} else {
 		c.logger.Warn("Failed to retrieve initial database stats", "error", err)
@@ -616,6 +622,12 @@ func (c *Client) deduplicateEntitiesAcrossChunks(ctx context.Context, episodeID 
 	validNodes := 0
 	for i, node := range allResolvedNodes {
 		// Comprehensive validation before persistence
+		if node == nil {
+			c.logger.Warn("Skipping nil node during persistence",
+				"episode_id", episodeID,
+				"node_index", i)
+			continue
+		}
 		if !validateNodeForPersistence(node, episodeID, i, c.logger) {
 			continue
 		}
@@ -848,6 +860,21 @@ func (c *Client) performFinalGraphUpdates(ctx context.Context, episodeID string,
 		c.embedder)
 	if err != nil {
 		return fmt.Errorf("failed to perform final updates: %w", err)
+	}
+
+	// Report final database statistics after bulk operations
+	if stats, err := c.GetStats(ctx); err == nil {
+		episodesInDB := int64(0)
+		if stats.NodesByType != nil {
+			episodesInDB = stats.NodesByType["Episodic"]
+		}
+		c.logger.Info("Final database state after bulk operations",
+			"node_count", stats.NodeCount,
+			"edge_count", stats.EdgeCount,
+			"episodes_in_db", episodesInDB,
+			"communities", stats.CommunityCount)
+	} else {
+		c.logger.Warn("Failed to retrieve final database stats", "error", err)
 	}
 
 	return nil
