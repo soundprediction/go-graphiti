@@ -3,6 +3,7 @@ package graphiti
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/soundprediction/go-graphiti/pkg/driver"
@@ -190,7 +191,7 @@ func (c *Client) parseEpisodicNodesFromQueryResult(result interface{}) ([]*types
 	// Handle different result formats from ExecuteQuery
 	switch v := result.(type) {
 	case []map[string]interface{}:
-		// Result is a list of records
+		// Result is a list of records (Kuzu format)
 		for _, record := range v {
 			if nodeData, ok := record["e"].(map[string]interface{}); ok {
 				node, err := c.parseNodeFromMap(nodeData)
@@ -214,7 +215,13 @@ func (c *Client) parseEpisodicNodesFromQueryResult(result interface{}) ([]*types
 			}
 		}
 	default:
-		return nil, fmt.Errorf("unexpected query result type: %T", result)
+		// Try to handle as Neo4j/Memgraph records using reflection
+		// This handles []*db.Record from neo4j driver
+		node, err := c.parseNeo4jRecords(result)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected query result type: %T - %w", result, err)
+		}
+		return node, nil
 	}
 
 	return episodes, nil
@@ -355,4 +362,106 @@ func convertReranker(reranker string) search.RerankerType {
 	default:
 		return search.RRFRerankType // Default fallback
 	}
+}
+
+// parseNeo4jRecords parses Neo4j/Memgraph driver records into nodes.
+// This handles the []*db.Record type returned by Memgraph's ExecuteQuery.
+func (c *Client) parseNeo4jRecords(result interface{}) ([]*types.Node, error) {
+	var episodes []*types.Node
+
+	// Use reflection to handle Neo4j driver records
+	// The result should be []*db.Record
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	// Iterate through records
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		// Call Get("e") method on the record to get the node
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			continue
+		}
+
+		// Call Get("e")
+		results := getMethod.Call([]reflect.Value{reflect.ValueOf("e")})
+		if len(results) < 1 {
+			continue
+		}
+
+		nodeInterface := results[0].Interface()
+
+		// Convert the node to a map
+		nodeMap, err := c.convertNeo4jNodeToMap(nodeInterface)
+		if err != nil {
+			continue // Skip nodes that can't be converted
+		}
+
+		// Use existing parseNodeFromMap function
+		node, err := c.parseNodeFromMap(nodeMap)
+		if err != nil {
+			continue // Skip malformed nodes
+		}
+
+		episodes = append(episodes, node)
+	}
+
+	return episodes, nil
+}
+
+// convertNeo4jNodeToMap converts a Neo4j node to a map[string]interface{}.
+func (c *Client) convertNeo4jNodeToMap(nodeInterface interface{}) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+
+	// Use reflection to access the node's properties
+	nodeValue := reflect.ValueOf(nodeInterface)
+
+	// Handle pointer types
+	if nodeValue.Kind() == reflect.Ptr {
+		nodeValue = nodeValue.Elem()
+	}
+
+	// Try to get Props or Properties method
+	propsMethod := nodeValue.MethodByName("Props")
+	if !propsMethod.IsValid() {
+		propsMethod = nodeValue.MethodByName("Properties")
+	}
+
+	if propsMethod.IsValid() {
+		// Call Props() or Properties()
+		results := propsMethod.Call(nil)
+		if len(results) > 0 {
+			if props, ok := results[0].Interface().(map[string]interface{}); ok {
+				// Copy all properties to result
+				for k, v := range props {
+					result[k] = v
+				}
+			}
+		}
+	} else {
+		// Try to access fields directly
+		nodeType := nodeValue.Type()
+		for i := 0; i < nodeValue.NumField(); i++ {
+			field := nodeType.Field(i)
+			fieldValue := nodeValue.Field(i)
+
+			// Look for a field that contains properties
+			if field.Name == "Props" || field.Name == "Properties" {
+				if fieldValue.Kind() == reflect.Map {
+					for _, key := range fieldValue.MapKeys() {
+						result[key.String()] = fieldValue.MapIndex(key).Interface()
+					}
+				}
+			}
+		}
+	}
+
+	if len(result) == 0 {
+		return nil, fmt.Errorf("no properties found in node")
+	}
+
+	return result, nil
 }
