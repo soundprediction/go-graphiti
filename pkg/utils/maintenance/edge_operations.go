@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"reflect"
 	"strings"
 	"time"
 
@@ -742,6 +743,7 @@ func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, du
 	if result != nil {
 		switch records := result.(type) {
 		case []map[string]interface{}:
+			// Kuzu format
 			for _, record := range records {
 				if sourceUUID, ok := record["source_uuid"].(string); ok {
 					if targetUUID, ok := record["target_uuid"].(string); ok {
@@ -751,7 +753,43 @@ func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, du
 				}
 			}
 		default:
-			log.Printf("Warning: unexpected result type from FilterExistingDuplicateOfEdges query: %T", result)
+			// Try Neo4j/Memgraph format using reflection
+			value := reflect.ValueOf(result)
+			if value.Kind() == reflect.Slice {
+				for i := 0; i < value.Len(); i++ {
+					record := value.Index(i)
+
+					// Call Get() method on the record
+					getMethod := record.MethodByName("Get")
+					if !getMethod.IsValid() {
+						continue
+					}
+
+					// Get source_uuid
+					sourceResults := getMethod.Call([]reflect.Value{reflect.ValueOf("source_uuid")})
+					if len(sourceResults) == 0 {
+						continue
+					}
+
+					// Get target_uuid
+					targetResults := getMethod.Call([]reflect.Value{reflect.ValueOf("target_uuid")})
+					if len(targetResults) == 0 {
+						continue
+					}
+
+					sourceInterface := sourceResults[0].Interface()
+					targetInterface := targetResults[0].Interface()
+
+					if sourceUUID, ok := sourceInterface.(string); ok {
+						if targetUUID, ok := targetInterface.(string); ok {
+							key := fmt.Sprintf("%s-%s", sourceUUID, targetUUID)
+							existingPairs[key] = true
+						}
+					}
+				}
+			} else {
+				log.Printf("Warning: unexpected result type from FilterExistingDuplicateOfEdges query: %T", result)
+			}
 		}
 	}
 

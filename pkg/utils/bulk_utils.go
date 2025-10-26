@@ -229,8 +229,8 @@ func AddNodesAndEdgesBulk(
 		entityEdgeCount := int64(0)
 
 		if stats.NodesByType != nil {
-			episodicNodeCount = stats.NodesByType["Episodic"]
-			entityNodeCount = stats.NodesByType["Entity"]
+			episodicNodeCount = stats.NodesByType[string(types.EpisodicNodeType)]
+			entityNodeCount = stats.NodesByType[string(types.EntityNodeType)]
 		}
 
 		if stats.EdgesByType != nil {

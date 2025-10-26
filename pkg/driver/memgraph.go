@@ -1061,7 +1061,8 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 		// Get node count and types
 		nodeQuery := `
 			MATCH (n {group_id: $groupID})
-			RETURN count(n) as node_count, n.type as node_type
+			WITH n.type as node_type, count(*) as node_count
+			RETURN node_type, node_count
 			ORDER BY node_type
 		`
 		nodeRes, err := tx.Run(ctx, nodeQuery, map[string]any{"groupID": groupID})
@@ -1076,7 +1077,8 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 		// Get edge count and types
 		edgeQuery := `
 			MATCH ()-[r {group_id: $groupID}]-()
-			RETURN count(r) as edge_count, r.type as edge_type
+			WITH r.type as edge_type, count(*) as edge_count
+			RETURN edge_type, edge_count
 			ORDER BY edge_type
 		`
 		edgeRes, err := tx.Run(ctx, edgeQuery, map[string]any{"groupID": groupID})
