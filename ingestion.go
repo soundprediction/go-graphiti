@@ -154,7 +154,7 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 	if stats, err := c.GetStats(ctx); err == nil {
 		episodesInDB := int64(0)
 		if stats.NodesByType != nil {
-			episodesInDB = stats.NodesByType["Episodic"]
+			episodesInDB = stats.NodesByType[string(types.EpisodicNodeType)]
 		}
 		c.logger.Info("Initial database state",
 			"node_count", stats.NodeCount,
@@ -248,39 +248,77 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		return nil, err
 	}
 
-	// STEP 6: Deduplicate entities across chunks
-	dedupeResult, allResolvedNodes, err := c.deduplicateEntitiesAcrossChunks(ctx, episode.ID, extractedNodesByChunk, chunkData.episodeTuples, options, nodeOps)
-	if err != nil {
-		return nil, err
+	// OPTIMIZATION: Filter out chunks with no extracted entities
+	var filteredNodesByChunk [][]*types.Node
+	var filteredEpisodeTuples []utils.EpisodeTuple
+	chunksWithEntities := 0
+	chunksWithoutEntities := 0
+
+	for i, nodes := range extractedNodesByChunk {
+		if len(nodes) > 0 {
+			filteredNodesByChunk = append(filteredNodesByChunk, nodes)
+			filteredEpisodeTuples = append(filteredEpisodeTuples, chunkData.episodeTuples[i])
+			chunksWithEntities++
+		} else {
+			chunksWithoutEntities++
+		}
 	}
 
-	// STEP 7: Extract relationships
-	allExtractedEdges, err := c.extractRelationshipsFromChunks(ctx, episode.ID, chunkData.mainEpisodeNode, dedupeResult, chunkData.previousEpisodes, options, edgeOps)
-	if err != nil {
-		return nil, err
-	}
+	c.logger.Info("Filtered chunks for processing",
+		"episode_id", episode.ID,
+		"total_chunks", len(extractedNodesByChunk),
+		"chunks_with_entities", chunksWithEntities,
+		"chunks_skipped", chunksWithoutEntities)
 
-	// STEP 8: Resolve and persist relationships
-	resolvedEdges, invalidatedEdges, err := c.resolveAndPersistRelationships(ctx, episode.ID, allExtractedEdges, chunkData.mainEpisodeNode, allResolvedNodes, options, edgeOps)
-	if err != nil {
-		return nil, err
-	}
+	var hydratedNodes []*types.Node
+	var resolvedEdges []*types.Edge
+	var invalidatedEdges []*types.Edge
+	var episodicEdges []*types.Edge
 
-	// STEP 9: Extract attributes
-	hydratedNodes, err := c.extractEntityAttributes(ctx, episode.ID, allResolvedNodes, chunkData.mainEpisodeNode, chunkData.previousEpisodes, options, nodeOps)
-	if err != nil {
-		return nil, err
-	}
+	// Only process entities and relationships if we have chunks with entities
+	if chunksWithEntities > 0 {
+		// STEP 6: Deduplicate entities across chunks (only chunks with entities)
+		dedupeResult, allResolvedNodes, err := c.deduplicateEntitiesAcrossChunks(ctx, episode.ID, filteredNodesByChunk, filteredEpisodeTuples, options, nodeOps)
+		if err != nil {
+			return nil, err
+		}
 
-	// STEP 10: Build episodic edges
-	episodicEdges, err := c.buildEpisodicEdgesForEntities(ctx, hydratedNodes, chunkData.mainEpisodeNode, now, edgeOps)
-	if err != nil {
-		return nil, err
-	}
+		// STEP 7: Extract relationships
+		allExtractedEdges, err := c.extractRelationshipsFromChunks(ctx, episode.ID, chunkData.mainEpisodeNode, dedupeResult, chunkData.previousEpisodes, options, edgeOps)
+		if err != nil {
+			return nil, err
+		}
 
-	// STEP 11: Perform final graph updates
-	if err := c.performFinalGraphUpdates(ctx, episode.ID, chunkData.mainEpisodeNode, hydratedNodes, resolvedEdges, invalidatedEdges, episodicEdges); err != nil {
-		return nil, err
+		// STEP 8: Resolve and persist relationships
+		resolvedEdges, invalidatedEdges, err = c.resolveAndPersistRelationships(ctx, episode.ID, allExtractedEdges, chunkData.mainEpisodeNode, allResolvedNodes, options, edgeOps)
+		if err != nil {
+			return nil, err
+		}
+
+		// STEP 9: Extract attributes
+		hydratedNodes, err = c.extractEntityAttributes(ctx, episode.ID, allResolvedNodes, chunkData.mainEpisodeNode, chunkData.previousEpisodes, options, nodeOps)
+		if err != nil {
+			return nil, err
+		}
+
+		// STEP 10: Build episodic edges
+		episodicEdges, err = c.buildEpisodicEdgesForEntities(ctx, hydratedNodes, chunkData.mainEpisodeNode, now, edgeOps)
+		if err != nil {
+			return nil, err
+		}
+
+		// STEP 11: Perform final graph updates
+		if err := c.performFinalGraphUpdates(ctx, episode.ID, chunkData.mainEpisodeNode, hydratedNodes, resolvedEdges, invalidatedEdges, episodicEdges); err != nil {
+			return nil, err
+		}
+	} else {
+		c.logger.Info("No entities extracted from any chunks, skipping entity and relationship processing",
+			"episode_id", episode.ID)
+
+		// Still need to persist the episode node with its content
+		if err := c.driver.UpsertNode(ctx, chunkData.mainEpisodeNode); err != nil {
+			return nil, fmt.Errorf("failed to persist episode node: %w", err)
+		}
 	}
 
 	// STEP 12: Prepare result
@@ -866,7 +904,7 @@ func (c *Client) performFinalGraphUpdates(ctx context.Context, episodeID string,
 	if stats, err := c.GetStats(ctx); err == nil {
 		episodesInDB := int64(0)
 		if stats.NodesByType != nil {
-			episodesInDB = stats.NodesByType["Episodic"]
+			episodesInDB = stats.NodesByType[string(types.EpisodicNodeType)]
 		}
 		c.logger.Info("Final database state after bulk operations",
 			"node_count", stats.NodeCount,

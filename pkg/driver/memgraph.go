@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"reflect"
 	"sort"
 	"time"
 
@@ -900,6 +901,134 @@ func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) e
 	return err
 }
 
+func (m *MemgraphDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	query := `
+		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		RETURN c
+		LIMIT 1
+	`
+
+	params := map[string]interface{}{
+		"entity_uuid": entityUUID,
+	}
+
+	result, _, _, err := m.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing community: %w", err)
+	}
+
+	// Parse result - expecting Neo4j record format
+	nodes, err := m.parseCommunityNodesFromRecords(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse existing community: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		return nodes[0], nil
+	}
+
+	return nil, nil
+}
+
+func (m *MemgraphDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	query := `
+		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
+		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		WITH c, count(*) AS count
+		ORDER BY count DESC
+		LIMIT 1
+		RETURN c
+	`
+
+	params := map[string]interface{}{
+		"entity_uuid": entityUUID,
+	}
+
+	result, _, _, err := m.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query modal community: %w", err)
+	}
+
+	// Parse result - expecting Neo4j record format
+	nodes, err := m.parseCommunityNodesFromRecords(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse modal community: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		return nodes[0], nil
+	}
+
+	return nil, nil
+}
+
+// parseCommunityNodesFromRecords parses community nodes from Neo4j/Memgraph records
+func (m *MemgraphDriver) parseCommunityNodesFromRecords(result interface{}) ([]*types.Node, error) {
+	var nodes []*types.Node
+
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			continue
+		}
+
+		// Get the community node
+		results := getMethod.Call([]reflect.Value{reflect.ValueOf("c")})
+		if len(results) < 1 {
+			continue
+		}
+
+		nodeInterface := results[0].Interface()
+
+		// Convert to Node - this will need to extract properties from the Neo4j node
+		node := &types.Node{
+			Type: types.CommunityNodeType,
+		}
+
+		// Use reflection to get node properties
+		nodeValue := reflect.ValueOf(nodeInterface)
+		if nodeValue.Kind() == reflect.Ptr {
+			nodeValue = nodeValue.Elem()
+		}
+
+		// Try to get Props method
+		propsMethod := nodeValue.MethodByName("Props")
+		if !propsMethod.IsValid() {
+			propsMethod = nodeValue.MethodByName("Properties")
+		}
+
+		if propsMethod.IsValid() {
+			propsResults := propsMethod.Call(nil)
+			if len(propsResults) > 0 {
+				if props, ok := propsResults[0].Interface().(map[string]interface{}); ok {
+					if uuid, ok := props["uuid"].(string); ok {
+						node.ID = uuid
+					}
+					if name, ok := props["name"].(string); ok {
+						node.Name = name
+					}
+					if summary, ok := props["summary"].(string); ok {
+						node.Summary = summary
+					}
+				}
+			}
+		}
+
+		if node.ID != "" {
+			nodes = append(nodes, node)
+		}
+	}
+
+	return nodes, nil
+}
+
 func (m *MemgraphDriver) CreateIndices(ctx context.Context) error {
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
@@ -932,7 +1061,8 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 		// Get node count and types
 		nodeQuery := `
 			MATCH (n {group_id: $groupID})
-			RETURN count(n) as node_count, n.type as node_type
+			WITH n.type as node_type, count(*) as node_count
+			RETURN node_type, node_count
 			ORDER BY node_type
 		`
 		nodeRes, err := tx.Run(ctx, nodeQuery, map[string]any{"groupID": groupID})
@@ -947,7 +1077,8 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 		// Get edge count and types
 		edgeQuery := `
 			MATCH ()-[r {group_id: $groupID}]-()
-			RETURN count(r) as edge_count, r.type as edge_type
+			WITH r.type as edge_type, count(*) as edge_count
+			RETURN edge_type, edge_count
 			ORDER BY edge_type
 		`
 		edgeRes, err := tx.Run(ctx, edgeQuery, map[string]any{"groupID": groupID})

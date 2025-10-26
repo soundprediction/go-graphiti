@@ -89,6 +89,14 @@ func (m *MockGraphDriver) BuildCommunities(ctx context.Context, groupID string) 
 	return nil
 }
 
+func (m *MockGraphDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	return nil, nil
+}
+
+func (m *MockGraphDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	return nil, nil
+}
+
 func (m *MockGraphDriver) CreateIndices(ctx context.Context) error {
 	return nil
 }

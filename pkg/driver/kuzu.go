@@ -1499,6 +1499,105 @@ func (k *KuzuDriver) BuildCommunities(ctx context.Context, groupID string) error
 	return nil
 }
 
+// GetExistingCommunity checks if an entity is already part of a community
+func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	query := `
+		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary, c.created_at AS created_at
+		LIMIT 1
+	`
+
+	params := map[string]interface{}{
+		"entity_uuid": entityUUID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing community: %w", err)
+	}
+
+	// Parse result
+	nodes, err := k.parseCommunityNodesFromRecords(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse existing community: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		return nodes[0], nil
+	}
+
+	return nil, nil
+}
+
+// FindModalCommunity finds the most common community among connected entities
+func (k *KuzuDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+	query := `
+		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
+		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		WITH c, count(*) AS count
+		ORDER BY count DESC
+		LIMIT 1
+		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary, c.created_at AS created_at
+	`
+
+	params := map[string]interface{}{
+		"entity_uuid": entityUUID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query modal community: %w", err)
+	}
+
+	// Parse result
+	nodes, err := k.parseCommunityNodesFromRecords(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse modal community: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		return nodes[0], nil
+	}
+
+	return nil, nil
+}
+
+// parseCommunityNodesFromRecords parses community nodes from Kuzu query records
+func (k *KuzuDriver) parseCommunityNodesFromRecords(result interface{}) ([]*types.Node, error) {
+	var nodes []*types.Node
+
+	recordSlice, ok := result.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", result)
+	}
+
+	for _, record := range recordSlice {
+		node := &types.Node{
+			Type:     types.CommunityNodeType,
+			Metadata: make(map[string]interface{}),
+		}
+
+		if uuid, ok := record["uuid"].(string); ok {
+			node.ID = uuid
+		}
+		if name, ok := record["name"].(string); ok {
+			node.Name = name
+		}
+		if summary, ok := record["summary"].(string); ok {
+			node.Summary = summary
+		}
+		if createdAt, ok := record["created_at"].(time.Time); ok {
+			node.CreatedAt = createdAt
+		}
+
+		if node.ID != "" {
+			nodes = append(nodes, node)
+		}
+	}
+
+	return nodes, nil
+}
+
 // CreateIndices creates database indices
 // For Kuzu, this is a no-op as indices are managed through the schema
 // This matches the Python implementation where create_indices is not implemented for Kuzu
