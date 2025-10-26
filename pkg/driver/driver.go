@@ -12,6 +12,7 @@ type GraphProvider string
 
 const (
 	GraphProviderNeo4j    GraphProvider = "neo4j"
+	GraphProviderMemgraph GraphProvider = "memgraph"
 	GraphProviderFalkorDB GraphProvider = "falkordb"
 	GraphProviderKuzu     GraphProvider = "kuzu"
 	GraphProviderNeptune  GraphProvider = "neptune"
