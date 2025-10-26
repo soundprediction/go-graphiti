@@ -14,32 +14,33 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
-// Neo4jDriver implements the GraphDriver interface for Neo4j databases.
-type Neo4jDriver struct {
+// MemgraphDriver implements the GraphDriver interface for Memgraph databases.
+// Memgraph is compatible with Neo4j's Bolt protocol and Cypher query language.
+type MemgraphDriver struct {
 	client   neo4j.DriverWithContext
 	database string
 }
 
-// NewNeo4jDriver creates a new Neo4j driver instance.
-func NewNeo4jDriver(uri, username, password, database string) (*Neo4jDriver, error) {
+// NewMemgraphDriver creates a new Memgraph driver instance.
+func NewMemgraphDriver(uri, username, password, database string) (*MemgraphDriver, error) {
 	driver, err := neo4j.NewDriverWithContext(uri, neo4j.BasicAuth(username, password, ""))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create neo4j driver: %w", err)
+		return nil, fmt.Errorf("failed to create memgraph driver: %w", err)
 	}
 
 	if database == "" {
-		database = "neo4j"
+		database = "memgraph"
 	}
 
-	return &Neo4jDriver{
+	return &MemgraphDriver{
 		client:   driver,
 		database: database,
 	}, nil
 }
 
 // GetNode retrieves a node by ID.
-func (n *Neo4jDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -76,17 +77,17 @@ func (n *Neo4jDriver) GetNode(ctx context.Context, nodeID, groupID string) (*typ
 	}
 
 	node := nodeValue.(dbtype.Node)
-	return n.nodeFromDBNode(node), nil
+	return m.nodeFromDBNode(node), nil
 }
 
 // NodeExists checks if a node exists in the database.
-func (n *Neo4jDriver) NodeExists(ctx context.Context, node *types.Node) bool {
+func (m *MemgraphDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 	// Handle nil node
 	if node == nil {
 		return false
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -114,7 +115,7 @@ func (n *Neo4jDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 }
 
 // UpsertNode creates or updates a node.
-func (n *Neo4jDriver) UpsertNode(ctx context.Context, node *types.Node) error {
+func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	// Handle nil node
 	if node == nil {
 		return fmt.Errorf("cannot upsert nil node")
@@ -129,7 +130,7 @@ func (n *Neo4jDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 		node.ValidFrom = node.CreatedAt
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -139,7 +140,7 @@ func (n *Neo4jDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 			SET n.updated_at = $updated_at
 		`
 
-		properties := n.nodeToProperties(node)
+		properties := m.nodeToProperties(node)
 		_, err := tx.Run(ctx, query, map[string]any{
 			"id":         node.ID,
 			"group_id":   node.GroupID,
@@ -153,8 +154,8 @@ func (n *Neo4jDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 }
 
 // DeleteNode removes a node and its edges.
-func (n *Neo4jDriver) DeleteNode(ctx context.Context, nodeID, groupID string) error {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) DeleteNode(ctx context.Context, nodeID, groupID string) error {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -173,12 +174,12 @@ func (n *Neo4jDriver) DeleteNode(ctx context.Context, nodeID, groupID string) er
 }
 
 // GetNodes retrieves multiple nodes by their IDs.
-func (n *Neo4jDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID string) ([]*types.Node, error) {
+func (m *MemgraphDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID string) ([]*types.Node, error) {
 	if len(nodeIDs) == 0 {
 		return []*types.Node{}, nil
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -211,15 +212,15 @@ func (n *Neo4jDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID st
 			continue
 		}
 		node := nodeValue.(dbtype.Node)
-		nodes = append(nodes, n.nodeFromDBNode(node))
+		nodes = append(nodes, m.nodeFromDBNode(node))
 	}
 
 	return nodes, nil
 }
 
 // GetEdge retrieves an edge by ID.
-func (n *Neo4jDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -259,17 +260,17 @@ func (n *Neo4jDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*typ
 	sourceID, _ := record.Get("source_id")
 	targetID, _ := record.Get("target_id")
 
-	return n.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)), nil
+	return m.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)), nil
 }
 
 // EdgeExists checks if an edge exists in the database.
-func (n *Neo4jDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
+func (m *MemgraphDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 	// Handle nil edge
 	if edge == nil {
 		return false
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -297,7 +298,7 @@ func (n *Neo4jDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 }
 
 // UpsertEdge creates or updates an edge.
-func (n *Neo4jDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
+func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 	// Handle nil edge
 	if edge == nil {
 		return fmt.Errorf("cannot upsert nil edge")
@@ -312,7 +313,7 @@ func (n *Neo4jDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 		edge.ValidFrom = edge.CreatedAt
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -324,7 +325,7 @@ func (n *Neo4jDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 			SET r.updated_at = $updated_at
 		`
 
-		properties := n.edgeToProperties(edge)
+		properties := m.edgeToProperties(edge)
 		_, err := tx.Run(ctx, query, map[string]any{
 			"id":         edge.ID,
 			"source_id":  edge.SourceID,
@@ -340,8 +341,8 @@ func (n *Neo4jDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 }
 
 // DeleteEdge removes an edge.
-func (n *Neo4jDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) error {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) error {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -360,12 +361,12 @@ func (n *Neo4jDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) er
 }
 
 // GetEdges retrieves multiple edges by their IDs.
-func (n *Neo4jDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID string) ([]*types.Edge, error) {
+func (m *MemgraphDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID string) ([]*types.Edge, error) {
 	if len(edgeIDs) == 0 {
 		return []*types.Edge{}, nil
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -401,15 +402,15 @@ func (n *Neo4jDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID st
 		sourceID, _ := record.Get("source_id")
 		targetID, _ := record.Get("target_id")
 
-		edges = append(edges, n.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)))
+		edges = append(edges, m.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)))
 	}
 
 	return edges, nil
 }
 
 // GetNeighbors retrieves neighboring nodes within a specified distance
-func (n *Neo4jDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, maxDistance int) ([]*types.Node, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, maxDistance int) ([]*types.Node, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -444,14 +445,14 @@ func (n *Neo4jDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, 
 			continue
 		}
 		node := nodeValue.(dbtype.Node)
-		nodes = append(nodes, n.nodeFromDBNode(node))
+		nodes = append(nodes, m.nodeFromDBNode(node))
 	}
 
 	return nodes, nil
 }
 
-func (n *Neo4jDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID string, edgeTypes []types.EdgeType) ([]*types.Node, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID string, edgeTypes []types.EdgeType) ([]*types.Node, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -508,22 +509,21 @@ func (n *Neo4jDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID strin
 			continue
 		}
 		node := nodeValue.(dbtype.Node)
-		nodes = append(nodes, n.nodeFromDBNode(node))
+		nodes = append(nodes, m.nodeFromDBNode(node))
 	}
 
 	return nodes, nil
 }
 
-func (n *Neo4jDriver) SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error) {
+func (m *MemgraphDriver) SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error) {
 	if len(embedding) == 0 {
 		return []*types.Node{}, nil
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	// Get all nodes with embeddings and compute similarity in-memory
-	// In production, you might want to use Neo4j's vector index capabilities
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
 			MATCH (n {group_id: $groupID})
@@ -558,13 +558,13 @@ func (n *Neo4jDriver) SearchNodesByEmbedding(ctx context.Context, embedding []fl
 			continue
 		}
 		dbNode := nodeValue.(dbtype.Node)
-		node := n.nodeFromDBNode(dbNode)
+		node := m.nodeFromDBNode(dbNode)
 
 		// Parse embedding from JSON
 		if embeddingStr, ok := dbNode.Props["embedding"].(string); ok {
 			var nodeEmbedding []float32
 			if err := json.Unmarshal([]byte(embeddingStr), &nodeEmbedding); err == nil {
-				similarity := n.cosineSimilarity(embedding, nodeEmbedding)
+				similarity := m.cosineSimilarity(embedding, nodeEmbedding)
 				candidates = append(candidates, nodeWithSimilarity{
 					node:       node,
 					similarity: similarity,
@@ -592,12 +592,12 @@ func (n *Neo4jDriver) SearchNodesByEmbedding(ctx context.Context, embedding []fl
 	return nodes, nil
 }
 
-func (n *Neo4jDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Edge, error) {
+func (m *MemgraphDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Edge, error) {
 	if len(embedding) == 0 {
 		return []*types.Edge{}, nil
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	// Get all edges with embeddings and compute similarity in-memory
@@ -637,13 +637,13 @@ func (n *Neo4jDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []fl
 		dbRelation := relationValue.(dbtype.Relationship)
 		sourceID, _ := record.Get("source_id")
 		targetID, _ := record.Get("target_id")
-		edge := n.edgeFromDBRelation(dbRelation, sourceID.(string), targetID.(string))
+		edge := m.edgeFromDBRelation(dbRelation, sourceID.(string), targetID.(string))
 
 		// Parse embedding from JSON
 		if embeddingStr, ok := dbRelation.Props["embedding"].(string); ok {
 			var edgeEmbedding []float32
 			if err := json.Unmarshal([]byte(embeddingStr), &edgeEmbedding); err == nil {
-				similarity := n.cosineSimilarity(embedding, edgeEmbedding)
+				similarity := m.cosineSimilarity(embedding, edgeEmbedding)
 				candidates = append(candidates, edgeWithSimilarity{
 					edge:       edge,
 					similarity: similarity,
@@ -671,12 +671,12 @@ func (n *Neo4jDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []fl
 	return edges, nil
 }
 
-func (n *Neo4jDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) error {
+func (m *MemgraphDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) error {
 	if len(nodes) == 0 {
 		return nil
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	// Use a transaction to batch the operations
@@ -688,7 +688,7 @@ func (n *Neo4jDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) erro
 				SET n.updated_at = $updated_at
 			`
 
-			properties := n.nodeToProperties(node)
+			properties := m.nodeToProperties(node)
 			_, err := tx.Run(ctx, query, map[string]any{
 				"id":         node.ID,
 				"group_id":   node.GroupID,
@@ -705,12 +705,12 @@ func (n *Neo4jDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) erro
 	return err
 }
 
-func (n *Neo4jDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error {
+func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error {
 	if len(edges) == 0 {
 		return nil
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	// Use a transaction to batch the operations
@@ -724,7 +724,7 @@ func (n *Neo4jDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) erro
 				SET r.updated_at = $updated_at
 			`
 
-			properties := n.edgeToProperties(edge)
+			properties := m.edgeToProperties(edge)
 			_, err := tx.Run(ctx, query, map[string]any{
 				"id":         edge.ID,
 				"source_id":  edge.SourceID,
@@ -743,8 +743,8 @@ func (n *Neo4jDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) erro
 	return err
 }
 
-func (n *Neo4jDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -778,14 +778,14 @@ func (n *Neo4jDriver) GetNodesInTimeRange(ctx context.Context, start, end time.T
 			continue
 		}
 		node := nodeValue.(dbtype.Node)
-		nodes = append(nodes, n.nodeFromDBNode(node))
+		nodes = append(nodes, m.nodeFromDBNode(node))
 	}
 
 	return nodes, nil
 }
 
-func (n *Neo4jDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -822,16 +822,15 @@ func (n *Neo4jDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.T
 		sourceID, _ := record.Get("source_id")
 		targetID, _ := record.Get("target_id")
 
-		edges = append(edges, n.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)))
+		edges = append(edges, m.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)))
 	}
 
 	return edges, nil
 }
 
-func (n *Neo4jDriver) GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error) {
+func (m *MemgraphDriver) GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error) {
 	// For basic implementation, return nodes grouped by a hypothetical community property
-	// In production, you might use algorithms like Louvain or Label Propagation
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -864,16 +863,15 @@ func (n *Neo4jDriver) GetCommunities(ctx context.Context, groupID string, level 
 			continue
 		}
 		node := nodeValue.(dbtype.Node)
-		nodes = append(nodes, n.nodeFromDBNode(node))
+		nodes = append(nodes, m.nodeFromDBNode(node))
 	}
 
 	return nodes, nil
 }
 
-func (n *Neo4jDriver) BuildCommunities(ctx context.Context, groupID string) error {
+func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) error {
 	// Basic implementation that assigns community IDs based on connected components
-	// In production, you would use proper community detection algorithms
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -902,19 +900,17 @@ func (n *Neo4jDriver) BuildCommunities(ctx context.Context, groupID string) erro
 	return err
 }
 
-func (n *Neo4jDriver) CreateIndices(ctx context.Context) error {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) CreateIndices(ctx context.Context) error {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		// Create indices for commonly queried properties
+		// Note: Memgraph syntax may differ slightly from Neo4j
 		indices := []string{
-			"CREATE INDEX node_id_group_idx IF NOT EXISTS FOR (n) ON (n.id, n.group_id)",
-			"CREATE INDEX edge_id_group_idx IF NOT EXISTS FOR ()-[r]-() ON (r.id, r.group_id)",
-			"CREATE INDEX node_created_at_idx IF NOT EXISTS FOR (n) ON (n.created_at)",
-			"CREATE INDEX edge_created_at_idx IF NOT EXISTS FOR ()-[r]-() ON (r.created_at)",
-			"CREATE INDEX node_type_idx IF NOT EXISTS FOR (n) ON (n.type)",
-			"CREATE INDEX edge_type_idx IF NOT EXISTS FOR ()-[r]-() ON (r.type)",
+			"CREATE INDEX ON :Node(id, group_id)",
+			"CREATE INDEX ON :Node(created_at)",
+			"CREATE INDEX ON :Node(type)",
 		}
 
 		for _, indexQuery := range indices {
@@ -931,8 +927,8 @@ func (n *Neo4jDriver) CreateIndices(ctx context.Context) error {
 	return err
 }
 
-func (n *Neo4jDriver) GetStats(ctx context.Context, groupID string) (*GraphStats, error) {
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphStats, error) {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -1013,7 +1009,7 @@ func (n *Neo4jDriver) GetStats(ctx context.Context, groupID string) (*GraphStats
 }
 
 // SearchNodes performs text-based search on nodes
-func (n *Neo4jDriver) SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error) {
+func (m *MemgraphDriver) SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error) {
 	if query == "" {
 		return []*types.Node{}, nil
 	}
@@ -1023,11 +1019,11 @@ func (n *Neo4jDriver) SearchNodes(ctx context.Context, query, groupID string, op
 		limit = options.Limit
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		// Basic text search using CONTAINS (in production, use Neo4j's fulltext indexes)
+		// Basic text search using CONTAINS
 		searchQuery := `
 			MATCH (n {group_id: $groupID})
 			WHERE n.name CONTAINS $query OR n.summary CONTAINS $query OR n.content CONTAINS $query
@@ -1059,14 +1055,14 @@ func (n *Neo4jDriver) SearchNodes(ctx context.Context, query, groupID string, op
 			continue
 		}
 		node := nodeValue.(dbtype.Node)
-		nodes = append(nodes, n.nodeFromDBNode(node))
+		nodes = append(nodes, m.nodeFromDBNode(node))
 	}
 
 	return nodes, nil
 }
 
 // SearchEdges performs text-based search on edges
-func (n *Neo4jDriver) SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error) {
+func (m *MemgraphDriver) SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error) {
 	if query == "" {
 		return []*types.Edge{}, nil
 	}
@@ -1076,7 +1072,7 @@ func (n *Neo4jDriver) SearchEdges(ctx context.Context, query, groupID string, op
 		limit = options.Limit
 	}
 
-	session := n.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: n.database})
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
@@ -1115,14 +1111,14 @@ func (n *Neo4jDriver) SearchEdges(ctx context.Context, query, groupID string, op
 		sourceID, _ := record.Get("source_id")
 		targetID, _ := record.Get("target_id")
 
-		edges = append(edges, n.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)))
+		edges = append(edges, m.edgeFromDBRelation(relation, sourceID.(string), targetID.(string)))
 	}
 
 	return edges, nil
 }
 
 // SearchNodesByVector performs vector similarity search on nodes
-func (n *Neo4jDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error) {
+func (m *MemgraphDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error) {
 	if len(vector) == 0 {
 		return []*types.Node{}, nil
 	}
@@ -1140,7 +1136,7 @@ func (n *Neo4jDriver) SearchNodesByVector(ctx context.Context, vector []float32,
 
 	// Use the existing SearchNodesByEmbedding method for compatibility
 	// Filter by minimum score if needed
-	nodes, err := n.SearchNodesByEmbedding(ctx, vector, groupID, limit)
+	nodes, err := m.SearchNodesByEmbedding(ctx, vector, groupID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1150,7 +1146,7 @@ func (n *Neo4jDriver) SearchNodesByVector(ctx context.Context, vector []float32,
 		var filteredNodes []*types.Node
 		for _, node := range nodes {
 			if len(node.Embedding) > 0 {
-				similarity := n.cosineSimilarity(vector, node.Embedding)
+				similarity := m.cosineSimilarity(vector, node.Embedding)
 				if float64(similarity) >= minScore {
 					filteredNodes = append(filteredNodes, node)
 				}
@@ -1163,7 +1159,7 @@ func (n *Neo4jDriver) SearchNodesByVector(ctx context.Context, vector []float32,
 }
 
 // SearchEdgesByVector performs vector similarity search on edges
-func (n *Neo4jDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error) {
+func (m *MemgraphDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error) {
 	if len(vector) == 0 {
 		return []*types.Edge{}, nil
 	}
@@ -1181,7 +1177,7 @@ func (n *Neo4jDriver) SearchEdgesByVector(ctx context.Context, vector []float32,
 
 	// Use the existing SearchEdgesByEmbedding method for compatibility
 	// Filter by minimum score if needed
-	edges, err := n.SearchEdgesByEmbedding(ctx, vector, groupID, limit)
+	edges, err := m.SearchEdgesByEmbedding(ctx, vector, groupID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1191,7 +1187,7 @@ func (n *Neo4jDriver) SearchEdgesByVector(ctx context.Context, vector []float32,
 		var filteredEdges []*types.Edge
 		for _, edge := range edges {
 			if len(edge.Embedding) > 0 {
-				similarity := n.cosineSimilarity(vector, edge.Embedding)
+				similarity := m.cosineSimilarity(vector, edge.Embedding)
 				if float64(similarity) >= minScore {
 					filteredEdges = append(filteredEdges, edge)
 				}
@@ -1204,8 +1200,8 @@ func (n *Neo4jDriver) SearchEdgesByVector(ctx context.Context, vector []float32,
 }
 
 // ExecuteQuery executes a Cypher query and returns records, summary, and keys (matching Python interface).
-func (n *Neo4jDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
-	session := n.client.NewSession(context.Background(), neo4j.SessionConfig{DatabaseName: n.database})
+func (m *MemgraphDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	session := m.client.NewSession(context.Background(), neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(context.Background())
 
 	result, err := session.Run(context.Background(), cypherQuery, kwargs)
@@ -1231,25 +1227,25 @@ func (n *Neo4jDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interfa
 }
 
 // Session creates a new database session.
-func (n *Neo4jDriver) Session(database *string) GraphDriverSession {
-	dbName := n.database
+func (m *MemgraphDriver) Session(database *string) GraphDriverSession {
+	dbName := m.database
 	if database != nil {
 		dbName = *database
 	}
-	return &Neo4jDriverSession{
-		driver:   n,
+	return &MemgraphDriverSession{
+		driver:   m,
 		database: dbName,
 	}
 }
 
 // DeleteAllIndexes deletes all indexes in the specified database.
-func (n *Neo4jDriver) DeleteAllIndexes(database string) {
+func (m *MemgraphDriver) DeleteAllIndexes(database string) {
 	// Implementation for deleting indexes
-	session := n.client.NewSession(context.Background(), neo4j.SessionConfig{DatabaseName: database})
+	session := m.client.NewSession(context.Background(), neo4j.SessionConfig{DatabaseName: database})
 	defer session.Close(context.Background())
 
-	// Get all indexes
-	result, err := session.Run(context.Background(), "SHOW INDEXES", nil)
+	// Get all indexes (Memgraph syntax)
+	result, err := session.Run(context.Background(), "SHOW INDEX INFO", nil)
 	if err != nil {
 		return
 	}
@@ -1261,42 +1257,44 @@ func (n *Neo4jDriver) DeleteAllIndexes(database string) {
 
 	// Drop each index
 	for _, record := range records {
-		if name, ok := record.Values[1].(string); ok {
-			session.Run(context.Background(), fmt.Sprintf("DROP INDEX %s IF EXISTS", name), nil)
+		if label, ok := record.Values[0].(string); ok {
+			if property, ok := record.Values[1].(string); ok {
+				session.Run(context.Background(), fmt.Sprintf("DROP INDEX ON :%s(%s)", label, property), nil)
+			}
 		}
 	}
 }
 
 // Provider returns the provider type.
-func (n *Neo4jDriver) Provider() GraphProvider {
-	return GraphProviderNeo4j
+func (m *MemgraphDriver) Provider() GraphProvider {
+	return GraphProviderMemgraph
 }
 
-// GetAossClient returns nil for Neo4j (Amazon OpenSearch not applicable).
-func (n *Neo4jDriver) GetAossClient() interface{} {
+// GetAossClient returns nil for Memgraph (Amazon OpenSearch not applicable).
+func (m *MemgraphDriver) GetAossClient() interface{} {
 	return nil
 }
 
-// Close closes the Neo4j driver.
-func (n *Neo4jDriver) Close() error {
-	return n.client.Close(context.Background())
+// Close closes the Memgraph driver.
+func (m *MemgraphDriver) Close() error {
+	return m.client.Close(context.Background())
 }
 
-// Neo4jDriverSession implements GraphDriverSession for Neo4j.
-type Neo4jDriverSession struct {
-	driver   *Neo4jDriver
+// MemgraphDriverSession implements GraphDriverSession for Memgraph.
+type MemgraphDriverSession struct {
+	driver   *MemgraphDriver
 	database string
 	session  neo4j.SessionWithContext
 }
 
 // Enter implements the context manager pattern.
-func (s *Neo4jDriverSession) Enter(ctx context.Context) (GraphDriverSession, error) {
+func (s *MemgraphDriverSession) Enter(ctx context.Context) (GraphDriverSession, error) {
 	s.session = s.driver.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: s.database})
 	return s, nil
 }
 
 // Exit implements the context manager pattern.
-func (s *Neo4jDriverSession) Exit(ctx context.Context, excType, excVal, excTb interface{}) error {
+func (s *MemgraphDriverSession) Exit(ctx context.Context, excType, excVal, excTb interface{}) error {
 	if s.session != nil {
 		return s.session.Close(ctx)
 	}
@@ -1304,7 +1302,7 @@ func (s *Neo4jDriverSession) Exit(ctx context.Context, excType, excVal, excTb in
 }
 
 // Close closes the session.
-func (s *Neo4jDriverSession) Close() error {
+func (s *MemgraphDriverSession) Close() error {
 	if s.session != nil {
 		return s.session.Close(context.Background())
 	}
@@ -1312,7 +1310,7 @@ func (s *Neo4jDriverSession) Close() error {
 }
 
 // Run executes a query in this session.
-func (s *Neo4jDriverSession) Run(ctx context.Context, query interface{}, kwargs map[string]interface{}) error {
+func (s *MemgraphDriverSession) Run(ctx context.Context, query interface{}, kwargs map[string]interface{}) error {
 	if s.session == nil {
 		return fmt.Errorf("session not entered")
 	}
@@ -1327,7 +1325,7 @@ func (s *Neo4jDriverSession) Run(ctx context.Context, query interface{}, kwargs 
 }
 
 // ExecuteWrite executes a write transaction.
-func (s *Neo4jDriverSession) ExecuteWrite(ctx context.Context, fn func(context.Context, GraphDriverSession, ...interface{}) (interface{}, error), args ...interface{}) (interface{}, error) {
+func (s *MemgraphDriverSession) ExecuteWrite(ctx context.Context, fn func(context.Context, GraphDriverSession, ...interface{}) (interface{}, error), args ...interface{}) (interface{}, error) {
 	if s.session == nil {
 		return nil, fmt.Errorf("session not entered")
 	}
@@ -1338,13 +1336,13 @@ func (s *Neo4jDriverSession) ExecuteWrite(ctx context.Context, fn func(context.C
 }
 
 // Provider returns the provider type.
-func (s *Neo4jDriverSession) Provider() GraphProvider {
-	return GraphProviderNeo4j
+func (s *MemgraphDriverSession) Provider() GraphProvider {
+	return GraphProviderMemgraph
 }
 
-// Helper methods for converting between Graphiti and Neo4j types
+// Helper methods for converting between Graphiti and Memgraph types
 
-func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
+func (m *MemgraphDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 	props := node.Props
 
 	result := &types.Node{}
@@ -1450,7 +1448,7 @@ func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 	return result
 }
 
-func (n *Neo4jDriver) nodeToProperties(node *types.Node) map[string]any {
+func (m *MemgraphDriver) nodeToProperties(node *types.Node) map[string]any {
 	props := map[string]any{
 		"id":         node.ID,
 		"name":       node.Name,
@@ -1523,7 +1521,7 @@ func (n *Neo4jDriver) nodeToProperties(node *types.Node) map[string]any {
 	return props
 }
 
-func (n *Neo4jDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID, targetID string) *types.Edge {
+func (m *MemgraphDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID, targetID string) *types.Edge {
 	props := relation.Props
 
 	result := &types.Edge{
@@ -1640,7 +1638,7 @@ func (n *Neo4jDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID,
 	return result
 }
 
-func (n *Neo4jDriver) edgeToProperties(edge *types.Edge) map[string]any {
+func (m *MemgraphDriver) edgeToProperties(edge *types.Edge) map[string]any {
 	props := map[string]any{
 		"id":         edge.ID,
 		"type":       string(edge.Type),
@@ -1716,7 +1714,7 @@ func (n *Neo4jDriver) edgeToProperties(edge *types.Edge) map[string]any {
 }
 
 // cosineSimilarity computes the cosine similarity between two vectors
-func (n *Neo4jDriver) cosineSimilarity(a, b []float32) float32 {
+func (m *MemgraphDriver) cosineSimilarity(a, b []float32) float32 {
 	if len(a) != len(b) {
 		return 0.0
 	}

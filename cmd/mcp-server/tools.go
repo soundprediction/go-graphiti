@@ -325,8 +325,18 @@ func (s *MCPServer) DeleteEntityEdgeTool(ctx *ai.ToolContext, input *UUIDRequest
 		}, nil
 	}
 
-	// Try to get the edge first to check if it exists
-	_, err := s.client.GetEdge(context.Background(), input.UUID)
+	// Try to get the edge first to check if it exists and get its group_id
+	edge, err := s.client.GetEdge(context.Background(), input.UUID)
+	if err != nil {
+		s.logger.Error("Failed to get entity edge for deletion", "uuid", input.UUID, "error", err)
+		return &ToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to get entity edge: %v", err),
+		}, nil
+	}
+
+	// Delete the edge using the driver
+	err = s.client.GetDriver().DeleteEdge(context.Background(), edge.ID, edge.GroupID)
 	if err != nil {
 		s.logger.Error("Failed to delete entity edge", "uuid", input.UUID, "error", err)
 		return &ToolResponse{
@@ -353,6 +363,16 @@ func (s *MCPServer) DeleteEpisodeTool(ctx *ai.ToolContext, input *UUIDRequest) (
 
 	// Try to get the node first to check if it exists
 	_, err := s.client.GetNode(context.Background(), input.UUID)
+	if err != nil {
+		s.logger.Error("Failed to get episode for deletion", "uuid", input.UUID, "error", err)
+		return &ToolResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to get episode: %v", err),
+		}, nil
+	}
+
+	// Delete the episode
+	err = s.client.RemoveEpisode(context.Background(), input.UUID)
 	if err != nil {
 		s.logger.Error("Failed to delete episode", "uuid", input.UUID, "error", err)
 		return &ToolResponse{
