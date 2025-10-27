@@ -6,7 +6,7 @@ replace github.com/soundprediction/go-graphiti => ../../
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/soundprediction/go-graphiti v0.0.0-00010101000000-000000000000
+	github.com/soundprediction/go-graphiti v0.0.0-20251026194926-8a7a03fd639b
 )
 
 require (
@@ -32,11 +32,11 @@ require (
 	github.com/sashabaranov/go-openai v1.41.2 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
-	golang.org/x/exp v0.0.0-20251017212417-90e834f514db // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251014153721-24f779f6aaef // indirect
+	golang.org/x/telemetry v0.0.0-20251022145735-5be28d707443 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )

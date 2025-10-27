@@ -3,6 +3,7 @@ package community
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -90,9 +91,12 @@ func (b *Builder) GetCommunityClusters(ctx context.Context, groupIDs []string) (
 }
 
 // BuildCommunities builds communities from entity clusters
-func (b *Builder) BuildCommunities(ctx context.Context, groupIDs []string) (*BuildCommunitiesResult, error) {
+func (b *Builder) BuildCommunities(ctx context.Context, groupIDs []string, logger *slog.Logger) (*BuildCommunitiesResult, error) {
 	// Get community clusters
 	clusters, err := b.GetCommunityClusters(ctx, groupIDs)
+	if logger != nil {
+		logger.Info("Clustering", "num_clusters", len(clusters), "num_groups", len(groupIDs))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get community clusters: %w", err)
 	}
