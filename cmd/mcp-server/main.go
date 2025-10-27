@@ -172,10 +172,12 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 			Model:       config.LLMModel,
 			Temperature: &[]float32{float32(config.LLMTemperature)}[0],
 		}
-		llmClient, err = llm.NewOpenAIClient(config.OpenAIAPIKey, llmConfig)
+		baseLLMClient, err := llm.NewOpenAIClient(config.OpenAIAPIKey, llmConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create LLM client: %w", err)
 		}
+		// Wrap with retry client for automatic retry on errors
+		llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 	}
 
 	// Create embedder client

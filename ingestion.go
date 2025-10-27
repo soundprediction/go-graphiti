@@ -150,6 +150,24 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 		return &types.AddBulkEpisodeResults{}, nil
 	}
 
+	// Filter out episodes that already exist
+	var newEpisodes []types.Episode
+	var skippedCount int
+
+	for _, episode := range episodes {
+		existingNode, err := c.driver.GetNode(ctx, episode.ID, c.config.GroupID)
+		if err == nil && existingNode != nil {
+			// Episode already exists, skip it
+			skippedCount++
+			c.logger.Debug("Skipping existing episode", "episode_id", episode.ID)
+			continue
+		}
+		newEpisodes = append(newEpisodes, episode)
+	}
+
+	// Use the filtered list for processing
+	episodes = newEpisodes
+
 	// Print initial database statistics
 	if stats, err := c.GetStats(ctx); err == nil {
 		episodesInDB := int64(0)
@@ -161,9 +179,15 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 			"edge_count", stats.EdgeCount,
 			"episodes_in_db", episodesInDB,
 			"communities", stats.CommunityCount,
-			"episodes_to_add", len(episodes))
+			"episodes_to_add", len(episodes),
+			"episodes_skipped", skippedCount)
 	} else {
 		c.logger.Warn("Failed to retrieve initial database stats", "error", err)
+	}
+
+	if len(episodes) == 0 {
+		c.logger.Info("No new episodes to add")
+		return &types.AddBulkEpisodeResults{}, nil
 	}
 
 	result := &types.AddBulkEpisodeResults{
@@ -331,13 +355,33 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		CommunityEdges: []*types.Edge{},
 	}
 
-	// STEP 13: Update communities if requested
-	communities, communityEdges, err := c.updateCommunitiesIfRequested(ctx, episode.ID, episode.GroupID, options)
+	// STEP 13: Update communities
+	communities, communityEdges, err := c.updateCommunities(ctx, episode.ID, episode.GroupID)
 	if err != nil {
 		return nil, err
 	}
 	result.Communities = communities
 	result.CommunityEdges = communityEdges
+
+	// Persist community nodes
+	for _, communityNode := range communities {
+		if err := c.driver.UpsertNode(ctx, communityNode); err != nil {
+			c.logger.Warn("Failed to persist community node",
+				"episode_id", episode.ID,
+				"community_id", communityNode.ID,
+				"error", err)
+		}
+	}
+
+	// Persist community edges
+	for _, communityEdge := range communityEdges {
+		if err := c.driver.UpsertEdge(ctx, communityEdge); err != nil {
+			c.logger.Warn("Failed to persist community edge",
+				"episode_id", episode.ID,
+				"edge_id", communityEdge.ID,
+				"error", err)
+		}
+	}
 
 	// STEP 14: Log final results
 	c.logger.Info("Chunked episode processing completed with bulk deduplication",
@@ -670,6 +714,19 @@ func (c *Client) deduplicateEntitiesAcrossChunks(ctx context.Context, episodeID 
 			continue
 		}
 
+		// Truncate summary if it's too long, to prevent potential issues with Kuzu
+		maxSummaryLength := 256
+		if len(node.Summary) > maxSummaryLength {
+			originalSummary := node.Summary
+			node.Summary = node.Summary[:maxSummaryLength] + "..." // Truncate and add ellipsis
+			c.logger.Warn("Node summary truncated for persistence",
+				"episode_id", episodeID,
+				"node_id", node.ID,
+				"original_length", len(originalSummary),
+				"truncated_length", len(node.Summary))
+		}
+
+		c.logger.Info("Attempting to upsert node", "episode_id", episodeID, "node_index", i, "node_id", node.ID, "node_name", node.Name, "node_details", fmt.Sprintf("%+v", node))
 		if err := c.driver.UpsertNode(ctx, node); err != nil {
 			c.logger.Warn("Failed to persist deduplicated node",
 				"episode_id", episodeID,
@@ -918,17 +975,14 @@ func (c *Client) performFinalGraphUpdates(ctx context.Context, episodeID string,
 	return nil
 }
 
-// updateCommunitiesIfRequested updates graph communities if requested in options.
-func (c *Client) updateCommunitiesIfRequested(ctx context.Context, episodeID string, groupID string, options *AddEpisodeOptions) ([]*types.Node, []*types.Edge, error) {
-	if !options.UpdateCommunities {
-		return []*types.Node{}, []*types.Edge{}, nil
-	}
+// updateCommunities updates graph communities if requested in options.
+func (c *Client) updateCommunities(ctx context.Context, episodeID string, groupID string) ([]*types.Node, []*types.Edge, error) {
 
 	c.logger.Info("Starting community update",
 		"episode_id", episodeID,
 		"group_id", groupID)
 
-	communityResult, err := c.community.BuildCommunities(ctx, []string{groupID})
+	communityResult, err := c.community.BuildCommunities(ctx, []string{groupID}, c.logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build communities: %w", err)
 	}

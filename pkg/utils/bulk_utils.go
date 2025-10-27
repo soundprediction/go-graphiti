@@ -372,7 +372,7 @@ func extractFromSingleEpisode(
 
 	edgeResponse, err := clients.LLM.Chat(ctx, edgeMessages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract edges: %w", err)
+		return nil, fmt.Errorf("failed to extract edges: %w \nprompt: %s \nresponse: \n %s", err, edgeMessages[1].Content, edgeResponse.Content)
 	}
 
 	// Parse edges from response (simplified)

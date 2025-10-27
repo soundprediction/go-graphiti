@@ -238,7 +238,7 @@ func runGraphitiIntegrationExample() error {
 	defer neo4jDriver.Close()
 
 	// Create Ollama LLM client
-	llmClient, err := llm.NewOpenAIClient(
+	baseLLMClient, err := llm.NewOpenAIClient(
 		"", // No API key needed for Ollama
 		llm.Config{
 			BaseURL:     "http://localhost:11434",
@@ -250,6 +250,8 @@ func runGraphitiIntegrationExample() error {
 	if err != nil {
 		return fmt.Errorf("failed to create Ollama client: %w", err)
 	}
+	// Wrap with retry client for automatic retry on errors
+	llmClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 	defer llmClient.Close()
 
 	// For embeddings, we'll still use OpenAI since most local solutions

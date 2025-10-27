@@ -1933,60 +1933,117 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 	}
 
 	var metadataJSON string
-	if node.Metadata != nil {
-		if data, err := json.Marshal(node.Metadata); err == nil {
-			metadataJSON = string(data)
+	var err error
+	if node.Metadata != nil && len(node.Metadata) > 0 {
+		data, marshalErr := json.Marshal(node.Metadata)
+		if marshalErr != nil {
+			return fmt.Errorf("failed to marshal node metadata: %w", marshalErr)
 		}
+		metadataJSON = string(data)
 	}
 
 	var query string
 	params := make(map[string]interface{})
+	setClauses := []string{}
+
+	params["uuid"] = node.ID
+	params["group_id"] = node.GroupID
 
 	switch tableName {
 	case "Episodic":
-		query = `
-			MATCH (n:Episodic)
-			WHERE n.uuid = $uuid AND n.group_id = $group_id
-			SET n.name = $name,
-				n.content = $content,
-				n.valid_at = $valid_at
-		`
-		params["uuid"] = node.ID
-		params["group_id"] = node.GroupID
+		// Always update name, content, and valid_at for episodic nodes
+		setClauses = append(setClauses, "n.name = $name")
 		params["name"] = node.Name
+
+		setClauses = append(setClauses, "n.content = $content")
 		params["content"] = node.Content
+
+		setClauses = append(setClauses, "n.valid_at = $valid_at")
 		params["valid_at"] = node.ValidFrom
+
+		// Update entity_edges if not empty
+		if len(node.EntityEdges) > 0 {
+			setClauses = append(setClauses, "n.entity_edges = $entity_edges")
+			params["entity_edges"] = node.EntityEdges
+		} else {
+			// Explicitly set to empty array if it's empty to avoid issues
+			setClauses = append(setClauses, "n.entity_edges = CAST([] AS STRING[])")
+		}
+
 	case "Entity":
-		query = `
-			MATCH (n:Entity)
-			WHERE n.uuid = $uuid AND n.group_id = $group_id
-			SET n.name = $name,
-				n.summary = $summary,
-				n.attributes = $attributes,
-				n.labels = $labels
-		`
-		params["uuid"] = node.ID
-		params["group_id"] = node.GroupID
-		params["name"] = node.Name
-		params["summary"] = node.Summary
-		params["attributes"] = metadataJSON
-		params["labels"] = []string{node.EntityType}
+		// Dynamically add SET clauses for non-empty fields
+		if node.Name != "" {
+			setClauses = append(setClauses, "n.name = $name")
+			params["name"] = node.Name
+		}
+		if node.Summary != "" {
+			setClauses = append(setClauses, "n.summary = $summary")
+			params["summary"] = node.Summary
+		}
+		if metadataJSON != "" {
+			setClauses = append(setClauses, "n.attributes = $attributes")
+			params["attributes"] = metadataJSON
+		}
+		// Update labels if EntityType is provided
+		if node.EntityType != "" {
+			setClauses = append(setClauses, "n.labels = $labels")
+			params["labels"] = []string{node.EntityType}
+		} else {
+			// Explicitly set to empty array if it's empty to avoid issues
+			setClauses = append(setClauses, "n.labels = CAST([] AS STRING[])")
+		}
+		// Update name_embedding if not empty
+		if len(node.NameEmbedding) > 0 {
+			setClauses = append(setClauses, "n.name_embedding = $name_embedding")
+			embedding := make([]float64, len(node.NameEmbedding))
+			for i, v := range node.NameEmbedding {
+				embedding[i] = float64(v)
+			}
+			params["name_embedding"] = embedding
+		} else {
+			// Explicitly set to empty array if it's empty to avoid issues
+			setClauses = append(setClauses, "n.name_embedding = CAST([] AS FLOAT[])")
+		}
+
 	case "Community":
-		query = `
-			MATCH (n:Community)
-			WHERE n.uuid = $uuid AND n.group_id = $group_id
-			SET n.name = $name,
-				n.summary = $summary
-		`
-		params["uuid"] = node.ID
-		params["group_id"] = node.GroupID
-		params["name"] = node.Name
-		params["summary"] = node.Summary
+		// Dynamically add SET clauses for non-empty fields
+		if node.Name != "" {
+			setClauses = append(setClauses, "n.name = $name")
+			params["name"] = node.Name
+		}
+		if node.Summary != "" {
+			setClauses = append(setClauses, "n.summary = $summary")
+			params["summary"] = node.Summary
+		}
+		// Update name_embedding if not empty
+		if len(node.NameEmbedding) > 0 {
+			setClauses = append(setClauses, "n.name_embedding = $name_embedding")
+			embedding := make([]float64, len(node.NameEmbedding))
+			for i, v := range node.NameEmbedding {
+				embedding[i] = float64(v)
+			}
+			params["name_embedding"] = embedding
+		} else {
+			// Explicitly set to empty array if it's empty to avoid issues
+			setClauses = append(setClauses, "n.name_embedding = CAST([] AS FLOAT[])")
+		}
+
 	default:
 		return fmt.Errorf("unknown table: %s", tableName)
 	}
 
-	_, _, _, err := k.ExecuteQuery(query, params)
+	// Only execute query if there are fields to update
+	if len(setClauses) == 0 {
+		return nil // Nothing to update
+	}
+
+	query = fmt.Sprintf(`
+		MATCH (n:%s)
+		WHERE n.uuid = $uuid AND n.group_id = $group_id
+		SET %s
+	`, tableName, strings.Join(setClauses, ", "))
+
+	_, _, _, err = k.ExecuteQuery(query, params)
 	return err
 }
 

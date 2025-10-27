@@ -301,8 +301,6 @@ func TestClient_AddEpisodeWithCommunityUpdates(t *testing.T) {
 	assert.Empty(t, result.Communities, "Communities should be empty when UpdateCommunities is false")
 	assert.Empty(t, result.CommunityEdges, "CommunityEdges should be empty when UpdateCommunities is false")
 
-	// Test with UpdateCommunities enabled
-	options.UpdateCommunities = true
 	result, err = client.AddEpisode(ctx, episode, options)
 	// With mock driver, community building will fail as it only supports Kuzu drivers
 	assert.Error(t, err, "Community building should fail with mock driver")

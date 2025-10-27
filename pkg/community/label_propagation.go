@@ -290,7 +290,7 @@ func (b *Builder) getNodesByUUIDs(ctx context.Context, uuids []string, groupID s
 // getNodeNeighborsNeo4j gets neighbors for Neo4j/Memgraph databases
 func (b *Builder) getNodeNeighborsNeo4j(ctx context.Context, nodeUUID, groupID string) ([]Neighbor, error) {
 	query := `
-		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
+		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
 		WITH count(e) AS count, m.uuid AS uuid
 		RETURN uuid, count
 	`
