@@ -307,7 +307,8 @@ func (eo *EdgeOperations) GetBetweenNodes(ctx context.Context, sourceNodeID, tar
 				edges = append(edges, edge)
 			}
 		default:
-			log.Printf("Warning: unexpected result type from GetBetweenNodes query: %T", result)
+			// Try to handle Neo4j/Memgraph []*db.Record using reflection
+			edges = eo.parseNeo4jEdgeRecords(result)
 		}
 	}
 
@@ -810,4 +811,69 @@ func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, du
 		len(duplicateNodePairs)-len(filteredPairs), len(filteredPairs))
 
 	return filteredPairs, nil
+}
+
+// parseNeo4jEdgeRecords parses Neo4j/Memgraph driver records into edges using reflection.
+// This handles the []*db.Record type returned by Memgraph's ExecuteQuery for edge queries.
+func (eo *EdgeOperations) parseNeo4jEdgeRecords(result interface{}) []*types.Edge {
+	var edges []*types.Edge
+
+	// Use reflection to handle Neo4j driver records
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		log.Printf("Warning: expected slice for Neo4j records, got %T", result)
+		return edges
+	}
+
+	// Iterate through records
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		// Get Keys and Values from the record
+		keysMethod := record.MethodByName("Keys")
+		valuesField := record.FieldByName("Values")
+
+		if !keysMethod.IsValid() || !valuesField.IsValid() {
+			continue
+		}
+
+		// Call Keys() method
+		keysResult := keysMethod.Call([]reflect.Value{})
+		if len(keysResult) < 1 {
+			continue
+		}
+
+		keys := keysResult[0]
+		if keys.Kind() != reflect.Slice {
+			continue
+		}
+
+		// Get Values field
+		values := valuesField
+		if values.Kind() != reflect.Slice {
+			continue
+		}
+
+		// Build map from keys and values
+		recordMap := make(map[string]interface{})
+		for j := 0; j < keys.Len() && j < values.Len(); j++ {
+			keyVal := keys.Index(j)
+			valueVal := values.Index(j)
+
+			if key, ok := keyVal.Interface().(string); ok {
+				recordMap[key] = valueVal.Interface()
+			}
+		}
+
+		// Convert record map to edge
+		edge, err := eo.convertRecordToEdge(recordMap)
+		if err != nil {
+			log.Printf("Warning: failed to convert Neo4j record to edge: %v", err)
+			continue
+		}
+
+		edges = append(edges, edge)
+	}
+
+	return edges
 }

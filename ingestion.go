@@ -355,8 +355,8 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		CommunityEdges: []*types.Edge{},
 	}
 
-	// STEP 13: Update communities if requested
-	communities, communityEdges, err := c.updateCommunitiesIfRequested(ctx, episode.ID, episode.GroupID, options)
+	// STEP 13: Update communities
+	communities, communityEdges, err := c.updateCommunities(ctx, episode.ID, episode.GroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -942,11 +942,8 @@ func (c *Client) performFinalGraphUpdates(ctx context.Context, episodeID string,
 	return nil
 }
 
-// updateCommunitiesIfRequested updates graph communities if requested in options.
-func (c *Client) updateCommunitiesIfRequested(ctx context.Context, episodeID string, groupID string, options *AddEpisodeOptions) ([]*types.Node, []*types.Edge, error) {
-	if !options.UpdateCommunities {
-		return []*types.Node{}, []*types.Edge{}, nil
-	}
+// updateCommunities updates graph communities if requested in options.
+func (c *Client) updateCommunities(ctx context.Context, episodeID string, groupID string) ([]*types.Node, []*types.Edge, error) {
 
 	c.logger.Info("Starting community update",
 		"episode_id", episodeID,
