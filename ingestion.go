@@ -363,6 +363,26 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	result.Communities = communities
 	result.CommunityEdges = communityEdges
 
+	// Persist community nodes
+	for _, communityNode := range communities {
+		if err := c.driver.UpsertNode(ctx, communityNode); err != nil {
+			c.logger.Warn("Failed to persist community node",
+				"episode_id", episode.ID,
+				"community_id", communityNode.ID,
+				"error", err)
+		}
+	}
+
+	// Persist community edges
+	for _, communityEdge := range communityEdges {
+		if err := c.driver.UpsertEdge(ctx, communityEdge); err != nil {
+			c.logger.Warn("Failed to persist community edge",
+				"episode_id", episode.ID,
+				"edge_id", communityEdge.ID,
+				"error", err)
+		}
+	}
+
 	// STEP 14: Log final results
 	c.logger.Info("Chunked episode processing completed with bulk deduplication",
 		"episode_id", episode.ID,
@@ -694,6 +714,19 @@ func (c *Client) deduplicateEntitiesAcrossChunks(ctx context.Context, episodeID 
 			continue
 		}
 
+		// Truncate summary if it's too long, to prevent potential issues with Kuzu
+		maxSummaryLength := 256
+		if len(node.Summary) > maxSummaryLength {
+			originalSummary := node.Summary
+			node.Summary = node.Summary[:maxSummaryLength] + "..." // Truncate and add ellipsis
+			c.logger.Warn("Node summary truncated for persistence",
+				"episode_id", episodeID,
+				"node_id", node.ID,
+				"original_length", len(originalSummary),
+				"truncated_length", len(node.Summary))
+		}
+
+		c.logger.Info("Attempting to upsert node", "episode_id", episodeID, "node_index", i, "node_id", node.ID, "node_name", node.Name, "node_details", fmt.Sprintf("%+v", node))
 		if err := c.driver.UpsertNode(ctx, node); err != nil {
 			c.logger.Warn("Failed to persist deduplicated node",
 				"episode_id", episodeID,
