@@ -90,8 +90,8 @@ type KuzuDriver struct {
 	db           *kuzu.Database
 	client       *kuzu.Connection // Note: Python uses AsyncConnection, but Go kuzu doesn't have async
 	dbPath       string
-	tempDbPath   string // If non-empty, this is a temp copy that should be cleaned up
-	originalPath string // Original path before copying to temp
+	tempDbPath   string     // If non-empty, this is a temp copy that should be cleaned up
+	originalPath string     // Original path before copying to temp
 	mu           sync.Mutex // Mutex to protect database operations from concurrent access
 }
 
@@ -2156,4 +2156,48 @@ func (s *KuzuDriverSession) Enter(ctx context.Context) (GraphDriverSession, erro
 func (s *KuzuDriverSession) Exit(ctx context.Context, excType, excVal, excTb interface{}) error {
 	// No cleanup needed for Kuzu, but method must exist (matching Python comment)
 	return nil
+}
+
+func (k *KuzuDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error) {
+	query := `
+		MATCH (a:Entity {uuid: $source_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $target_uuid})
+		RETURN rel.uuid AS uuid, rel.name AS name, rel.fact AS fact, rel.group_id AS group_id,
+		       rel.created_at AS created_at, rel.valid_at AS valid_at, rel.invalid_at AS invalid_at,
+		       rel.expired_at AS expired_at, rel.episodes AS episodes, rel.attributes AS attributes,
+		       a.uuid AS source_id, b.uuid AS target_id
+		UNION
+		MATCH (a:Entity {uuid: $target_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $source_uuid})
+		RETURN rel.uuid AS uuid, rel.name AS name, rel.fact AS fact, rel.group_id AS group_id,
+		       rel.created_at AS created_at, rel.valid_at AS valid_at, rel.invalid_at AS invalid_at,
+		       rel.expired_at AS expired_at, rel.episodes AS episodes, rel.attributes AS attributes,
+		       a.uuid AS source_id, b.uuid AS target_id
+	`
+
+	params := map[string]interface{}{
+		"source_uuid": sourceNodeID,
+		"target_uuid": targetNodeID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute GetBetweenNodes query: %w", err)
+	}
+
+	// Convert result to Edge objects
+	var edges []*types.Edge
+	recordSlice, ok := result.([]map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unexpected query result type: %T", result)
+	}
+
+	for _, record := range recordSlice {
+		edge, err := convertRecordToEdge(record)
+		if err != nil {
+			log.Printf("Warning: failed to convert record to edge: %v", err)
+			continue
+		}
+		edges = append(edges, edge)
+	}
+
+	return edges, nil
 }

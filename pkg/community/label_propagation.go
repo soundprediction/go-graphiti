@@ -233,7 +233,7 @@ func (b *Builder) getEntityNodesByGroupKuzu(ctx context.Context, kuzuDriver *dri
 		MATCH (n:Entity {group_id: $group_id})
 		RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, n.created_at AS created_at
 	`
-
+	fmt.Printf("query: %v\n", query)
 	params := map[string]interface{}{
 		"group_id": groupID,
 	}
@@ -287,7 +287,6 @@ func (b *Builder) getNodesByUUIDs(ctx context.Context, uuids []string, groupID s
 
 // ====== Neo4j/Memgraph Implementations ======
 
-// getNodeNeighborsNeo4j gets neighbors for Neo4j/Memgraph databases
 func (b *Builder) getNodeNeighborsNeo4j(ctx context.Context, nodeUUID, groupID string) ([]Neighbor, error) {
 	query := `
 		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
@@ -295,10 +294,13 @@ func (b *Builder) getNodeNeighborsNeo4j(ctx context.Context, nodeUUID, groupID s
 		RETURN uuid, count
 	`
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"uuid":     nodeUUID,
 		"group_id": groupID,
 	}
+
+	fmt.Printf("query: %v\n", query)
+	fmt.Printf("params: %v\n", params)
 
 	result, _, _, err := b.driver.ExecuteQuery(query, params)
 	if err != nil {
@@ -357,41 +359,52 @@ func (b *Builder) parseNeighborsFromRecords(result interface{}) ([]Neighbor, err
 	for i := 0; i < value.Len(); i++ {
 		record := value.Index(i)
 
-		// Get uuid field
+		// Ensure we are dealing with a pointer to a struct (e.g. *db.Record)
+		if record.Kind() == reflect.Interface {
+			record = record.Elem()
+		}
+
+		if !record.IsValid() {
+			continue
+		}
+
 		getMethod := record.MethodByName("Get")
 		if !getMethod.IsValid() {
-			continue
+			return nil, fmt.Errorf("record type %T does not have a Get method", record.Interface())
 		}
 
-		// Get uuid
+		// Safely call Get("uuid") and Get("count")
 		uuidResults := getMethod.Call([]reflect.Value{reflect.ValueOf("uuid")})
-		if len(uuidResults) < 1 {
-			continue
-		}
-
-		// Get count
 		countResults := getMethod.Call([]reflect.Value{reflect.ValueOf("count")})
-		if len(countResults) < 1 {
+
+		if len(uuidResults) == 0 || len(countResults) == 0 {
 			continue
 		}
 
 		uuidInterface := uuidResults[0].Interface()
 		countInterface := countResults[0].Interface()
 
-		if uuid, ok := uuidInterface.(string); ok {
-			count := int64(0)
-			switch c := countInterface.(type) {
-			case int64:
-				count = c
-			case int:
-				count = int64(c)
-			}
-
-			neighbors = append(neighbors, Neighbor{
-				NodeUUID:  uuid,
-				EdgeCount: int(count),
-			})
+		uuid, ok := uuidInterface.(string)
+		if !ok || uuid == "" {
+			continue
 		}
+
+		var edgeCount int
+		switch v := countInterface.(type) {
+		case int:
+			edgeCount = v
+		case int64:
+			edgeCount = int(v)
+		case float64:
+			edgeCount = int(v)
+		default:
+			continue
+		}
+
+		neighbors = append(neighbors, Neighbor{
+			NodeUUID:  uuid,
+			EdgeCount: edgeCount,
+		})
 	}
 
 	return neighbors, nil

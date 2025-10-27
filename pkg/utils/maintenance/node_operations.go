@@ -397,10 +397,12 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	response, err := no.llm.Chat(ctx, messages)
 	if err != nil {
 		if response == nil {
-			return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w\nprompt:\n%s\nresponse:\n%s", err, messages[1].Content, "NO RESPONSE")
-
+			no.logger.Warn("Skipping node deduplication due to error", "error", err)
+			return bypassResolveExtractedNodes(ctx, extractedNodes)
 		}
-		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w\nprompt:\n%s\nresponse:\n%s", err, messages[1].Content, response.Content)
+		no.logger.Debug("failed to call llm to dedupe nodes", "prompt", messages[1].Content, "response", response.Content)
+		no.logger.Debug("Skipping node deduplication due to error", "error", err)
+		return bypassResolveExtractedNodes(ctx, extractedNodes)
 	}
 	if !utils.IsLastLineEmpty(response.Content) {
 		originalResponse := response
@@ -420,7 +422,8 @@ Continue the INCOMPLETE RESPONSE\n
 
 	nodeDuplicatePtrs, err := utils.DuckDbUnmarshalCSV[prompts.NodeDuplicate](r, '\t')
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to unmarshal node resolutions: %w", err)
+		no.logger.Warn("Skipping node deduplication due to error", "error", err)
+		return bypassResolveExtractedNodes(ctx, extractedNodes)
 	}
 
 	// Convert pointer slice to value slice
@@ -478,6 +481,11 @@ Continue the INCOMPLETE RESPONSE\n
 	}
 
 	return resolvedNodes, uuidMap, filteredDuplicates, nil
+}
+
+func bypassResolveExtractedNodes(ctx context.Context, nodes []*types.Node) ([]*types.Node, map[string]string, []NodePair, error) {
+	return nodes, make(map[string]string), []NodePair{}, nil
+
 }
 
 // ExtractAttributesFromNodes extracts and updates attributes for nodes using LLM in batches
