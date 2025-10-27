@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/soundprediction/go-graphiti/pkg/types"
@@ -59,6 +60,9 @@ type GraphDriver interface {
 	// Graph traversal operations
 	GetNeighbors(ctx context.Context, nodeID, groupID string, maxDistance int) ([]*types.Node, error)
 	GetRelatedNodes(ctx context.Context, nodeID, groupID string, edgeTypes []types.EdgeType) ([]*types.Node, error)
+
+	// GetBetweenNodes retrieves edges between two specific nodes using the proper query pattern
+	GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error)
 
 	// Search operations
 	SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error)
@@ -122,4 +126,66 @@ type VectorSearchOptions struct {
 	NodeTypes []types.NodeType `json:"node_types,omitempty"`
 	EdgeTypes []types.EdgeType `json:"edge_types,omitempty"`
 	TimeRange *types.TimeRange `json:"time_range,omitempty"`
+}
+
+// convertRecordToEdge converts a database record to an Edge object
+func convertRecordToEdge(record map[string]interface{}) (*types.Edge, error) {
+	edge := &types.Edge{}
+
+	// Extract basic fields
+	if uuid, ok := record["uuid"].(string); ok {
+		edge.ID = uuid
+	} else {
+		return nil, fmt.Errorf("missing or invalid uuid field")
+	}
+
+	if name, ok := record["name"].(string); ok {
+		edge.Name = name
+	}
+
+	if fact, ok := record["fact"].(string); ok {
+		edge.Summary = fact
+	}
+
+	if groupID, ok := record["group_id"].(string); ok {
+		edge.GroupID = groupID
+	}
+
+	// Extract source and target IDs
+	if sourceID, ok := record["source_id"].(string); ok {
+		edge.SourceID = sourceID
+	}
+	if targetID, ok := record["target_id"].(string); ok {
+		edge.TargetID = targetID
+	}
+
+	// Extract timestamps
+	if createdAt, ok := record["created_at"].(time.Time); ok {
+		edge.CreatedAt = createdAt
+	}
+	if updatedAt, ok := record["updated_at"].(time.Time); ok {
+		edge.UpdatedAt = updatedAt
+	}
+	if validFrom, ok := record["valid_from"].(time.Time); ok {
+		edge.ValidFrom = validFrom
+	}
+	if validTo, ok := record["valid_to"].(time.Time); ok {
+		edge.ValidTo = &validTo
+	}
+
+	// Set edge type - assume EntityEdge for relationships from RelatesToNode_
+	edge.Type = types.EntityEdgeType
+
+	// Extract source IDs if present
+	if sourceIDs, ok := record["source_ids"].([]interface{}); ok {
+		strSourceIDs := make([]string, len(sourceIDs))
+		for i, id := range sourceIDs {
+			if strID, ok := id.(string); ok {
+				strSourceIDs[i] = strID
+			}
+		}
+		edge.SourceIDs = strSourceIDs
+	}
+
+	return edge, nil
 }

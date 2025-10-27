@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"reflect"
 	"sort"
@@ -1877,4 +1878,48 @@ func (n *Neo4jDriver) cosineSimilarity(a, b []float32) float32 {
 	}
 
 	return dotProduct / (float32(math.Sqrt(float64(normA))) * float32(math.Sqrt(float64(normB))))
+}
+
+func (k *Neo4jDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error) {
+	query := `
+		MATCH (a:Entity {uuid: $source_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $target_uuid})
+		RETURN rel.uuid AS uuid, rel.name AS name, rel.fact AS fact, rel.group_id AS group_id,
+		       rel.created_at AS created_at, rel.valid_at AS valid_at, rel.invalid_at AS invalid_at,
+		       rel.expired_at AS expired_at, rel.episodes AS episodes, rel.attributes AS attributes,
+		       a.uuid AS source_id, b.uuid AS target_id
+		UNION
+		MATCH (a:Entity {uuid: $target_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $source_uuid})
+		RETURN rel.uuid AS uuid, rel.name AS name, rel.fact AS fact, rel.group_id AS group_id,
+		       rel.created_at AS created_at, rel.valid_at AS valid_at, rel.invalid_at AS invalid_at,
+		       rel.expired_at AS expired_at, rel.episodes AS episodes, rel.attributes AS attributes,
+		       a.uuid AS source_id, b.uuid AS target_id
+	`
+
+	params := map[string]interface{}{
+		"source_uuid": sourceNodeID,
+		"target_uuid": targetNodeID,
+	}
+
+	result, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute GetBetweenNodes query: %w", err)
+	}
+
+	// Convert result to Edge objects
+	var edges []*types.Edge
+	recordSlice, ok := result.([]map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unexpected query result type: %T", result)
+	}
+
+	for _, record := range recordSlice {
+		edge, err := convertRecordToEdge(record)
+		if err != nil {
+			log.Printf("Warning: failed to convert record to edge: %v", err)
+			continue
+		}
+		edges = append(edges, edge)
+	}
+
+	return edges, nil
 }
