@@ -247,10 +247,12 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 				Temperature: &cfg.LLM.Temperature,
 				BaseURL:     cfg.LLM.BaseURL,
 			}
-			llmClient, err = llm.NewOpenAIClient(cfg.LLM.APIKey, llmConfig)
+			baseLLMClient, err := llm.NewOpenAIClient(cfg.LLM.APIKey, llmConfig)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create LLM client: %w", err)
 			}
+			// Wrap with retry client for automatic retry on errors
+			llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 		default:
 			return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.LLM.Provider)
 		}

@@ -381,10 +381,12 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		if apiKey == "" && config.LLMBaseURL != "" {
 			apiKey = "dummy" // Some OpenAI-compatible services require a non-empty key
 		}
-		llmClient, err = llm.NewOpenAIClient(apiKey, llmConfig)
+		baseLLMClient, err := llm.NewOpenAIClient(apiKey, llmConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create LLM client: %w", err)
 		}
+		// Wrap with retry client for automatic retry on errors
+		llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 	} else {
 		logger.Warn("No LLM configuration provided - LLM functionality will be disabled")
 	}

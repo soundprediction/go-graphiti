@@ -150,6 +150,24 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 		return &types.AddBulkEpisodeResults{}, nil
 	}
 
+	// Filter out episodes that already exist
+	var newEpisodes []types.Episode
+	var skippedCount int
+
+	for _, episode := range episodes {
+		existingNode, err := c.driver.GetNode(ctx, episode.ID, c.config.GroupID)
+		if err == nil && existingNode != nil {
+			// Episode already exists, skip it
+			skippedCount++
+			c.logger.Debug("Skipping existing episode", "episode_id", episode.ID)
+			continue
+		}
+		newEpisodes = append(newEpisodes, episode)
+	}
+
+	// Use the filtered list for processing
+	episodes = newEpisodes
+
 	// Print initial database statistics
 	if stats, err := c.GetStats(ctx); err == nil {
 		episodesInDB := int64(0)
@@ -161,9 +179,15 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 			"edge_count", stats.EdgeCount,
 			"episodes_in_db", episodesInDB,
 			"communities", stats.CommunityCount,
-			"episodes_to_add", len(episodes))
+			"episodes_to_add", len(episodes),
+			"episodes_skipped", skippedCount)
 	} else {
 		c.logger.Warn("Failed to retrieve initial database stats", "error", err)
+	}
+
+	if len(episodes) == 0 {
+		c.logger.Info("No new episodes to add")
+		return &types.AddBulkEpisodeResults{}, nil
 	}
 
 	result := &types.AddBulkEpisodeResults{

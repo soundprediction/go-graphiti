@@ -89,12 +89,14 @@ func main() {
 		Temperature: floatPtr(0.7),
 		MaxTokens:   intPtr(1000),
 	}
-	llmClient, err := llm.NewOpenAIClient(openaiAPIKey, llmConfig)
+	baseLLMClient, err := llm.NewOpenAIClient(openaiAPIKey, llmConfig)
 	if err != nil {
 		log.Fatalf("Failed to create LLM client: %v", err)
 	}
+	// Wrap with retry client for automatic retry on errors
+	llmClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 	defer llmClient.Close()
-	fmt.Printf("   ✅ OpenAI LLM client created (model: %s)\n", llmConfig.Model)
+	fmt.Printf("   ✅ OpenAI LLM client created with retry support (model: %s)\n", llmConfig.Model)
 
 	// Create embedder client
 	fmt.Println("\n🔤 Creating OpenAI embedder client...")

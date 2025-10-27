@@ -56,7 +56,7 @@ func main() {
 
 	// Create Ollama client using OpenAI-compatible API
 	// Assumes Ollama is running locally with a model like llama2:7b
-	ollama, err := llm.NewOpenAIClient("", llm.Config{
+	baseOllama, err := llm.NewOpenAIClient("", llm.Config{
 		BaseURL:     "http://localhost:11434", // Ollama's OpenAI-compatible endpoint
 		Model:       "llama2:7b",              // Popular 7B parameter model
 		Temperature: &[]float32{0.7}[0],       // Balanced creativity
@@ -65,9 +65,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create Ollama client: %v", err)
 	}
+	// Wrap with retry client for automatic retry on errors
+	ollama := llm.NewRetryClient(baseOllama, llm.DefaultRetryConfig())
 	defer ollama.Close()
 
-	log.Println("   ✅ Ollama client created (using OpenAI-compatible API with llama2:7b)")
+	log.Println("   ✅ Ollama client created with retry support (using OpenAI-compatible API with llama2:7b)")
 	log.Println("   💡 Make sure Ollama is running: `ollama serve`")
 	log.Println("   💡 Make sure model is available: `ollama pull llama2:7b`")
 	log.Println("   💡 Ollama exposes OpenAI-compatible API at /v1/chat/completions")

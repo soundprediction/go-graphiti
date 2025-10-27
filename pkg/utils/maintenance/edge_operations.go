@@ -154,7 +154,11 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 
 	response, err := eo.llm.Chat(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract edges: %w", err)
+		if response == nil {
+			return nil, fmt.Errorf("failed to call llm to dedupe nodes: %w\nprompt:\n%s\nresponse:\n%s", err, messages[1].Content, "NO RESPONSE")
+
+		}
+		return nil, fmt.Errorf("failed to extract edges: %w \nprompt: %s \nresponse: \n %s", err, messages[1].Content, response.Content)
 	}
 	if !utils.IsLastLineEmpty(response.Content) {
 		originalResponse := response

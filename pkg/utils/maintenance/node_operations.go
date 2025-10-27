@@ -396,7 +396,11 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 
 	response, err := no.llm.Chat(ctx, messages)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w", err)
+		if response == nil {
+			return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w\nprompt:\n%s\nresponse:\n%s", err, messages[1].Content, "NO RESPONSE")
+
+		}
+		return nil, nil, nil, fmt.Errorf("failed to call llm to dedupe nodes: %w\nprompt:\n%s\nresponse:\n%s", err, messages[1].Content, response.Content)
 	}
 	if !utils.IsLastLineEmpty(response.Content) {
 		originalResponse := response
