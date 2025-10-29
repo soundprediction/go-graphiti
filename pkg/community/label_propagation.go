@@ -232,7 +232,7 @@ func (b *Builder) getEntityNodesByGroup(ctx context.Context, groupID string) ([]
 func (b *Builder) getEntityNodesByGroupKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver, groupID string) ([]*types.Node, error) {
 	query := `
 		MATCH (n:Entity {group_id: $group_id})
-		RETURN n.uuid AS id, n.name AS name, n.summary AS summary, n.created_at AS created_at
+		RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, n.created_at AS created_at
 	`
 	params := map[string]interface{}{
 		"group_id": groupID,
@@ -289,9 +289,10 @@ func (b *Builder) getNodesByUUIDs(ctx context.Context, uuids []string, groupID s
 
 func (b *Builder) getNodeNeighborsNeo4j(ctx context.Context, nodeUUID, groupID string) ([]Neighbor, error) {
 	query := `
-		MATCH (n:Entity {uuid: $id, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
-		WITH count(e) AS count, m.uuid AS uuid
-		RETURN uuid, count
+      MATCH (n:Entity {uuid: $id, group_id: $group_id})-[:RELATES_TO]->(e:RelatesToNode_)<-[:RELATES_TO]-
+      (m:Entity {group_id: $group_id})
+	  WITH m.uuid AS uuid, count(e) AS count
+	  RETURN uuid, count
 	`
 
 	params := map[string]any{
@@ -327,7 +328,7 @@ func (b *Builder) getAllGroupIDsNeo4j(ctx context.Context) ([]string, error) {
 func (b *Builder) getEntityNodesByGroupNeo4j(ctx context.Context, groupID string) ([]*types.Node, error) {
 	query := `
 		MATCH (n:Entity {group_id: $group_id})
-		RETURN n.uuid AS id, n.name AS name, n.type AS type, n.group_id AS group_id, n.summary AS summary, n.created_at AS created_at
+		RETURN n.uuid AS uuid, n.name AS name, n.type AS type, n.entity_type AS entity_type, n.group_id AS group_id, n.summary AS summary, n.created_at AS created_at
 	`
 
 	params := map[string]interface{}{
