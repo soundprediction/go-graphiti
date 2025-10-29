@@ -47,7 +47,7 @@ func (m *MemgraphDriver) GetNode(ctx context.Context, nodeID, groupID string) (*
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {id: $nodeID, group_id: $groupID})
+			MATCH (n {uuid: $nodeID, group_id: $groupID})
 			RETURN n
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -94,8 +94,8 @@ func (m *MemgraphDriver) NodeExists(ctx context.Context, node *types.Node) bool 
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {id: $id, group_id: $group_id})
-			RETURN n.id
+			MATCH (n {uuid: $uuid, group_id: $group_id})
+			RETURN n.uuid
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -114,6 +114,20 @@ func (m *MemgraphDriver) NodeExists(ctx context.Context, node *types.Node) bool 
 	}
 
 	return result != nil
+}
+
+// getLabelForNodeType returns the appropriate node label for a given node type.
+func (m *MemgraphDriver) getLabelForNodeType(nodeType types.NodeType) string {
+	switch nodeType {
+	case types.EpisodicNodeType:
+		return "Episodic"
+	case types.EntityNodeType:
+		return "Entity"
+	case types.CommunityNodeType:
+		return "Community"
+	default:
+		return "Entity"
+	}
 }
 
 // UpsertNode creates or updates a node.
@@ -136,11 +150,13 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := `
-			MERGE (n {id: $id, group_id: $group_id})
+		label := m.getLabelForNodeType(node.Type)
+		query := fmt.Sprintf(`
+			MERGE (n {uuid: $id, group_id: $group_id})
 			SET n += $properties
+			SET n:%s
 			SET n.updated_at = $updated_at
-		`
+		`, label)
 
 		properties := m.nodeToProperties(node)
 		_, err := tx.Run(ctx, query, map[string]any{
@@ -162,7 +178,7 @@ func (m *MemgraphDriver) DeleteNode(ctx context.Context, nodeID, groupID string)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {id: $nodeID, group_id: $groupID})
+			MATCH (n {uuid: $nodeID, group_id: $groupID})
 			DETACH DELETE n
 		`
 		_, err := tx.Run(ctx, query, map[string]any{
@@ -187,7 +203,7 @@ func (m *MemgraphDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
 			MATCH (n {group_id: $groupID})
-			WHERE n.id IN $nodeIDs
+			WHERE n.uuid IN $nodeIDs
 			RETURN n
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -227,8 +243,8 @@ func (m *MemgraphDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (s)-[r {id: $edgeID, group_id: $groupID}]->(t)
-			RETURN r, s.id as source_id, t.id as target_id
+			MATCH (s)-[r {uuid: $edgeID, group_id: $groupID}]->(t)
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
 			"edgeID":  edgeID,
@@ -277,8 +293,8 @@ func (m *MemgraphDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool 
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH ()-[r {id: $id, group_id: $group_id}]-()
-			RETURN r.id
+			MATCH ()-[r {uuid: $id, group_id: $group_id}]-()
+			RETURN r.uuid
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -320,9 +336,9 @@ func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (s {id: $source_id, group_id: $group_id})
-			MATCH (t {id: $target_id, group_id: $group_id})
-			MERGE (s)-[r:RELATES {id: $id, group_id: $group_id}]->(t)
+			MATCH (s {uuid: $source_id, group_id: $group_id})
+			MATCH (t {uuid: $target_id, group_id: $group_id})
+			MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
 			SET r += $properties
 			SET r.updated_at = $updated_at
 		`
@@ -349,7 +365,7 @@ func (m *MemgraphDriver) DeleteEdge(ctx context.Context, edgeID, groupID string)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH ()-[r {id: $edgeID, group_id: $groupID}]-()
+			MATCH ()-[r {uuid: $edgeID, group_id: $groupID}]-()
 			DELETE r
 		`
 		_, err := tx.Run(ctx, query, map[string]any{
@@ -374,8 +390,8 @@ func (m *MemgraphDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
 			MATCH (s)-[r {group_id: $groupID}]->(t)
-			WHERE r.id IN $edgeIDs
-			RETURN r, s.id as source_id, t.id as target_id
+			WHERE r.uuid IN $edgeIDs
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
 			"edgeIDs": edgeIDs,
@@ -417,7 +433,7 @@ func (m *MemgraphDriver) GetNeighbors(ctx context.Context, nodeID, groupID strin
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := fmt.Sprintf(`
-			MATCH (start {id: $nodeID, group_id: $groupID})
+			MATCH (start {uuid: $nodeID, group_id: $groupID})
 			MATCH (start)-[*1..%d]-(neighbor)
 			WHERE neighbor.group_id = $groupID AND neighbor.id <> $nodeID
 			RETURN DISTINCT neighbor
@@ -467,7 +483,7 @@ func (m *MemgraphDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID st
 		if len(edgeTypes) == 0 {
 			// Get all related nodes regardless of edge type
 			query = `
-				MATCH (start {id: $nodeID, group_id: $groupID})
+				MATCH (start {uuid: $nodeID, group_id: $groupID})
 				MATCH (start)-[r]-(related)
 				WHERE related.group_id = $groupID AND related.id <> $nodeID
 				RETURN DISTINCT related
@@ -481,7 +497,7 @@ func (m *MemgraphDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID st
 			params["edgeTypes"] = edgeTypeStrings
 
 			query = `
-				MATCH (start {id: $nodeID, group_id: $groupID})
+				MATCH (start {uuid: $nodeID, group_id: $groupID})
 				MATCH (start)-[r]-(related)
 				WHERE related.group_id = $groupID
 				  AND related.id <> $nodeID
@@ -685,7 +701,7 @@ func (m *MemgraphDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) e
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		for _, node := range nodes {
 			query := `
-				MERGE (n {id: $id, group_id: $group_id})
+				MERGE (n {uuid: $id, group_id: $group_id})
 				SET n += $properties
 				SET n.updated_at = $updated_at
 			`
@@ -719,9 +735,9 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		for _, edge := range edges {
 			query := `
-				MATCH (s {id: $source_id, group_id: $group_id})
-				MATCH (t {id: $target_id, group_id: $group_id})
-				MERGE (s)-[r:RELATES {id: $id, group_id: $group_id}]->(t)
+				MATCH (s {uuid: $source_id, group_id: $group_id})
+				MATCH (t {uuid: $target_id, group_id: $group_id})
+				MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
 				SET r += $properties
 				SET r.updated_at = $updated_at
 			`
@@ -891,7 +907,7 @@ func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) e
 		communityQuery := `
 			MATCH (n {group_id: $groupID})
 			OPTIONAL MATCH (n)-[*]-(connected {group_id: $groupID})
-			WITH n, collect(DISTINCT connected.id) + [n.id] as component
+			WITH n, collect(DISTINCT connected.id) + [n.uuid] as component
 			SET n.community_id = component[0]
 			SET n.community_level = 0
 		`
@@ -1579,7 +1595,7 @@ func (m *MemgraphDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 
 func (m *MemgraphDriver) nodeToProperties(node *types.Node) map[string]any {
 	props := map[string]any{
-		"id":         node.ID,
+		"uuid":       node.ID,
 		"name":       node.Name,
 		"type":       string(node.Type),
 		"group_id":   node.GroupID,

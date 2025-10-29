@@ -238,7 +238,7 @@ Continue the INCOMPLETE RESPONSE\n
 		}
 
 		extractedNodes = append(extractedNodes, node)
-		log.Printf("Created entity node: %s of type: %s (UUID: %s)", node.Name, node.EntityType, node.ID)
+		// log.Printf("Created entity node: %s of type: %s (UUID: %s)", node.Name, node.EntityType, node.ID)
 	}
 
 	return extractedNodes, nil

@@ -56,7 +56,6 @@ func (b *Builder) GetCommunityClusters(ctx context.Context, groupIDs []string) (
 		}
 		groupIDs = allGroupIDs
 	}
-
 	var allClusters [][]*types.Node
 
 	for _, groupID := range groupIDs {

@@ -6,37 +6,37 @@ import (
 
 // Node represents a node in the knowledge graph.
 type Node struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Type      NodeType  `json:"type"`
-	GroupID   string    `json:"group_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string    `json:"uuid" mapstructure:"uuid"`
+	Name      string    `json:"name" mapstructure:"name"`
+	Type      NodeType  `json:"type" mapstructure:"type"`
+	GroupID   string    `json:"group_id mapstructure:"group_id""`
+	CreatedAt time.Time `json:"created_at" mapstructure:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" mapstructure:"updated_at"`
 
 	// Entity-specific fields
-	EntityType string `json:"entity_type,omitempty"`
-	Summary    string `json:"summary,omitempty"`
+	EntityType string `json:"entity_type,omitempty" mapstructure:"entity_type"`
+	Summary    string `json:"summary,omitempty" mapstructure:"summary"`
 
 	// Episode-specific fields
-	EpisodeType EpisodeType `json:"episode_type,omitempty"`
-	Content     string      `json:"content,omitempty"`
-	Reference   time.Time   `json:"reference,omitempty"`
-	EntityEdges []string    `json:"entity_edges,omitempty"`
+	EpisodeType EpisodeType `json:"episode_type,omitempty" mapstructure:"episode_type"`
+	Content     string      `json:"content,omitempty" mapstructure:"content"`
+	Reference   time.Time   `json:"reference,omitempty" mapstructure:"reference"`
+	EntityEdges []string    `json:"entity_edges,omitempty" mapstructure:"entity_edges"`
 
 	// Community-specific fields
 	Level int `json:"level,omitempty"`
 
 	// Common fields
-	Embedding     []float32              `json:"embedding,omitempty"`
-	NameEmbedding []float32              `json:"name_embedding,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Embedding     []float32              `json:"embedding,omitempty" mapstructure:"embedding"`
+	NameEmbedding []float32              `json:"name_embedding,omitempty" mapstructure:"name_embedding"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty" mapstructure:"metadata"`
 
 	// Temporal fields
-	ValidFrom time.Time  `json:"valid_from"`
-	ValidTo   *time.Time `json:"valid_to,omitempty"`
+	ValidFrom time.Time  `json:"valid_from" mapstructure:"valid_from"`
+	ValidTo   *time.Time `json:"valid_to,omitempty" mapstructure:"valid_to"`
 
 	// Source tracking
-	SourceIDs []string `json:"source_ids,omitempty"`
+	SourceIDs []string `json:"source_ids,omitempty" mapstructure:"source_ids"`
 }
 
 // Edge is an alias for EntityEdge to maintain backward compatibility

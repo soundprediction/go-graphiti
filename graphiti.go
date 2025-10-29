@@ -91,6 +91,8 @@ type Graphiti interface {
 
 	// Close closes all connections and cleans up resources.
 	Close(ctx context.Context) error
+
+	UpdateCommunities(ctx, episodeUUID string, groupID string) ([]*types.Node, []*types.Edge, error)
 }
 
 // Client is the main implementation of the Graphiti interface.
