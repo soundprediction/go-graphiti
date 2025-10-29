@@ -1473,9 +1473,7 @@ func (k *KuzuDriver) GetCommunities(ctx context.Context, groupID string, level i
 // community.Builder through the Client:
 //
 //	client := graphiti.NewClient(driver, llmClient, embedderClient, config)
-//	result, err := client.Add(ctx, episodes, &graphiti.AddEpisodeOptions{
-//	    UpdateCommunities: true,
-//	})
+//	result, err := client.Add(ctx, episodes)
 //
 // Or use the community.Builder directly:
 //

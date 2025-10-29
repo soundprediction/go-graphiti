@@ -127,10 +127,13 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		if !utils.IsLastLineEmpty(response.Content) {
 			originalResponse := response
 			messages[len(messages)-1].Content += fmt.Sprintf(`\n
-Continue the INCOMPLETE RESPONSE\n
-<INCOMPLETE RESPONSE>
+
+Continue the following
+
+# INCOMPLETE RESPONSE
+
 %s
-</INCOMPLETE RESPONSE>
+
 			`, utils.RemoveLastLine(response.Content))
 			response, err = no.llm.Chat(ctx, messages)
 			if err != nil {
@@ -139,8 +142,8 @@ Continue the INCOMPLETE RESPONSE\n
 			}
 		}
 
-		r := utils.RemoveLastLine(response.Content)
-		r = llm.RemoveThinkTags(r)
+		r := utils.RemoveLastLine(llm.StripHtmlTags(response.Content))
+
 		/*
 			reader := csv.NewReader(strings.NewReader(r))
 			reader.Comma = '\t' // Set delimiter to tab
@@ -152,6 +155,7 @@ Continue the INCOMPLETE RESPONSE\n
 				return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
 			}
 		*/
+		no.logger.Debug(fmt.Sprint(response.Content))
 		extractedEntityPtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedEntity](r, '\t')
 		if err != nil {
 			fmt.Printf("\nresponse:\n %v\n\n", r)
@@ -407,10 +411,11 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	if !utils.IsLastLineEmpty(response.Content) {
 		originalResponse := response
 		messages[len(messages)-1].Content += fmt.Sprintf(`\n
-Continue the INCOMPLETE RESPONSE\n
-<INCOMPLETE RESPONSE>
+Continue the following \n
+# INCOMPLETE RESPONSE
+
 %s
-</INCOMPLETE RESPONSE>
+
 			`, utils.RemoveLastLine(response.Content))
 		response, err = no.llm.Chat(ctx, messages)
 		if err != nil {
@@ -418,7 +423,7 @@ Continue the INCOMPLETE RESPONSE\n
 			response = originalResponse
 		}
 	}
-	r := llm.RemoveThinkTags(utils.RemoveLastLine(response.Content))
+	r := utils.RemoveLastLine(llm.StripHtmlTags(response.Content))
 
 	nodeDuplicatePtrs, err := utils.DuckDbUnmarshalCSV[prompts.NodeDuplicate](r, '\t')
 	if err != nil {
