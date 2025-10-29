@@ -479,7 +479,7 @@ for _, node := range finalNodes {
 
 #### Python Implementation
 ```python
-if update_communities:
+
     communities, community_edges = await semaphore_gather(
         *[
             update_community(self.driver, self.llm_client, self.embedder, node)
@@ -490,10 +490,10 @@ if update_communities:
 
 #### Go Implementation
 ```go
-if options.UpdateCommunities {
+
     communityResult, err := c.community.BuildCommunities(ctx, []string{episode.GroupID})
     // ...
-}
+
 ```
 
 ✅ **Already implemented correctly!**

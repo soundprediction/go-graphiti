@@ -45,7 +45,17 @@ func RemoveThinkTags(input string) string {
 	re := regexp.MustCompile(`(?s)<think>.*?</think>`)
 	return re.ReplaceAllString(input, "")
 }
+func StripHtmlTags(s string) string {
+	// Regular expression to match HTML tags.
+	// <[^>]*> matches any character between '<' and '>'
+	const tagRegex = "<[^>]*>"
 
+	// Compile the regex
+	r := regexp.MustCompile(tagRegex)
+
+	// Replace all matches with an empty string
+	return r.ReplaceAllString(s, "")
+}
 func GenerateJSONResponseWithContinuation(
 	ctx context.Context,
 	llmClient Client,

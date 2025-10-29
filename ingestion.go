@@ -356,7 +356,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	}
 
 	// STEP 13: Update communities
-	communities, communityEdges, err := c.updateCommunities(ctx, episode.ID, episode.GroupID)
+	communities, communityEdges, err := c.UpdateCommunities(ctx, episode.ID, episode.GroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -714,19 +714,6 @@ func (c *Client) deduplicateEntitiesAcrossChunks(ctx context.Context, episodeID 
 			continue
 		}
 
-		// Truncate summary if it's too long, to prevent potential issues with Kuzu
-		maxSummaryLength := 256
-		if len(node.Summary) > maxSummaryLength {
-			originalSummary := node.Summary
-			node.Summary = node.Summary[:maxSummaryLength] + "..." // Truncate and add ellipsis
-			c.logger.Warn("Node summary truncated for persistence",
-				"episode_id", episodeID,
-				"node_id", node.ID,
-				"original_length", len(originalSummary),
-				"truncated_length", len(node.Summary))
-		}
-
-		c.logger.Info("Attempting to upsert node", "episode_id", episodeID, "node_index", i, "node_id", node.ID, "node_name", node.Name, "node_details", fmt.Sprintf("%+v", node))
 		if err := c.driver.UpsertNode(ctx, node); err != nil {
 			c.logger.Warn("Failed to persist deduplicated node",
 				"episode_id", episodeID,
@@ -975,8 +962,8 @@ func (c *Client) performFinalGraphUpdates(ctx context.Context, episodeID string,
 	return nil
 }
 
-// updateCommunities updates graph communities if requested in options.
-func (c *Client) updateCommunities(ctx context.Context, episodeID string, groupID string) ([]*types.Node, []*types.Edge, error) {
+// UpdateCommunities updates graph communities if requested in options.
+func (c *Client) UpdateCommunities(ctx context.Context, episodeID string, groupID string) ([]*types.Node, []*types.Edge, error) {
 
 	c.logger.Info("Starting community update",
 		"episode_id", episodeID,

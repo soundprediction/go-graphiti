@@ -91,6 +91,8 @@ type Graphiti interface {
 
 	// Close closes all connections and cleans up resources.
 	Close(ctx context.Context) error
+
+	UpdateCommunities(ctx context.Context, episodeUUID string, groupID string) ([]*types.Node, []*types.Edge, error)
 }
 
 // Client is the main implementation of the Graphiti interface.
@@ -121,8 +123,6 @@ type Config struct {
 // AddEpisodeOptions holds options for adding a single episode.
 // This matches the optional parameters from the Python add_episode method.
 type AddEpisodeOptions struct {
-	// UpdateCommunities whether to update community structures
-	UpdateCommunities bool
 	// EntityTypes custom entity type definitions
 	EntityTypes map[string]interface{}
 	// ExcludedEntityTypes entity types to exclude from extraction

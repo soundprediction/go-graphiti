@@ -203,7 +203,7 @@ func TestEscapeQueryString(t *testing.T) {
 }
 
 func TestBuildParameterizedQuery(t *testing.T) {
-	query := "MATCH (n) WHERE n.id = $id RETURN n"
+	query := "MATCH (n) WHERE n.uuid = $id RETURN n"
 	params := map[string]interface{}{
 		"id":        "test-id",
 		"database_": "neo4j", // Should be filtered out

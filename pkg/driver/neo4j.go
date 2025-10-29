@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/db"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
@@ -46,7 +47,7 @@ func (n *Neo4jDriver) GetNode(ctx context.Context, nodeID, groupID string) (*typ
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {id: $nodeID, group_id: $groupID})
+			MATCH (n {uuid: $nodeID, group_id: $groupID})
 			RETURN n
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -93,8 +94,8 @@ func (n *Neo4jDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {id: $id, group_id: $group_id})
-			RETURN n.id
+			MATCH (n {uuid: $id, group_id: $group_id})
+			RETURN n.uuid
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -113,6 +114,20 @@ func (n *Neo4jDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 	}
 
 	return result != nil
+}
+
+// getLabelForNodeType returns the appropriate node label for a given node type.
+func (n *Neo4jDriver) getLabelForNodeType(nodeType types.NodeType) string {
+	switch nodeType {
+	case types.EpisodicNodeType:
+		return "Episodic"
+	case types.EntityNodeType:
+		return "Entity"
+	case types.CommunityNodeType:
+		return "Community"
+	default:
+		return "Entity"
+	}
 }
 
 // UpsertNode creates or updates a node.
@@ -135,15 +150,17 @@ func (n *Neo4jDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := `
-			MERGE (n {id: $id, group_id: $group_id})
+		label := n.getLabelForNodeType(node.Type)
+		query := fmt.Sprintf(`
+			MERGE (n {uuid: $uuid, group_id: $group_id})
 			SET n += $properties
+			SET n:%s
 			SET n.updated_at = $updated_at
-		`
+		`, label)
 
 		properties := n.nodeToProperties(node)
 		_, err := tx.Run(ctx, query, map[string]any{
-			"id":         node.ID,
+			"uuid":       node.ID,
 			"group_id":   node.GroupID,
 			"properties": properties,
 			"updated_at": time.Now().Format(time.RFC3339),
@@ -161,7 +178,7 @@ func (n *Neo4jDriver) DeleteNode(ctx context.Context, nodeID, groupID string) er
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {id: $nodeID, group_id: $groupID})
+			MATCH (n {uuid: $nodeID, group_id: $groupID})
 			DETACH DELETE n
 		`
 		_, err := tx.Run(ctx, query, map[string]any{
@@ -186,7 +203,7 @@ func (n *Neo4jDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID st
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
 			MATCH (n {group_id: $groupID})
-			WHERE n.id IN $nodeIDs
+			WHERE n.uuid IN $nodeIDs
 			RETURN n
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -226,8 +243,8 @@ func (n *Neo4jDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*typ
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (s)-[r {id: $edgeID, group_id: $groupID}]->(t)
-			RETURN r, s.id as source_id, t.id as target_id
+			MATCH (s)-[r {uuid: $edgeID, group_id: $groupID}]->(t)
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
 			"edgeID":  edgeID,
@@ -276,8 +293,8 @@ func (n *Neo4jDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH ()-[r {id: $id, group_id: $group_id}]-()
-			RETURN r.id
+			MATCH ()-[r {uuid: $id, group_id: $group_id}]-()
+			RETURN r.uuid
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
@@ -319,9 +336,9 @@ func (n *Neo4jDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (s {id: $source_id, group_id: $group_id})
-			MATCH (t {id: $target_id, group_id: $group_id})
-			MERGE (s)-[r:RELATES {id: $id, group_id: $group_id}]->(t)
+			MATCH (s {uuid: $source_id, group_id: $group_id})
+			MATCH (t {uuid: $target_id, group_id: $group_id})
+			MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
 			SET r += $properties
 			SET r.updated_at = $updated_at
 		`
@@ -348,7 +365,7 @@ func (n *Neo4jDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) er
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH ()-[r {id: $edgeID, group_id: $groupID}]-()
+			MATCH ()-[r {uuid: $edgeID, group_id: $groupID}]-()
 			DELETE r
 		`
 		_, err := tx.Run(ctx, query, map[string]any{
@@ -373,8 +390,8 @@ func (n *Neo4jDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID st
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
 			MATCH (s)-[r {group_id: $groupID}]->(t)
-			WHERE r.id IN $edgeIDs
-			RETURN r, s.id as source_id, t.id as target_id
+			WHERE r.uuid IN $edgeIDs
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
 			"edgeIDs": edgeIDs,
@@ -416,7 +433,7 @@ func (n *Neo4jDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, 
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := fmt.Sprintf(`
-			MATCH (start {id: $nodeID, group_id: $groupID})
+			MATCH (start {uuid: $nodeID, group_id: $groupID})
 			MATCH (start)-[*1..%d]-(neighbor)
 			WHERE neighbor.group_id = $groupID AND neighbor.id <> $nodeID
 			RETURN DISTINCT neighbor
@@ -466,7 +483,7 @@ func (n *Neo4jDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID strin
 		if len(edgeTypes) == 0 {
 			// Get all related nodes regardless of edge type
 			query = `
-				MATCH (start {id: $nodeID, group_id: $groupID})
+				MATCH (start {uuid: $nodeID, group_id: $groupID})
 				MATCH (start)-[r]-(related)
 				WHERE related.group_id = $groupID AND related.id <> $nodeID
 				RETURN DISTINCT related
@@ -480,10 +497,10 @@ func (n *Neo4jDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID strin
 			params["edgeTypes"] = edgeTypeStrings
 
 			query = `
-				MATCH (start {id: $nodeID, group_id: $groupID})
+				MATCH (start {uuid: $nodeID, group_id: $groupID})
 				MATCH (start)-[r]-(related)
 				WHERE related.group_id = $groupID
-				  AND related.id <> $nodeID
+				  AND related.uuid <> $nodeID
 				  AND r.type IN $edgeTypes
 				RETURN DISTINCT related
 			`
@@ -685,7 +702,7 @@ func (n *Neo4jDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) erro
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		for _, node := range nodes {
 			query := `
-				MERGE (n {id: $id, group_id: $group_id})
+				MERGE (n {uuid: $id, group_id: $group_id})
 				SET n += $properties
 				SET n.updated_at = $updated_at
 			`
@@ -719,9 +736,9 @@ func (n *Neo4jDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) erro
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		for _, edge := range edges {
 			query := `
-				MATCH (s {id: $source_id, group_id: $group_id})
-				MATCH (t {id: $target_id, group_id: $group_id})
-				MERGE (s)-[r:RELATES {id: $id, group_id: $group_id}]->(t)
+				MATCH (s {uuid: $source_id, group_id: $group_id})
+				MATCH (t {uuid: $target_id, group_id: $group_id})
+				MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
 				SET r += $properties
 				SET r.updated_at = $updated_at
 			`
@@ -893,7 +910,7 @@ func (n *Neo4jDriver) BuildCommunities(ctx context.Context, groupID string) erro
 		communityQuery := `
 			MATCH (n {group_id: $groupID})
 			OPTIONAL MATCH (n)-[*]-(connected {group_id: $groupID})
-			WITH n, collect(DISTINCT connected.id) + [n.id] as component
+			WITH n, collect(DISTINCT connected.id) + [n.uuid] as component
 			SET n.community_id = component[0]
 			SET n.community_level = 0
 		`
@@ -1052,7 +1069,7 @@ func (n *Neo4jDriver) CreateIndices(ctx context.Context) error {
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		// Create indices for commonly queried properties
 		indices := []string{
-			"CREATE INDEX node_id_group_idx IF NOT EXISTS FOR (n) ON (n.id, n.group_id)",
+			"CREATE INDEX node_id_group_idx IF NOT EXISTS FOR (n) ON (n.uuid, n.group_id)",
 			"CREATE INDEX edge_id_group_idx IF NOT EXISTS FOR ()-[r]-() ON (r.id, r.group_id)",
 			"CREATE INDEX node_created_at_idx IF NOT EXISTS FOR (n) ON (n.created_at)",
 			"CREATE INDEX edge_created_at_idx IF NOT EXISTS FOR ()-[r]-() ON (r.created_at)",
@@ -1922,4 +1939,95 @@ func (k *Neo4jDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetN
 	}
 
 	return edges, nil
+}
+
+func ParseNeo4JRecords[T any](recordsData any) ([]T, error) {
+	records, ok := recordsData.([]*db.Record)
+	if !ok {
+		return nil, fmt.Errorf("invalid input: expected []*db.Record, got %T", recordsData)
+	}
+
+	results := make([]T, 0, len(records))
+
+	for _, record := range records {
+		if len(record.Keys) != len(record.Values) {
+			return nil, fmt.Errorf("record malformed: %d keys and %d values", len(record.Keys), len(record.Values))
+		}
+
+		recordMap := make(map[string]interface{}, len(record.Keys))
+		for i, key := range record.Keys {
+			recordMap[key] = record.Values[i]
+		}
+
+		// --- The only part that changes ---
+		var item T
+
+		// 1. Create a config
+		config := &mapstructure.DecoderConfig{
+			Result:  &item,
+			TagName: "json",
+			// *** THIS IS THE FIX ***
+			// Tell mapstructure to use our hook
+			DecodeHook: stringToTimeHook,
+		}
+
+		// 2. Create a new decoder from that config
+		decoder, err := mapstructure.NewDecoder(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create decoder: %w", err)
+		}
+		// Use mapstructure.Decode() instead of the json trick.
+		// It's faster and more flexible.
+		if err := decoder.Decode(recordMap); err != nil {
+			return nil, fmt.Errorf("failed to decode map to struct: %w", err)
+		}
+		// --- End change ---
+
+		results = append(results, item)
+	}
+	return results, nil
+
+}
+
+func stringToTimeHook(
+	from reflect.Type,
+	to reflect.Type,
+	data interface{},
+) (interface{}, error) {
+	// 1. We only care about this conversion
+	if from.Kind() != reflect.String {
+		return data, nil // Not a string, pass through
+	}
+	if to != reflect.TypeOf(time.Time{}) {
+		return data, nil // Not decoding to a time.Time, pass through
+	}
+
+	// 2. It's a string, and we want a time.Time.
+	str, ok := data.(string)
+	if !ok {
+		return nil, fmt.Errorf("data is not a string")
+	}
+
+	// 3. Try to parse it.
+	// Neo4j drivers often use RFC3339Nano or RFC3339.
+	// We'll try a few common formats.
+
+	// Try with nanoseconds
+	parsedTime, err := time.Parse(time.RFC3339Nano, str)
+	if err == nil {
+		return parsedTime, nil
+	}
+
+	// Try without nanoseconds
+	parsedTime, err = time.Parse(time.RFC3339, str)
+	if err == nil {
+		return parsedTime, nil
+	}
+
+	// You can add more formats to try here, e.g.:
+	// parsedTime, err = time.Parse("2006-01-02 15:04:05", str)
+	// if err == nil { ... }
+
+	// 4. If all failed, return the last error
+	return nil, fmt.Errorf("could not parse time string '%s' into time.Time", str)
 }
