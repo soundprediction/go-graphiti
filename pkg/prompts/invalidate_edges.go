@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -73,7 +74,7 @@ Edges should be invalidated if:
 
 Return a list of edge IDs from EXISTING EDGES that should be invalidated.
 `, previousEpisodesTSV, episodeContent, existingEdgesTSV, referenceTime)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

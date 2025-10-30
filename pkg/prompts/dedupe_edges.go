@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -106,7 +107,7 @@ contradicted_facts: []int
 fact_type: string
 </SCHEMA>
 `, previousEpisodesTSV, episodeContent, newFactTSV, existingFactsTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -141,7 +142,7 @@ Edges are provided in TSV (tab-separated values) format:
 Task:
 Return a list of unique facts, removing any duplicates.
 `, edgesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -244,7 +245,7 @@ duplicate_facts\tcontradicted_facts\tfact_type
 
 Provide only the TSV header and data row. Finish your response with a new line.
 `, newEdge, existingEdgesTSV, edgeInvalidationCandidatesTSV, edgeTypesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

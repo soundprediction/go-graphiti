@@ -120,6 +120,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 		}
 
 		response, err := no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
+		prompts.LogResponses(promptContext["logger"].(*slog.Logger), *response)
 		if err != nil {
 			return nil, fmt.Errorf("The llm call failed to extract entities: %w", err)
 		}
@@ -155,7 +156,8 @@ Continue the following
 				return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
 			}
 		*/
-		no.logger.Debug(fmt.Sprint(response.Content))
+		prompts.LogResponses(promptContext["logger"].(*slog.Logger), *response)
+
 		extractedEntityPtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedEntity](r, '\t')
 		if err != nil {
 			fmt.Printf("\nresponse:\n %v\n\n", r)
@@ -399,6 +401,7 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 	}
 
 	response, err := no.llm.Chat(ctx, messages)
+	prompts.LogResponses(no.logger, *response)
 	if err != nil {
 		if response == nil {
 			no.logger.Warn("Skipping node deduplication due to error", "error", err)

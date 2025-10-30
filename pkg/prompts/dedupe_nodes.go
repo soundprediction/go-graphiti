@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -134,7 +135,7 @@ Do NOT mark entities as duplicates if:
 Also return the full name of the NEW ENTITY (whether it is the name of the NEW ENTITY, a node it
 is a duplicate of, or a combination of the two).
 `, previousEpisodesTSV, episodeContent, extractedNodeTSV, entityTypeDescriptionTSV, existingNodesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -241,7 +242,7 @@ id\tname\tduplicate_idx\tduplicates
 
 Finish your response with a new line
 `, previousEpisodesTSV, episodeContent, extractedNodesTSV, existingNodesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -298,7 +299,7 @@ where
 
 conclude your response with a new line
 `, nodesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -321,27 +322,42 @@ func escapeNonASCII(s string) string {
 // This replaces the fmt.Printf statements throughout the prompts package.
 // Prints with actual newlines preserved instead of escaped.
 // Only prints if the context has "debug_prompts" set to true.
-func logPrompts(context map[string]interface{}, sysPrompt, userPrompt string) {
+func logPrompts(logger *slog.Logger, sysPrompt, userPrompt string) {
 	// Check if debug_prompts is enabled in context
 	debugPrompts := false
-	if val, ok := context["debug_prompts"]; ok {
-		if b, ok := val.(bool); ok {
-			debugPrompts = b
-		}
+	if os.Getenv("DEBUG_LLM_PROMPTS") == "true" {
+		debugPrompts = true
 	}
 
 	if !debugPrompts {
 		return
 	}
 
-	if logger, ok := context["logger"].(*slog.Logger); ok && logger != nil {
-		// Log with preserved newlines using structured format
-		logger.Debug("Generated prompts - System Prompt follows")
-		fmt.Println("=== SYSTEM PROMPT ===")
-		fmt.Println(sysPrompt)
-		logger.Debug("Generated prompts - User Prompt follows")
-		fmt.Println("=== USER PROMPT ===")
-		fmt.Println(userPrompt)
-		fmt.Println("=== END PROMPTS ===")
+	// Log with preserved newlines using structured format
+	logger.Debug("Generated prompts - System Prompt follows")
+	fmt.Println("=== SYSTEM PROMPT ===")
+	fmt.Println(sysPrompt)
+	logger.Debug("Generated prompts - User Prompt follows")
+	fmt.Println("=== USER PROMPT ===")
+	fmt.Println(userPrompt)
+	fmt.Println("=== END PROMPTS ===")
+
+}
+
+func LogResponses(logger *slog.Logger, response llm.Response) {
+	debugPrompts := false
+	if os.Getenv("DEBUG_LLM_PROMPTS") == "true" {
+		debugPrompts = true
 	}
+
+	if !debugPrompts {
+		return
+	}
+
+	// Log with preserved newlines using structured format
+	logger.Debug("LLM response follows")
+	fmt.Println("=== LLM response ===")
+	fmt.Println(response.Content)
+	fmt.Println("=== END LLM response ===")
+
 }

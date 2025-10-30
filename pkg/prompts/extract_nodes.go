@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -131,7 +132,7 @@ reference entities. Only extract distinct entities from the CURRENT MESSAGE. Don
    - Be **explicit and unambiguous** in naming entities (e.g., use full names when available).
 
 %v`, entityTypesTSV, previousEpisodesTSV, episodeContent, customPrompt)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -187,7 +188,7 @@ Guidelines:
 1. Always try to extract an entities that the JSON represents. This will often be something like a "name" or "user field
 2. Do NOT extract any properties that contain dates
 `, entityTypesTSV, sourceDescription, episodeContent, customPrompt)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -258,7 +259,7 @@ cognitive behavioral therapy\t30
 Use the EXAMPLE as a guide
 Finish your response with a new line
 `, entityTypesTSV, episodeContent, customPrompt)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -303,7 +304,7 @@ Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
 Given the above previous messages, current message, and list of extracted entities; determine if any entities haven't been
 extracted.
 `, previousEpisodesTSV, episodeContent, extractedEntities)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -364,7 +365,7 @@ Guidelines:
 2. Only use the provided ENTITY TYPES as types, do not use additional types to classify entities.
 3. If none of the provided entity types accurately classify an extracted node, the type should be set to None
 `, previousEpisodesTSV, episodeContent, extractedEntities, entityTypesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -413,7 +414,7 @@ Guidelines:
 %v
 </ENTITY>
 `, previousEpisodesTSV, episodeContent, node)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -464,7 +465,7 @@ Guidelines:
 %v
 </ENTITY>
 `, previousEpisodesTSV, episodeContent, node)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -537,7 +538,7 @@ Provide a TSV row for each entity in the ENTITIES list above.
 Use the node_id field from each entity to identify it in your TSV output.
 Finish your response with a new line.
 `, previousEpisodesTSV, episodeContent, nodesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

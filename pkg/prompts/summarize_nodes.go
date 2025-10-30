@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -52,7 +53,7 @@ Summaries must be under 250 words.
 Summaries are provided in TSV (tab-separated values) format:
 %s
 `, nodeSummariesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -121,7 +122,7 @@ Guidelines:
 %s
 </ATTRIBUTES>
 `, previousEpisodesTSV, episodeContent, nodeName, nodeSummary, attributesTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -153,7 +154,7 @@ Summaries must be under 250 words.
 Summary (in TSV format):
 %s
 `, summaryTSV)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
