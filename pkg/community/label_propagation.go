@@ -112,11 +112,11 @@ func (b *Builder) buildProjection(ctx context.Context, nodes []*types.Node, grou
 	projection := make(map[string][]types.Neighbor)
 
 	for _, node := range nodes {
-		neighbors, err := b.getNodeNeighbors(ctx, node.ID, groupID)
+		neighbors, err := b.getNodeNeighbors(ctx, node.Uuid, groupID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get neighbors for node %s: %w", node.ID, err)
+			return nil, fmt.Errorf("failed to get neighbors for node %s: %w", node.Uuid, err)
 		}
-		projection[node.ID] = neighbors
+		projection[node.Uuid] = neighbors
 	}
 
 	return projection, nil
@@ -213,7 +213,7 @@ func (b *Builder) getEntityNodesByGroupKuzu(ctx context.Context, kuzuDriver *dri
 		}
 
 		if uuid, ok := record["uuid"].(string); ok {
-			node.ID = uuid
+			node.Uuid = uuid
 		}
 		if name, ok := record["name"].(string); ok {
 			node.Name = name
@@ -411,9 +411,9 @@ func parseEntityNodesFromRecords(result interface{}, groupID string) ([]*types.N
 				}
 
 				// Avoid adding duplicate nodes if returned in multiple rows
-				if _, seen := seenIDs[node.ID]; !seen {
+				if _, seen := seenIDs[node.Uuid]; !seen {
 					nodes = append(nodes, node)
-					seenIDs[node.ID] = struct{}{}
+					seenIDs[node.Uuid] = struct{}{}
 				}
 
 				// If the original result was a list, we assume only one
@@ -442,7 +442,7 @@ func parseNodeFromProps(props map[string]interface{}, groupID string, graphID in
 	}
 
 	node := &types.Node{
-		ID:      fmt.Sprintf("%d", graphID), // Convert graph int64 ID to string
+		Uuid:    fmt.Sprintf("%d", graphID), // Convert graph int64 ID to string
 		GroupID: groupID,
 		Type:    "Entity", // This function is for *Entity* nodes
 	}
