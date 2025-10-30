@@ -13,6 +13,7 @@ require (
 	github.com/duckdb/duckdb-go/v2 v2.5.0
 	github.com/firebase/genkit/go v1.1.0
 	github.com/gin-gonic/gin v1.11.0
+	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/kaptinlin/jsonrepair v0.2.4
 	github.com/kuzudb/go-kuzu v0.11.3
@@ -29,12 +30,12 @@ require (
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/duckdb/duckdb-go-bindings v0.1.21 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.21 // indirect
-	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.21 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.21 // indirect
-	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.21 // indirect
-	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.21 // indirect
+	github.com/duckdb/duckdb-go-bindings v0.1.22 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.22 // indirect
+	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.22 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-amd64 v0.1.22 // indirect
+	github.com/duckdb/duckdb-go-bindings/linux-arm64 v0.1.22 // indirect
+	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.22 // indirect
 	github.com/duckdb/duckdb-go/arrowmapping v0.0.22 // indirect
 	github.com/duckdb/duckdb-go/mapping v0.0.22 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -45,7 +46,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.28.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/dotprompt/go v0.0.0-20251024044225-3f7ffb43be55 // indirect
@@ -94,7 +94,7 @@ require (
 	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251022145735-5be28d707443 // indirect
+	golang.org/x/telemetry v0.0.0-20251028164327-d7a2859f34e8 // indirect
 	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect

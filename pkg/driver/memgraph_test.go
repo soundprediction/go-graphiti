@@ -17,7 +17,7 @@ import (
 func getMemgraphConnectionInfo() (uri, user, password string) {
 	uri = os.Getenv("MEMGRAPH_URI")
 	if uri == "" {
-		uri = "bolt://localhost:7688"
+		uri = "bolt://localhost:7687"
 	}
 	user = os.Getenv("MEMGRAPH_USER")
 	if user == "" {
@@ -44,6 +44,13 @@ func skipIfMemgraphUnavailable(t *testing.T) *driver.MemgraphDriver {
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	err = d.VerifyConnectivity(ctx)
+	if err != nil {
+		d.Close()
+		t.Skipf("Memgraph connection failed: %v", err)
+		return nil
+	}
 
 	err = d.CreateIndices(ctx)
 	if err != nil {
@@ -99,7 +106,7 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	if d == nil {
 		return
 	}
-	defer d.Close()
+	// defer d.Close()
 
 	ctx := context.Background()
 
