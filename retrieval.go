@@ -235,9 +235,9 @@ func (c *Client) parseNodeFromMap(data map[string]interface{}) (*types.Node, err
 
 	// Parse basic fields
 	if id, ok := data["uuid"].(string); ok {
-		node.ID = id
+		node.Uuid = id
 	} else if id, ok := data["id"].(string); ok {
-		node.ID = id
+		node.Uuid = id
 	}
 
 	if name, ok := data["name"].(string); ok {

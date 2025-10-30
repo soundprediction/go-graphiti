@@ -77,7 +77,7 @@ func (h *RetrieveHandler) Search(c *gin.Context) {
 	// Process nodes as facts
 	for _, node := range searchResults.Nodes {
 		fact := dto.FactResult{
-			UUID:         node.ID,
+			UUID:         node.Uuid,
 			Fact:         h.nodeToFactDescription(node),
 			SourceName:   node.Name,
 			TargetName:   "", // Nodes don't have targets
@@ -96,7 +96,7 @@ func (h *RetrieveHandler) Search(c *gin.Context) {
 	// Process edges as facts
 	for _, edge := range searchResults.Edges {
 		fact := dto.FactResult{
-			UUID:         edge.ID,
+			UUID:         edge.Uuid,
 			Fact:         h.edgeToFactDescription(edge),
 			SourceName:   edge.SourceID, // Could be enhanced to resolve actual names
 			TargetName:   edge.TargetID,
@@ -149,7 +149,7 @@ func (h *RetrieveHandler) GetEntityEdge(c *gin.Context) {
 
 		// Convert node to fact format
 		fact := dto.FactResult{
-			UUID:         node.ID,
+			UUID:         node.Uuid,
 			Fact:         h.nodeToFactDescription(node),
 			SourceName:   node.Name,
 			TargetName:   "",
@@ -168,7 +168,7 @@ func (h *RetrieveHandler) GetEntityEdge(c *gin.Context) {
 
 	// Convert edge to fact format
 	fact := dto.FactResult{
-		UUID:         edge.ID,
+		UUID:         edge.Uuid,
 		Fact:         h.edgeToFactDescription(edge),
 		SourceName:   edge.SourceID, // Could be enhanced to resolve actual names
 		TargetName:   edge.TargetID,
@@ -230,7 +230,7 @@ func (h *RetrieveHandler) GetEpisodes(c *gin.Context) {
 	var episodes []dto.Episode
 	for _, node := range episodeNodes {
 		episode := dto.Episode{
-			UUID:      node.ID,
+			UUID:      node.Uuid,
 			GroupID:   node.GroupID,
 			Content:   node.Content,
 			CreatedAt: node.CreatedAt,
@@ -324,7 +324,7 @@ func (h *RetrieveHandler) GetMemory(c *gin.Context) {
 	for _, node := range searchResults.Nodes {
 		// Prioritize episodic nodes for memory retrieval
 		fact := dto.FactResult{
-			UUID:         node.ID,
+			UUID:         node.Uuid,
 			Fact:         h.nodeToFactDescription(node),
 			SourceName:   node.Name,
 			TargetName:   "",
@@ -343,7 +343,7 @@ func (h *RetrieveHandler) GetMemory(c *gin.Context) {
 	// Process edges as relationship facts
 	for _, edge := range searchResults.Edges {
 		fact := dto.FactResult{
-			UUID:         edge.ID,
+			UUID:         edge.Uuid,
 			Fact:         h.edgeToFactDescription(edge),
 			SourceName:   edge.SourceID,
 			TargetName:   edge.TargetID,

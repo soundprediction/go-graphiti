@@ -368,7 +368,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		if err := c.driver.UpsertNode(ctx, communityNode); err != nil {
 			c.logger.Warn("Failed to persist community node",
 				"episode_id", episode.ID,
-				"community_id", communityNode.ID,
+				"community_id", communityNode.Uuid,
 				"error", err)
 		}
 	}
@@ -378,7 +378,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		if err := c.driver.UpsertEdge(ctx, communityEdge); err != nil {
 			c.logger.Warn("Failed to persist community edge",
 				"episode_id", episode.ID,
-				"edge_id", communityEdge.ID,
+				"edge_id", communityEdge.Uuid,
 				"error", err)
 		}
 	}
@@ -564,7 +564,7 @@ func (c *Client) createChunkEpisodeStructures(ctx context.Context, episode types
 	data.prevEps = make([]*types.Episode, len(previousEpisodes))
 	for j, prevNode := range previousEpisodes {
 		data.prevEps[j] = &types.Episode{
-			ID:        prevNode.ID,
+			ID:        prevNode.Uuid,
 			Name:      prevNode.Name,
 			Content:   prevNode.Content,
 			Reference: prevNode.ValidFrom,
@@ -588,7 +588,7 @@ func (c *Client) createChunkEpisodeStructures(ctx context.Context, episode types
 
 		// Create temporary episode node for this chunk's extraction
 		chunkNode := &types.Node{
-			ID:        episode.ID,
+			Uuid:      episode.ID,
 			Name:      episode.Name,
 			Type:      types.EpisodicNodeType,
 			Content:   chunk,
@@ -689,9 +689,9 @@ func (c *Client) deduplicateEntitiesAcrossChunks(ctx context.Context, episodeID 
 				c.logger.Warn("Encountered nil node in deduplication result", "episode_id", episodeID)
 				continue
 			}
-			if !seenNodeIDs[node.ID] {
+			if !seenNodeIDs[node.Uuid] {
 				allResolvedNodes = append(allResolvedNodes, node)
-				seenNodeIDs[node.ID] = true
+				seenNodeIDs[node.Uuid] = true
 			}
 		}
 	}
@@ -718,7 +718,7 @@ func (c *Client) deduplicateEntitiesAcrossChunks(ctx context.Context, episodeID 
 			c.logger.Warn("Failed to persist deduplicated node",
 				"episode_id", episodeID,
 				"node_index", i,
-				"node_id", node.ID,
+				"node_id", node.Uuid,
 				"node_name", node.Name,
 				"error", err)
 		} else {
@@ -747,7 +747,7 @@ func validateNodeForPersistence(node *types.Node, episodeID string, index int, l
 	}
 
 	// Check 2: Required field - Node ID
-	if node.ID == "" {
+	if node.Uuid == "" {
 		logger.Warn("Skipping node with empty ID",
 			"episode_id", episodeID,
 			"node_index", index,
@@ -760,7 +760,7 @@ func validateNodeForPersistence(node *types.Node, episodeID string, index int, l
 		logger.Warn("Skipping node with empty Name",
 			"episode_id", episodeID,
 			"node_index", index,
-			"node_id", node.ID)
+			"node_id", node.Uuid)
 		return false
 	}
 
@@ -769,7 +769,7 @@ func validateNodeForPersistence(node *types.Node, episodeID string, index int, l
 		logger.Warn("Skipping node with empty GroupID",
 			"episode_id", episodeID,
 			"node_index", index,
-			"node_id", node.ID,
+			"node_id", node.Uuid,
 			"node_name", node.Name)
 		return false
 	}
@@ -779,7 +779,7 @@ func validateNodeForPersistence(node *types.Node, episodeID string, index int, l
 		logger.Warn("Skipping node with empty Type",
 			"episode_id", episodeID,
 			"node_index", index,
-			"node_id", node.ID,
+			"node_id", node.Uuid,
 			"node_name", node.Name)
 		return false
 	}
@@ -789,7 +789,7 @@ func validateNodeForPersistence(node *types.Node, episodeID string, index int, l
 		logger.Warn("Node has zero CreatedAt timestamp, setting to now",
 			"episode_id", episodeID,
 			"node_index", index,
-			"node_id", node.ID,
+			"node_id", node.Uuid,
 			"node_name", node.Name)
 		node.CreatedAt = time.Now()
 	}
@@ -830,7 +830,7 @@ func (c *Client) extractRelationshipsFromChunks(ctx context.Context, episodeID s
 	}
 
 	// Get nodes for the episode and extract edges
-	episodeNodes := dedupeResult.NodesByEpisode[mainEpisodeNode.ID]
+	episodeNodes := dedupeResult.NodesByEpisode[mainEpisodeNode.Uuid]
 	if len(episodeNodes) > 0 {
 		extractedEdges, err := edgeOps.ExtractEdges(ctx, mainEpisodeNode, episodeNodes,
 			previousEpisodes, edgeTypeMap, options.EdgeTypes, mainEpisodeNode.GroupID)
@@ -883,7 +883,7 @@ func (c *Client) resolveAndPersistRelationships(ctx context.Context, episodeID s
 		if err := c.driver.UpsertEdge(ctx, edge); err != nil {
 			c.logger.Warn("Failed to persist resolved edge",
 				"episode_id", episodeID,
-				"edge_id", edge.ID,
+				"edge_id", edge.Uuid,
 				"error", err)
 		}
 	}
@@ -916,7 +916,7 @@ func (c *Client) extractEntityAttributes(ctx context.Context, episodeID string, 
 
 // buildEpisodicEdgesForEntities creates edges linking entities to the episode.
 func (c *Client) buildEpisodicEdgesForEntities(ctx context.Context, hydratedNodes []*types.Node, mainEpisodeNode *types.Node, now time.Time, edgeOps *maintenance.EdgeOperations) ([]*types.Edge, error) {
-	episodicEdges, err := edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, mainEpisodeNode.ID, now)
+	episodicEdges, err := edgeOps.BuildEpisodicEdges(ctx, hydratedNodes, mainEpisodeNode.Uuid, now)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build episodic edges: %w", err)
 	}
@@ -1001,7 +1001,7 @@ func (c *Client) createEpisodeNode(ctx context.Context, episode types.Episode, o
 	}
 
 	episodeNode := &types.Node{
-		ID:          episode.ID,
+		Uuid:        episode.ID,
 		Name:        episode.Name,
 		Type:        types.EpisodicNodeType,
 		GroupID:     episode.GroupID,
@@ -1131,7 +1131,7 @@ func (c *Client) ParseEntitiesFromResponse(responseContent, groupID string) ([]*
 		}
 
 		entity := &types.Node{
-			ID:         generateID(),
+			Uuid:       generateID(),
 			Name:       entityName,
 			Type:       types.EntityNodeType,
 			GroupID:    groupID,
@@ -1181,7 +1181,7 @@ func (c *Client) parseEntitiesFromText(responseContent, groupID string) ([]*type
 
 						if entityName != "" && len(entityName) > 2 {
 							entity := &types.Node{
-								ID:         generateID(),
+								Uuid:       generateID(),
 								Name:       entityName,
 								Type:       types.EntityNodeType,
 								GroupID:    groupID,
@@ -1261,7 +1261,7 @@ func (c *Client) AddTriplet(ctx context.Context, sourceNode *types.Node, edge *t
 	// Step 6: Search for related edges with edge UUID filters (lines 1042-1050)
 	var edgeUUIDs []string
 	for _, validEdge := range validEdges {
-		edgeUUIDs = append(edgeUUIDs, validEdge.ID)
+		edgeUUIDs = append(edgeUUIDs, validEdge.Uuid)
 	}
 
 	searchFilters := &search.SearchFilters{
@@ -1378,7 +1378,7 @@ func (c *Client) createEntityEdgeEmbeddings(ctx context.Context, edges []*types.
 		if edge.Type == types.EntityEdgeType && len(edge.Embedding) == 0 && edge.Summary != "" {
 			embedding, err := c.embedder.EmbedSingle(ctx, edge.Summary)
 			if err != nil {
-				return fmt.Errorf("failed to create embedding for edge %s: %w", edge.ID, err)
+				return fmt.Errorf("failed to create embedding for edge %s: %w", edge.Uuid, err)
 			}
 			edge.Embedding = embedding
 		}
@@ -1397,7 +1397,7 @@ func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.
 		if node.Type == types.EntityNodeType && len(node.Embedding) == 0 && node.Name != "" {
 			embedding, err := c.embedder.EmbedSingle(ctx, node.Name)
 			if err != nil {
-				return fmt.Errorf("failed to create embedding for node %s: %w", node.ID, err)
+				return fmt.Errorf("failed to create embedding for node %s: %w", node.Uuid, err)
 			}
 			node.Embedding = embedding
 		}
