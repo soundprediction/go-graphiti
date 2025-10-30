@@ -344,7 +344,7 @@ func convertRecordsToNodes(records []map[string]interface{}) []*types.Node {
 		seen[uuid] = true
 
 		node := &types.Node{
-			ID:      uuid,
+			Uuid:    uuid,
 			GroupID: stringValue(record["group_id"]),
 			Name:    stringValue(record["name"]),
 			Summary: stringValue(record["summary"]),
@@ -388,7 +388,7 @@ func convertRecordsToEdges(records []map[string]interface{}) []*types.Edge {
 
 		// Create EntityEdge instead of using BaseEdge directly
 		edge := &types.EntityEdge{}
-		edge.ID = uuid
+		edge.Uuid = uuid
 		edge.SourceNodeID = stringValue(record["source_node_uuid"])
 		edge.TargetNodeID = stringValue(record["target_node_uuid"])
 		edge.GroupID = stringValue(record["group_id"])
@@ -483,7 +483,7 @@ func (su *SearchUtilities) getRelatedNodes(ctx context.Context, node *types.Node
 	}
 
 	params := map[string]interface{}{
-		"node_uuid": node.ID,
+		"node_uuid": node.Uuid,
 		"group_id":  groupID,
 		"limit":     options.Limit,
 	}

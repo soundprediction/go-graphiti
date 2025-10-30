@@ -118,7 +118,7 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	now := time.Now()
 	testID := "test-node-memgraph-" + time.Now().Format("20060102150405")
 	testNode := &types.Node{
-		ID:         testID,
+		Uuid:       testID,
 		Name:       "Test Entity Memgraph",
 		Type:       types.EntityNodeType,
 		GroupID:    "test-group-memgraph",
@@ -130,7 +130,7 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 
 	// Cleanup at the end
 	defer func() {
-		d.DeleteNode(ctx, testNode.ID, testNode.GroupID)
+		d.DeleteNode(ctx, testNode.Uuid, testNode.GroupID)
 	}()
 
 	// Upsert the node
@@ -138,12 +138,12 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	require.NoError(t, err, "UpsertNode should succeed")
 
 	// Read the node back from the database
-	retrievedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	retrievedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
 	require.NoError(t, err, "GetNode should succeed")
 	require.NotNil(t, retrievedNode, "Retrieved node should not be nil")
 
 	// Verify the node data matches
-	assert.Equal(t, testNode.ID, retrievedNode.ID, "Node ID should match")
+	assert.Equal(t, testNode.Uuid, retrievedNode.Uuid, "Node ID should match")
 	assert.Equal(t, testNode.Name, retrievedNode.Name, "Node name should match")
 	assert.Equal(t, testNode.Type, retrievedNode.Type, "Node type should match")
 	assert.Equal(t, testNode.GroupID, retrievedNode.GroupID, "Node GroupID should match")
@@ -158,13 +158,13 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	require.NoError(t, err, "Second UpsertNode (update) should succeed")
 
 	// Read the updated node back
-	updatedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	updatedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
 	require.NoError(t, err, "GetNode after update should succeed")
 	require.NotNil(t, updatedNode, "Updated node should not be nil")
 
 	// Verify the update was applied
 	assert.Equal(t, "Updated summary for test entity in Memgraph", updatedNode.Summary, "Node summary should be updated")
-	assert.Equal(t, testNode.ID, updatedNode.ID, "Node ID should remain the same")
+	assert.Equal(t, testNode.Uuid, updatedNode.Uuid, "Node ID should remain the same")
 	assert.Equal(t, testNode.Name, updatedNode.Name, "Node name should remain the same")
 }
 
@@ -184,13 +184,13 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 	// Create source and target nodes with unique IDs
 	timestamp := time.Now().Format("20060102150405")
 	sourceNode := &types.Node{
-		ID:      "source-node-memgraph-" + timestamp,
+		Uuid:    "source-node-memgraph-" + timestamp,
 		Name:    "Source Node Memgraph",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
 	}
 	targetNode := &types.Node{
-		ID:      "target-node-memgraph-" + timestamp,
+		Uuid:    "target-node-memgraph-" + timestamp,
 		Name:    "Target Node Memgraph",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
@@ -198,8 +198,8 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 
 	// Cleanup at the end
 	defer func() {
-		d.DeleteNode(ctx, sourceNode.ID, sourceNode.GroupID)
-		d.DeleteNode(ctx, targetNode.ID, targetNode.GroupID)
+		d.DeleteNode(ctx, sourceNode.Uuid, sourceNode.GroupID)
+		d.DeleteNode(ctx, targetNode.Uuid, targetNode.GroupID)
 	}()
 
 	err = d.UpsertNode(ctx, sourceNode)
@@ -211,14 +211,14 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 	now := time.Now()
 	testEdge := &types.Edge{
 		BaseEdge: types.BaseEdge{
-			ID:           "test-edge-memgraph-" + timestamp,
+			Uuid:         "test-edge-memgraph-" + timestamp,
 			GroupID:      "test-group-memgraph",
-			SourceNodeID: sourceNode.ID,
-			TargetNodeID: targetNode.ID,
+			SourceNodeID: sourceNode.Uuid,
+			TargetNodeID: targetNode.Uuid,
 			CreatedAt:    now,
 		},
-		SourceID:  sourceNode.ID,
-		TargetID:  targetNode.ID,
+		SourceID:  sourceNode.Uuid,
+		TargetID:  targetNode.Uuid,
 		Type:      types.EntityEdgeType,
 		UpdatedAt: now,
 		Name:      "RELATES_TO",
@@ -227,7 +227,7 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 
 	// Cleanup edge at the end
 	defer func() {
-		d.DeleteEdge(ctx, testEdge.ID, testEdge.GroupID)
+		d.DeleteEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	}()
 
 	// Upsert the edge

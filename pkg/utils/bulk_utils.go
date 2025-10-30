@@ -59,9 +59,9 @@ func RetrievePreviousEpisodesBulk(ctx context.Context, driver driver.GraphDriver
 		// Convert Node results to Episodes and filter for episodic nodes
 		var prevEpisodes []*types.Episode
 		for _, node := range previousNodes {
-			if node.Type == types.EpisodicNodeType && node.ID != episode.ID {
+			if node.Type == types.EpisodicNodeType && node.Uuid != episode.ID {
 				prevEpisodes = append(prevEpisodes, &types.Episode{
-					ID:        node.ID,
+					ID:        node.Uuid,
 					Name:      node.Name,
 					Content:   node.Content,
 					Reference: node.Reference,
@@ -98,7 +98,7 @@ func AddNodesAndEdgesBulk(
 	if len(episodicNodes) > 0 {
 		for _, node := range episodicNodes {
 			if err := driver.UpsertNode(ctx, node); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert episodic node %s: %w", node.ID, err))
+				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert episodic node %s: %w", node.Uuid, err))
 			} else {
 				result.EpisodicNodes = append(result.EpisodicNodes, node)
 			}
@@ -133,7 +133,7 @@ func AddNodesAndEdgesBulk(
 		// Upsert entity nodes
 		for _, node := range entityNodes {
 			if err := driver.UpsertNode(ctx, node); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert entity node %s: %w", node.ID, err))
+				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert entity node %s: %w", node.Uuid, err))
 			} else {
 				result.EntityNodes = append(result.EntityNodes, node)
 			}
@@ -144,7 +144,7 @@ func AddNodesAndEdgesBulk(
 	if len(episodicEdges) > 0 {
 		for _, edge := range episodicEdges {
 			if err := driver.UpsertEdge(ctx, edge); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert episodic edge %s: %w", edge.ID, err))
+				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert episodic edge %s: %w", edge.Uuid, err))
 			} else {
 				result.EpisodicEdges = append(result.EpisodicEdges, edge)
 			}
@@ -179,7 +179,7 @@ func AddNodesAndEdgesBulk(
 		// Upsert entity edges
 		for _, edge := range entityEdges {
 			if err := driver.UpsertEdge(ctx, edge); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert entity edge %s: %w", edge.ID, err))
+				result.Errors = append(result.Errors, fmt.Errorf("failed to upsert entity edge %s: %w", edge.Uuid, err))
 			} else {
 				result.EntityEdges = append(result.EntityEdges, edge)
 			}
@@ -350,7 +350,7 @@ func extractFromSingleEpisode(
 		entity = strings.TrimSpace(entity)
 		if entity != "" {
 			node := &types.Node{
-				ID:        fmt.Sprintf("entity_%d_%s", i, episodeTuple.Episode.ID),
+				Uuid:      fmt.Sprintf("entity_%d_%s", i, episodeTuple.Episode.ID),
 				Name:      entity,
 				Type:      types.EntityNodeType,
 				GroupID:   episodeTuple.Episode.GroupID,
@@ -388,8 +388,8 @@ func extractFromSingleEpisode(
 		if rel != "" && len(extractedNodes) >= 2 {
 			edge := types.NewEntityEdge(
 				fmt.Sprintf("edge_%d_%s", i, episodeTuple.Episode.ID),
-				extractedNodes[0].ID,
-				extractedNodes[min(1, len(extractedNodes)-1)].ID,
+				extractedNodes[0].Uuid,
+				extractedNodes[min(1, len(extractedNodes)-1)].Uuid,
 				episodeTuple.Episode.GroupID,
 				rel,
 				types.EntityEdgeType,
@@ -460,7 +460,7 @@ func DedupeNodesBulk(
 
 			// Convert Episode to Node for compatibility
 			episodeNode := &types.Node{
-				ID:        episode.ID,
+				Uuid:      episode.ID,
 				Name:      episode.Name,
 				Type:      types.EpisodicNodeType,
 				Content:   episode.Content,
@@ -473,7 +473,7 @@ func DedupeNodesBulk(
 			var prevEpisodeNodes []*types.Node
 			for _, prevEp := range previousEpisodes {
 				prevEpisodeNodes = append(prevEpisodeNodes, &types.Node{
-					ID:        prevEp.ID,
+					Uuid:      prevEp.ID,
 					Name:      prevEp.Name,
 					Type:      types.EpisodicNodeType,
 					Content:   prevEp.Content,
@@ -533,7 +533,7 @@ func DedupeNodesBulk(
 		for _, node := range resolution.resolvedNodes {
 			// This loop is O(n^2) but caching keeps it manageable for typical batch sizes
 			if len(canonicalNodes) == 0 {
-				canonicalNodes[node.ID] = node
+				canonicalNodes[node.Uuid] = node
 				continue
 			}
 
@@ -554,8 +554,8 @@ func DedupeNodesBulk(
 			}
 
 			if exactMatch != nil {
-				if exactMatch.ID != node.ID {
-					duplicatePairsFromPass2 = append(duplicatePairsFromPass2, [2]string{node.ID, exactMatch.ID})
+				if exactMatch.Uuid != node.Uuid {
+					duplicatePairsFromPass2 = append(duplicatePairsFromPass2, [2]string{node.Uuid, exactMatch.Uuid})
 				}
 				continue
 			}
@@ -574,17 +574,17 @@ func DedupeNodesBulk(
 			resolved := state.ResolvedNodes[0]
 			if resolved == nil {
 				// No match found - add as new canonical node
-				canonicalNodes[node.ID] = node
+				canonicalNodes[node.Uuid] = node
 				continue
 			}
 
 			// Found a match
-			canonicalUUID := resolved.ID
+			canonicalUUID := resolved.Uuid
 			if _, exists := canonicalNodes[canonicalUUID]; !exists {
 				canonicalNodes[canonicalUUID] = resolved
 			}
-			if canonicalUUID != node.ID {
-				duplicatePairsFromPass2 = append(duplicatePairsFromPass2, [2]string{node.ID, canonicalUUID})
+			if canonicalUUID != node.Uuid {
+				duplicatePairsFromPass2 = append(duplicatePairsFromPass2, [2]string{node.Uuid, canonicalUUID})
 			}
 		}
 	}
@@ -610,9 +610,9 @@ func DedupeNodesBulk(
 		seen := make(map[string]bool)
 
 		for _, node := range resolution.resolvedNodes {
-			canonicalUUID := compressedMap[node.ID]
+			canonicalUUID := compressedMap[node.Uuid]
 			if canonicalUUID == "" {
-				canonicalUUID = node.ID
+				canonicalUUID = node.Uuid
 			}
 
 			if seen[canonicalUUID] {
@@ -681,20 +681,20 @@ func DedupeEdgesBulk(
 	processed := make(map[string]bool)
 
 	for i, edge1 := range extractedEdges {
-		if processed[edge1.ID] {
+		if processed[edge1.Uuid] {
 			continue
 		}
 
 		similar := FindSimilarEdges(edge1, extractedEdges[i+1:], MinScoreEdges)
 		if len(similar) > 0 {
 			for _, edge2 := range similar {
-				if !processed[edge2.ID] {
-					duplicatePairs = append(duplicatePairs, []string{edge1.ID, edge2.ID})
-					processed[edge2.ID] = true
+				if !processed[edge2.Uuid] {
+					duplicatePairs = append(duplicatePairs, []string{edge1.Uuid, edge2.Uuid})
+					processed[edge2.Uuid] = true
 				}
 			}
 		}
-		processed[edge1.ID] = true
+		processed[edge1.Uuid] = true
 	}
 
 	// Use LLM to confirm duplicates (simplified)
@@ -705,9 +705,9 @@ func DedupeEdgesBulk(
 			// Find the actual edges
 			var edge1, edge2 *types.Edge
 			for _, edge := range extractedEdges {
-				if edge.ID == pair[0] {
+				if edge.Uuid == pair[0] {
 					edge1 = edge
-				} else if edge.ID == pair[1] {
+				} else if edge.Uuid == pair[1] {
 					edge2 = edge
 				}
 			}
@@ -740,9 +740,9 @@ func DedupeEdgesBulk(
 
 	// Create edge map and apply UUID mappings
 	for _, edge := range extractedEdges {
-		canonicalID := uuidMap[edge.ID]
+		canonicalID := uuidMap[edge.Uuid]
 		if canonicalID == "" {
-			canonicalID = edge.ID
+			canonicalID = edge.Uuid
 		}
 
 		// Use the canonical edge (lexicographically smallest ID)
@@ -757,7 +757,7 @@ func DedupeEdgesBulk(
 		} else {
 			// Create a copy with canonical ID
 			canonicalEdge := *edge
-			canonicalEdge.ID = canonicalID
+			canonicalEdge.Uuid = canonicalID
 			edgeMap[canonicalID] = &canonicalEdge
 		}
 	}
@@ -770,10 +770,10 @@ func DedupeEdgesBulk(
 		// Find edges that came from this episode
 		for _, edge := range extractedEdges {
 			// This is simplified - in practice you'd track which episode each edge came from
-			if strings.Contains(edge.ID, episodeTuple.Episode.ID) {
-				canonicalID := uuidMap[edge.ID]
+			if strings.Contains(edge.Uuid, episodeTuple.Episode.ID) {
+				canonicalID := uuidMap[edge.Uuid]
 				if canonicalID == "" {
-					canonicalID = edge.ID
+					canonicalID = edge.Uuid
 				}
 
 				if !seen[canonicalID] && edgeMap[canonicalID] != nil {

@@ -167,7 +167,7 @@ func (su *SearchUtilities) GetRelevantNodes(ctx context.Context, queryNodes []*t
 		// Deduplicate and limit results
 		nodeMap := make(map[string]*types.Node)
 		for _, node := range relevantNodes {
-			nodeMap[node.ID] = node
+			nodeMap[node.Uuid] = node
 		}
 
 		var uniqueNodes []*types.Node
@@ -230,7 +230,7 @@ func (su *SearchUtilities) GetRelevantEdges(ctx context.Context, queryEdges []*t
 		// Deduplicate and limit results
 		edgeMap := make(map[string]*types.Edge)
 		for _, edge := range relevantEdges {
-			edgeMap[edge.ID] = edge
+			edgeMap[edge.Uuid] = edge
 		}
 
 		var uniqueEdges []*types.Edge
@@ -410,7 +410,7 @@ func (su *SearchUtilities) MultiModalSearch(ctx context.Context, query string, s
 func (su *SearchUtilities) deduplicateNodes(nodes []*types.Node) []*types.Node {
 	nodeMap := make(map[string]*types.Node)
 	for _, node := range nodes {
-		nodeMap[node.ID] = node
+		nodeMap[node.Uuid] = node
 	}
 
 	var uniqueNodes []*types.Node
@@ -425,7 +425,7 @@ func (su *SearchUtilities) deduplicateNodes(nodes []*types.Node) []*types.Node {
 func (su *SearchUtilities) deduplicateEdges(edges []*types.Edge) []*types.Edge {
 	edgeMap := make(map[string]*types.Edge)
 	for _, edge := range edges {
-		edgeMap[edge.ID] = edge
+		edgeMap[edge.Uuid] = edge
 	}
 
 	var uniqueEdges []*types.Edge

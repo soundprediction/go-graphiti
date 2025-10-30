@@ -171,7 +171,7 @@ func (w *DuckDBWriter) WriteEpisode(ctx context.Context, episode *types.Node) er
 			created_at, updated_at, valid_from, embedding, metadata
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
-		episode.ID,
+		episode.Uuid,
 		episode.Name,
 		episode.Content,
 		reference,
