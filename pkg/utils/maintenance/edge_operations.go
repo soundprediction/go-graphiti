@@ -54,7 +54,7 @@ func (eo *EdgeOperations) BuildEpisodicEdges(ctx context.Context, entityNodes []
 		edge := types.NewEntityEdge(
 			utils.GenerateUUID(),
 			episodeUUID,
-			node.ID,
+			node.Uuid,
 			node.GroupID,
 			"MENTIONED_IN",
 			types.EpisodicEdgeType,
@@ -73,7 +73,7 @@ func (eo *EdgeOperations) BuildDuplicateOfEdges(ctx context.Context, episode *ty
 	duplicateEdges := make([]*types.Edge, 0, len(duplicateNodes))
 
 	for _, pair := range duplicateNodes {
-		if pair.Source.ID == pair.Target.ID {
+		if pair.Source.Uuid == pair.Target.Uuid {
 			continue
 		}
 
@@ -81,8 +81,8 @@ func (eo *EdgeOperations) BuildDuplicateOfEdges(ctx context.Context, episode *ty
 
 		edge := types.NewEntityEdge(
 			utils.GenerateUUID(),
-			pair.Source.ID,
-			pair.Target.ID,
+			pair.Source.Uuid,
+			pair.Target.Uuid,
 			episode.GroupID,
 			"IS_DUPLICATE_OF",
 			types.EntityEdgeType,
@@ -91,7 +91,7 @@ func (eo *EdgeOperations) BuildDuplicateOfEdges(ctx context.Context, episode *ty
 		edge.Fact = fact
 		edge.UpdatedAt = createdAt
 		edge.ValidFrom = createdAt
-		edge.SourceIDs = []string{episode.ID}
+		edge.SourceIDs = []string{episode.Uuid}
 
 		duplicateEdges = append(duplicateEdges, edge)
 	}
@@ -246,8 +246,8 @@ Continue the INCOMPLETE RESPONSE\n
 
 		edge := types.NewEntityEdge(
 			utils.GenerateUUID(),
-			sourceNode.ID,
-			targetNode.ID,
+			sourceNode.Uuid,
+			targetNode.Uuid,
 			groupID,
 			edgeData.Name,
 			types.EntityEdgeType,
@@ -257,7 +257,7 @@ Continue the INCOMPLETE RESPONSE\n
 		edge.UpdatedAt = time.Now().UTC()
 		edge.ValidFrom = validAt
 		edge.ValidTo = validTo
-		edge.SourceIDs = []string{episode.ID}
+		edge.SourceIDs = []string{episode.Uuid}
 
 		edges = append(edges, edge)
 		log.Printf("Created edge: %s from %s to %s", edge.Name, sourceNode.Name, targetNode.Name)
@@ -321,7 +321,7 @@ func (eo *EdgeOperations) convertRecordToEdge(record map[string]interface{}) (*t
 
 	// Extract basic fields
 	if uuid, ok := record["uuid"].(string); ok {
-		edge.ID = uuid
+		edge.Uuid = uuid
 	} else {
 		return nil, fmt.Errorf("missing or invalid uuid field")
 	}
@@ -386,7 +386,7 @@ func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEd
 	// Create entity UUID to node mapping for quick lookup
 	entityMap := make(map[string]*types.Node)
 	for _, entity := range entities {
-		entityMap[entity.ID] = entity
+		entityMap[entity.Uuid] = entity
 	}
 
 	resolvedEdges := make([]*types.Edge, 0, len(extractedEdges))
@@ -426,13 +426,13 @@ func (eo *EdgeOperations) ResolveExtractedEdges(ctx context.Context, extractedEd
 			// Add episode to source IDs if not already present
 			found := false
 			for _, sourceID := range resolvedEdge.SourceIDs {
-				if sourceID == episode.ID {
+				if sourceID == episode.Uuid {
 					found = true
 					break
 				}
 			}
 			if !found {
-				resolvedEdge.SourceIDs = append(resolvedEdge.SourceIDs, episode.ID)
+				resolvedEdge.SourceIDs = append(resolvedEdge.SourceIDs, episode.Uuid)
 				resolvedEdge.UpdatedAt = time.Now().UTC()
 			}
 		}
@@ -481,7 +481,7 @@ func (eo *EdgeOperations) searchRelatedEdges(ctx context.Context, extractedEdge 
 	// Create UUID filter for existing edges (equivalent to Python's SearchFilters(edge_uuids=...))
 	edgeUUIDs := make([]string, len(existingEdges))
 	for i, edge := range existingEdges {
-		edgeUUIDs[i] = edge.ID
+		edgeUUIDs[i] = edge.Uuid
 	}
 
 	// Create a map for quick UUID lookup
@@ -508,9 +508,9 @@ func (eo *EdgeOperations) searchRelatedEdges(ctx context.Context, extractedEdge 
 	var relatedEdges []*types.Edge
 	for _, edge := range edges {
 		// Only include edges that are in the valid UUID set
-		if len(edgeUUIDs) == 0 || validUUIDs[edge.ID] {
+		if len(edgeUUIDs) == 0 || validUUIDs[edge.Uuid] {
 			// Exclude the extracted edge itself
-			if edge.ID != extractedEdge.ID {
+			if edge.Uuid != extractedEdge.Uuid {
 				relatedEdges = append(relatedEdges, edge)
 			}
 		}
@@ -532,7 +532,7 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 	relatedEdgesContext := make([]map[string]interface{}, len(relatedEdges))
 	for i, edge := range relatedEdges {
 		relatedEdgesContext[i] = map[string]interface{}{
-			"id":   edge.ID,
+			"id":   edge.Uuid,
 			"fact": edge.Summary,
 		}
 	}
@@ -639,7 +639,7 @@ Continue the INCOMPLETE RESPONSE\n
 	for _, duplicateFactUUID := range edgeDuplicate.DuplicateFacts {
 		// Find the edge with matching UUID in relatedEdges
 		for _, edge := range relatedEdges {
-			if edge.ID == duplicateFactUUID {
+			if edge.Uuid == duplicateFactUUID {
 				resolvedEdge = edge
 				break
 			}
@@ -654,7 +654,7 @@ Continue the INCOMPLETE RESPONSE\n
 	for _, contradictedFactUUID := range edgeDuplicate.ContradictedFacts {
 		// Find the edge with matching UUID in existingEdges
 		for _, edge := range existingEdges {
-			if edge.ID == contradictedFactUUID {
+			if edge.Uuid == contradictedFactUUID {
 				// Apply temporal logic for invalidation
 				invalidatedEdge := eo.resolveEdgeContradictions(resolvedEdge, []*types.Edge{edge})
 				invalidatedEdges = append(invalidatedEdges, invalidatedEdge...)
@@ -721,8 +721,8 @@ func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, du
 	duplicateNodeUUIDs := make([]map[string]interface{}, len(duplicateNodePairs))
 	for i, pair := range duplicateNodePairs {
 		duplicateNodeUUIDs[i] = map[string]interface{}{
-			"src": pair.Source.ID,
-			"dst": pair.Target.ID,
+			"src": pair.Source.Uuid,
+			"dst": pair.Target.Uuid,
 		}
 	}
 
@@ -801,7 +801,7 @@ func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, du
 	// Filter out pairs that already exist
 	var filteredPairs []NodePair
 	for _, pair := range duplicateNodePairs {
-		key := fmt.Sprintf("%s-%s", pair.Source.ID, pair.Target.ID)
+		key := fmt.Sprintf("%s-%s", pair.Source.Uuid, pair.Target.Uuid)
 		if !existingPairs[key] {
 			filteredPairs = append(filteredPairs, pair)
 		}

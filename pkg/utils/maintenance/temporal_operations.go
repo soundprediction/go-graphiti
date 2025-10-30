@@ -183,7 +183,7 @@ func (to *TemporalOperations) ExtractAndSaveEdgeDates(ctx context.Context, edges
 		// Extract dates for this edge
 		validAt, invalidAt, err := to.ExtractEdgeDates(ctx, edge, currentEpisode, previousEpisodes)
 		if err != nil {
-			log.Printf("Warning: failed to extract dates for edge %s: %v", edge.ID, err)
+			log.Printf("Warning: failed to extract dates for edge %s: %v", edge.Uuid, err)
 			updatedEdges = append(updatedEdges, edge) // Use original edge if extraction fails
 			continue
 		}
@@ -210,20 +210,20 @@ func (to *TemporalOperations) ValidateEdgeTemporalConsistency(edge *types.Edge) 
 	// Check if ValidTo is after ValidFrom
 	if edge.ValidTo != nil && edge.ValidTo.Before(edge.ValidFrom) {
 		return fmt.Errorf("edge %s has invalid temporal range: ValidTo (%v) is before ValidFrom (%v)",
-			edge.ID, edge.ValidTo, edge.ValidFrom)
+			edge.Uuid, edge.ValidTo, edge.ValidFrom)
 	}
 
 	// Check if edge is already expired at creation time
 	now := time.Now().UTC()
 	if edge.ValidTo != nil && edge.ValidTo.Before(edge.CreatedAt) {
 		log.Printf("Warning: edge %s was created already expired (ValidTo: %v, CreatedAt: %v)",
-			edge.ID, edge.ValidTo, edge.CreatedAt)
+			edge.Uuid, edge.ValidTo, edge.CreatedAt)
 	}
 
 	// Check if ValidFrom is in the future relative to creation
 	if edge.ValidFrom.After(now.Add(24 * time.Hour)) {
 		log.Printf("Warning: edge %s has ValidFrom significantly in the future (%v)",
-			edge.ID, edge.ValidFrom)
+			edge.Uuid, edge.ValidFrom)
 	}
 
 	return nil

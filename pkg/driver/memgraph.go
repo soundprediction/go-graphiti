@@ -100,7 +100,7 @@ func (m *MemgraphDriver) NodeExists(ctx context.Context, node *types.Node) bool 
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
-			"uuid":     node.ID,
+			"uuid":     node.Uuid,
 			"group_id": node.GroupID,
 		})
 		if err != nil {
@@ -152,14 +152,14 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MERGE (n:$label {id: $id, group_id: $group_id})
+			MERGE (n:$label {id: $uuid, group_id: $group_id})
 			SET n += $properties
 			SET n.updated_at = $updated_at
 		`
 
 		properties := m.nodeToProperties(node)
 		_, err := tx.Run(ctx, query, map[string]any{
-			"id":         node.ID,
+			"uuid":       node.Uuid,
 			"group_id":   node.GroupID,
 			"properties": properties,
 			"updated_at": time.Now().Format(time.RFC3339),
@@ -228,7 +228,7 @@ func (m *MemgraphDriver) executeNodeUpdateQuery(node *types.Node, tableName stri
 	params := make(map[string]interface{})
 	setClauses := []string{}
 
-	params["uuid"] = node.ID
+	params["uuid"] = node.Uuid
 	params["group_id"] = node.GroupID
 
 	switch tableName {
@@ -332,7 +332,7 @@ func (m *MemgraphDriver) executeNodeCreateQuery(ctx context.Context, node *types
 	properties := make(map[string]interface{})
 
 	// Common fields
-	properties["uuid"] = node.ID
+	properties["uuid"] = node.Uuid
 	properties["name"] = node.Name
 	properties["group_id"] = node.GroupID
 	properties["created_at"] = node.CreatedAt
@@ -404,7 +404,7 @@ func (m *MemgraphDriver) executeNodeCreateQuery(ctx context.Context, node *types
 	// Execute in write transaction
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		_, err := tx.Run(ctx, query, map[string]any{
-			"uuid":       node.ID,
+			"uuid":       node.Uuid,
 			"group_id":   node.GroupID,
 			"properties": properties,
 		})
@@ -539,12 +539,12 @@ func (m *MemgraphDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool 
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH ()-[r {uuid: $id, group_id: $group_id}]-()
+			MATCH ()-[r {uuid: $uuid, group_id: $group_id}]-()
 			RETURN r.uuid
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
-			"id":       edge.ID,
+			"uuid":     edge.Uuid,
 			"group_id": edge.GroupID,
 		})
 		if err != nil {
@@ -583,17 +583,19 @@ func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error
 		query := `
 			MATCH (s {uuid: $source_id, group_id: $group_id})
 			MATCH (t {uuid: $target_id, group_id: $group_id})
-			MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
+			MERGE (s)-[r:RELATES {uuid: $uuid, group_id: $group_id}]->(t)
 			SET r += $properties
 			SET r.updated_at = $updated_at
 		`
 
 		properties := m.edgeToProperties(edge)
 		_, err := tx.Run(ctx, query, map[string]any{
-			"id":         edge.ID,
+			"uuid":       edge.Uuid,
 			"source_id":  edge.SourceID,
 			"target_id":  edge.TargetID,
 			"group_id":   edge.GroupID,
+			"fact":       edge.Fact,
+			"name":       edge.Name,
 			"properties": properties,
 			"updated_at": time.Now().Format(time.RFC3339),
 		})
@@ -657,7 +659,7 @@ func (m *MemgraphDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	params["source_uuid"] = edge.SourceID
 	params["target_uuid"] = edge.TargetID
 	params["group_id"] = edge.GroupID
-	params["uuid"] = edge.ID
+	params["uuid"] = edge.Uuid
 	params["created_at"] = edge.CreatedAt
 	params["name"] = edge.Name
 	params["fact"] = edge.Fact
@@ -697,7 +699,7 @@ func (m *MemgraphDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 	`
 
 	params := map[string]interface{}{
-		"uuid":       edge.ID,
+		"uuid":       edge.Uuid,
 		"group_id":   edge.GroupID,
 		"name":       edge.Name,
 		"fact":       edge.Fact,
@@ -982,7 +984,7 @@ func (m *MemgraphDriver) SearchEdgesByEmbedding(ctx context.Context, embedding [
 		query := `
 			MATCH (s)-[r {group_id: $groupID}]->(t)
 			WHERE r.embedding IS NOT NULL
-			RETURN r, s.id as source_id, t.id as target_id
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
 			"groupID": groupID,
@@ -1060,20 +1062,20 @@ func (m *MemgraphDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) e
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		for _, node := range nodes {
 			query := `
-				MERGE (n {uuid: $id, group_id: $group_id})
+				MERGE (n {uuid: $uuid, group_id: $group_id})
 				SET n += $properties
 				SET n.updated_at = $updated_at
 			`
 
 			properties := m.nodeToProperties(node)
 			_, err := tx.Run(ctx, query, map[string]any{
-				"id":         node.ID,
+				"uuid":       node.Uuid,
 				"group_id":   node.GroupID,
 				"properties": properties,
 				"updated_at": time.Now().Format(time.RFC3339),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to upsert node %s: %w", node.ID, err)
+				return nil, fmt.Errorf("failed to upsert node %s: %w", node.Uuid, err)
 			}
 		}
 		return nil, nil
@@ -1096,14 +1098,14 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 			query := `
 				MATCH (s {uuid: $source_id, group_id: $group_id})
 				MATCH (t {uuid: $target_id, group_id: $group_id})
-				MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
+				MERGE (s)-[r:RELATES {uuid: $uuid, group_id: $group_id}]->(t)
 				SET r += $properties
 				SET r.updated_at = $updated_at
 			`
 
 			properties := m.edgeToProperties(edge)
 			_, err := tx.Run(ctx, query, map[string]any{
-				"id":         edge.ID,
+				"uuid":       edge.Uuid,
 				"source_id":  edge.SourceID,
 				"target_id":  edge.TargetID,
 				"group_id":   edge.GroupID,
@@ -1111,7 +1113,7 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 				"updated_at": time.Now().Format(time.RFC3339),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to upsert edge %s: %w", edge.ID, err)
+				return nil, fmt.Errorf("failed to upsert edge %s: %w", edge.Uuid, err)
 			}
 		}
 		return nil, nil
@@ -1169,7 +1171,7 @@ func (m *MemgraphDriver) GetEdgesInTimeRange(ctx context.Context, start, end tim
 		query := `
 			MATCH (s)-[r {group_id: $groupID}]->(t)
 			WHERE r.created_at >= $start AND r.created_at <= $end
-			RETURN r, s.id as source_id, t.id as target_id
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
 			"groupID": groupID,
@@ -1385,7 +1387,7 @@ func (m *MemgraphDriver) parseCommunityNodesFromRecords(result interface{}) ([]*
 			if len(propsResults) > 0 {
 				if props, ok := propsResults[0].Interface().(map[string]interface{}); ok {
 					if uuid, ok := props["uuid"].(string); ok {
-						node.ID = uuid
+						node.Uuid = uuid
 					}
 					if name, ok := props["name"].(string); ok {
 						node.Name = name
@@ -1397,7 +1399,7 @@ func (m *MemgraphDriver) parseCommunityNodesFromRecords(result interface{}) ([]*
 			}
 		}
 
-		if node.ID != "" {
+		if node.Uuid != "" {
 			nodes = append(nodes, node)
 		}
 	}
@@ -1588,7 +1590,7 @@ func (m *MemgraphDriver) SearchEdges(ctx context.Context, query, groupID string,
 		searchQuery := `
 			MATCH (s)-[r {group_id: $groupID}]->(t)
 			WHERE r.name CONTAINS $query OR r.summary CONTAINS $query
-			RETURN r, s.id as source_id, t.id as target_id
+			RETURN r, s.uuid as source_id, t.uuid as target_id
 			LIMIT $limit
 		`
 		res, err := tx.Run(ctx, searchQuery, map[string]any{
@@ -1861,8 +1863,8 @@ func (m *MemgraphDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 	result := &types.Node{}
 
 	// Core fields
-	if id, ok := props["id"].(string); ok {
-		result.ID = id
+	if id, ok := props["uuid"].(string); ok {
+		result.Uuid = id
 	}
 	if name, ok := props["name"].(string); ok {
 		result.Name = name
@@ -1963,7 +1965,7 @@ func (m *MemgraphDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 
 func (m *MemgraphDriver) nodeToProperties(node *types.Node) map[string]any {
 	props := map[string]any{
-		"uuid":       node.ID,
+		"uuid":       node.Uuid,
 		"name":       node.Name,
 		"type":       string(node.Type),
 		"group_id":   node.GroupID,
@@ -2047,8 +2049,8 @@ func (m *MemgraphDriver) edgeFromDBRelation(relation dbtype.Relationship, source
 	}
 
 	// Core fields
-	if id, ok := props["id"].(string); ok {
-		result.ID = id
+	if id, ok := props["uuid"].(string); ok {
+		result.Uuid = id
 	}
 	if edgeType, ok := props["type"].(string); ok {
 		result.Type = types.EdgeType(edgeType)
@@ -2153,7 +2155,7 @@ func (m *MemgraphDriver) edgeFromDBRelation(relation dbtype.Relationship, source
 
 func (m *MemgraphDriver) edgeToProperties(edge *types.Edge) map[string]any {
 	props := map[string]any{
-		"id":         edge.ID,
+		"uuid":       edge.Uuid,
 		"type":       string(edge.Type),
 		"group_id":   edge.GroupID,
 		"created_at": edge.CreatedAt.Format(time.RFC3339),
@@ -2292,14 +2294,14 @@ func (k *MemgraphDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targ
 
 func (m *MemgraphDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
 	query := `
-      MATCH (n:Entity {uuid: $id, group_id: $group_id})-[:RELATES_TO]->(e:RelatesToNode_)<-[:RELATES_TO]-
+      MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]->(e:RelatesToNode_)<-[:RELATES_TO]-
       (m:Entity {group_id: $group_id})
 	  WITH m.uuid AS uuid, count(e) AS count
 	  RETURN uuid, count
 	`
 
 	params := map[string]any{
-		"id":       nodeUUID,
+		"uuid":     nodeUUID,
 		"group_id": groupID,
 	}
 

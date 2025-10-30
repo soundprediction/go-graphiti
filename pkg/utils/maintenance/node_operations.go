@@ -231,7 +231,7 @@ Continue the following
 		}
 
 		node := &types.Node{
-			ID:         utils.GenerateUUID(),
+			Uuid:       utils.GenerateUUID(),
 			Type:       types.EntityNodeType,
 			GroupID:    episode.GroupID,
 			Name:       extractedEntity.Name,
@@ -323,14 +323,14 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 			nodes = []*types.Node{}
 		}
 
-		searchResults[node.ID] = nodes
+		searchResults[node.Uuid] = nodes
 		candidateNodes = append(candidateNodes, nodes...)
 	}
 
 	// Remove duplicates from candidate nodes
 	candidateMap := make(map[string]*types.Node)
 	for _, node := range candidateNodes {
-		candidateMap[node.ID] = node
+		candidateMap[node.Uuid] = node
 	}
 
 	var existingNodes []*types.Node
@@ -464,7 +464,7 @@ Continue the following \n
 		}
 
 		resolvedNodes = append(resolvedNodes, resolvedNode)
-		uuidMap[extractedNode.ID] = resolvedNode.ID
+		uuidMap[extractedNode.Uuid] = resolvedNode.Uuid
 
 		// Track duplicates for edge creation
 		for _, duplicateIdx := range resolution.Duplicates {

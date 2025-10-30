@@ -164,15 +164,15 @@ func (mu *MaintenanceUtils) CleanupOrphanedEdges(ctx context.Context, groupID st
 
 	nodeExists := make(map[string]bool)
 	for _, node := range nodes {
-		nodeExists[node.ID] = true
+		nodeExists[node.Uuid] = true
 	}
 
 	// Find and delete orphaned edges
 	orphanedCount := 0
 	for _, edge := range edges {
 		if !nodeExists[edge.SourceID] || !nodeExists[edge.TargetID] {
-			if err := mu.driver.DeleteEdge(ctx, edge.ID, groupID); err != nil {
-				log.Printf("Warning: failed to delete orphaned edge %s: %v", edge.ID, err)
+			if err := mu.driver.DeleteEdge(ctx, edge.Uuid, groupID); err != nil {
+				log.Printf("Warning: failed to delete orphaned edge %s: %v", edge.Uuid, err)
 			} else {
 				orphanedCount++
 			}
@@ -198,30 +198,30 @@ func (mu *MaintenanceUtils) ValidateGraphIntegrity(ctx context.Context, groupID 
 	// Create node existence map
 	nodeExists := make(map[string]bool)
 	for _, node := range nodes {
-		nodeExists[node.ID] = true
+		nodeExists[node.Uuid] = true
 	}
 
 	// Check for edges referencing non-existent nodes
 	for _, edge := range edges {
 		if !nodeExists[edge.SourceID] {
-			issues = append(issues, fmt.Sprintf("Edge %s references non-existent source node %s", edge.ID, edge.SourceID))
+			issues = append(issues, fmt.Sprintf("Edge %s references non-existent source node %s", edge.Uuid, edge.SourceID))
 		}
 		if !nodeExists[edge.TargetID] {
-			issues = append(issues, fmt.Sprintf("Edge %s references non-existent target node %s", edge.ID, edge.TargetID))
+			issues = append(issues, fmt.Sprintf("Edge %s references non-existent target node %s", edge.Uuid, edge.TargetID))
 		}
 	}
 
 	// Check for nodes without embeddings
 	for _, node := range nodes {
 		if len(node.Embedding) == 0 {
-			issues = append(issues, fmt.Sprintf("Node %s (%s) has no embedding", node.ID, node.Name))
+			issues = append(issues, fmt.Sprintf("Node %s (%s) has no embedding", node.Uuid, node.Name))
 		}
 	}
 
 	// Check for edges without embeddings
 	for _, edge := range edges {
 		if len(edge.Embedding) == 0 {
-			issues = append(issues, fmt.Sprintf("Edge %s has no embedding", edge.ID))
+			issues = append(issues, fmt.Sprintf("Edge %s has no embedding", edge.Uuid))
 		}
 	}
 

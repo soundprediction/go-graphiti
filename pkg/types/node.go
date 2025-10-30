@@ -39,7 +39,7 @@ func GetEpisodicNodeByUUID(ctx context.Context, driver NodeOperations, uuid stri
 	}
 
 	if id, ok := record["uuid"].(string); ok {
-		episode.ID = id
+		episode.Uuid = id
 	}
 	if name, ok := record["name"].(string); ok {
 		episode.Name = name

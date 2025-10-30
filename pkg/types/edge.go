@@ -26,7 +26,7 @@ type EdgeOperations interface {
 
 // BaseEdge represents the abstract base class for all edges (equivalent to Python Edge class)
 type BaseEdge struct {
-	ID           string    `json:"uuid"`             // matches Python uuid field
+	Uuid         string    `json:"uuid"`             // matches Python uuid field
 	GroupID      string    `json:"group_id"`         // matches Python group_id
 	SourceNodeID string    `json:"source_node_uuid"` // matches Python source_node_uuid
 	TargetNodeID string    `json:"target_node_uuid"` // matches Python target_node_uuid
@@ -47,7 +47,7 @@ type EdgeInterface interface {
 }
 
 // Implement EdgeInterface for BaseEdge
-func (e *BaseEdge) GetUUID() string           { return e.ID }
+func (e *BaseEdge) GetUUID() string           { return e.Uuid }
 func (e *BaseEdge) GetGroupID() string        { return e.GroupID }
 func (e *BaseEdge) GetSourceNodeUUID() string { return e.SourceNodeID }
 func (e *BaseEdge) GetTargetNodeUUID() string { return e.TargetNodeID }
@@ -61,7 +61,7 @@ func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
 			MATCH (n)-[e:MENTIONS|HAS_MEMBER {uuid: $uuid}]->(m)
 			DELETE e
 		`, map[string]interface{}{
-			"uuid": e.ID,
+			"uuid": e.Uuid,
 		})
 		if err != nil {
 			return err
@@ -71,7 +71,7 @@ func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
 			MATCH (e:RelatesToNode_ {uuid: $uuid})
 			DETACH DELETE e
 		`, map[string]interface{}{
-			"uuid": e.ID,
+			"uuid": e.Uuid,
 		})
 		return err
 	} else {
@@ -80,7 +80,7 @@ func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
 			MATCH (n)-[e:MENTIONS|RELATES_TO|HAS_MEMBER {uuid: $uuid}]->(m)
 			DELETE e
 		`, map[string]interface{}{
-			"uuid": e.ID,
+			"uuid": e.Uuid,
 		})
 
 		// TODO: Add AOSS client support if needed
@@ -144,7 +144,7 @@ func (e *EpisodicEdge) Save(ctx context.Context, driver EdgeOperations) error {
 	_, _, _, err := driver.ExecuteQuery("EPISODIC_EDGE_SAVE_QUERY", map[string]interface{}{
 		"episode_uuid": e.SourceNodeID,
 		"entity_uuid":  e.TargetNodeID,
-		"uuid":         e.ID,
+		"uuid":         e.Uuid,
 		"group_id":     e.GroupID,
 		"created_at":   e.CreatedAt,
 	})
@@ -173,7 +173,7 @@ func GetEpisodicEdgeByUUID(ctx context.Context, driver EdgeOperations, uuid stri
 	record := recordList[0]
 	return &EpisodicEdge{
 		BaseEdge: BaseEdge{
-			ID:           record["uuid"].(string),
+			Uuid:         record["uuid"].(string),
 			GroupID:      record["group_id"].(string),
 			SourceNodeID: record["source_node_uuid"].(string),
 			TargetNodeID: record["target_node_uuid"].(string),
@@ -206,7 +206,7 @@ func GetEpisodicEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids [
 		for _, record := range recordList {
 			edge := &EpisodicEdge{
 				BaseEdge: BaseEdge{
-					ID:           record["uuid"].(string),
+					Uuid:         record["uuid"].(string),
 					GroupID:      record["group_id"].(string),
 					SourceNodeID: record["source_node_uuid"].(string),
 					TargetNodeID: record["target_node_uuid"].(string),
@@ -302,7 +302,7 @@ func NewEntityEdge(id, sourceID, targetID, groupID, name string, edgeType EdgeTy
 	now := time.Now()
 	edge := &EntityEdge{
 		BaseEdge: BaseEdge{
-			ID:           id,
+			Uuid:         id,
 			GroupID:      groupID,
 			SourceNodeID: sourceID,
 			TargetNodeID: targetID,
@@ -323,7 +323,7 @@ func (e *EntityEdge) Save(ctx context.Context, driver EdgeOperations) error {
 	edgeData := map[string]interface{}{
 		"source_uuid":    e.SourceNodeID,
 		"target_uuid":    e.TargetNodeID,
-		"uuid":           e.ID,
+		"uuid":           e.Uuid,
 		"name":           e.Name,
 		"group_id":       e.GroupID,
 		"fact":           e.Fact,
@@ -491,7 +491,7 @@ func (e *CommunityEdge) Save(ctx context.Context, driver EdgeOperations) error {
 	_, _, _, err := driver.ExecuteQuery("COMMUNITY_EDGE_SAVE_QUERY", map[string]interface{}{
 		"community_uuid": e.SourceNodeID,
 		"entity_uuid":    e.TargetNodeID,
-		"uuid":           e.ID,
+		"uuid":           e.Uuid,
 		"group_id":       e.GroupID,
 		"created_at":     e.CreatedAt,
 	})
@@ -520,7 +520,7 @@ func GetCommunityEdgeByUUID(ctx context.Context, driver EdgeOperations, uuid str
 	record := recordList[0]
 	return &CommunityEdge{
 		BaseEdge: BaseEdge{
-			ID:           record["uuid"].(string),
+			Uuid:         record["uuid"].(string),
 			GroupID:      record["group_id"].(string),
 			SourceNodeID: record["source_node_uuid"].(string),
 			TargetNodeID: record["target_node_uuid"].(string),
@@ -553,7 +553,7 @@ func GetCommunityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids 
 		for _, record := range recordList {
 			edge := &CommunityEdge{
 				BaseEdge: BaseEdge{
-					ID:           record["uuid"].(string),
+					Uuid:         record["uuid"].(string),
 					GroupID:      record["group_id"].(string),
 					SourceNodeID: record["source_node_uuid"].(string),
 					TargetNodeID: record["target_node_uuid"].(string),
@@ -616,7 +616,7 @@ func buildEntityEdgeFromRecord(record map[string]interface{}, provider GraphProv
 
 	return &EntityEdge{
 		BaseEdge: BaseEdge{
-			ID:           record["uuid"].(string),
+			Uuid:         record["uuid"].(string),
 			GroupID:      record["group_id"].(string),
 			SourceNodeID: record["source_node_uuid"].(string),
 			TargetNodeID: record["target_node_uuid"].(string),

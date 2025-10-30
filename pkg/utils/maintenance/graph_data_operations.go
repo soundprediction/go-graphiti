@@ -117,8 +117,8 @@ func (gdo *GraphDataOperations) ClearData(ctx context.Context, groupIDs []string
 		}
 
 		for _, node := range allNodes {
-			if err := gdo.driver.DeleteNode(ctx, node.ID, node.GroupID); err != nil {
-				log.Printf("Warning: failed to delete node %s: %v", node.ID, err)
+			if err := gdo.driver.DeleteNode(ctx, node.Uuid, node.GroupID); err != nil {
+				log.Printf("Warning: failed to delete node %s: %v", node.Uuid, err)
 			}
 		}
 
@@ -128,8 +128,8 @@ func (gdo *GraphDataOperations) ClearData(ctx context.Context, groupIDs []string
 		}
 
 		for _, edge := range allEdges {
-			if err := gdo.driver.DeleteEdge(ctx, edge.ID, edge.GroupID); err != nil {
-				log.Printf("Warning: failed to delete edge %s: %v", edge.ID, err)
+			if err := gdo.driver.DeleteEdge(ctx, edge.Uuid, edge.GroupID); err != nil {
+				log.Printf("Warning: failed to delete edge %s: %v", edge.Uuid, err)
 			}
 		}
 	} else {
