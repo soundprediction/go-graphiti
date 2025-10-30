@@ -100,7 +100,7 @@ func (m *MemgraphDriver) NodeExists(ctx context.Context, node *types.Node) bool 
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
-			"id":       node.ID,
+			"uuid":     node.ID,
 			"group_id": node.GroupID,
 		})
 		if err != nil {
@@ -149,11 +149,51 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MERGE (n:$label {id: $id, group_id: $group_id})
+			SET n += $properties
+			SET n.updated_at = $updated_at
+		`
+
+		properties := m.nodeToProperties(node)
+		_, err := tx.Run(ctx, query, map[string]any{
+			"id":         node.ID,
+			"group_id":   node.GroupID,
+			"properties": properties,
+			"updated_at": time.Now().Format(time.RFC3339),
+			"label":      m.getLabelForNodeType(node.Type),
+		})
+		return nil, err
+	})
+
+	return err
+}
+
+// UpsertNode creates or updates a node.
+func (m *MemgraphDriver) UpsertNode2(ctx context.Context, node *types.Node) error {
+	// Handle nil node
+	if node == nil {
+		return fmt.Errorf("cannot upsert nil node")
+	}
+
+	// Set timestamps if not already set
+	if node.CreatedAt.IsZero() {
+		node.CreatedAt = time.Now()
+	}
+	node.UpdatedAt = time.Now()
+	if node.ValidFrom.IsZero() {
+		node.ValidFrom = node.CreatedAt
+	}
+
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
 	label := m.getLabelForNodeType(node.Type)
 
 	// Try to create first
 	if !m.NodeExists(ctx, node) {
-		err := m.executeNodeCreateQuery(node, label)
+		err := m.executeNodeCreateQuery(ctx, node, label)
 		if err != nil {
 			return fmt.Errorf("failed to create node %w", err)
 		}
@@ -279,122 +319,102 @@ func (m *MemgraphDriver) executeNodeUpdateQuery(node *types.Node, tableName stri
 	_, _, _, err = m.ExecuteQuery(query, params)
 	return err
 }
-func (m *MemgraphDriver) executeNodeCreateQuery(node *types.Node, tableName string) error {
-	// Defensive nil check for node
+func (m *MemgraphDriver) executeNodeCreateQuery(ctx context.Context, node *types.Node, tableName string) error {
 	if node == nil {
 		return fmt.Errorf("cannot create nil node")
 	}
 
-	var metadataJSON string
-	if node.Metadata != nil {
-		if data, err := json.Marshal(node.Metadata); err == nil {
-			metadataJSON = string(data)
-		}
-	}
+	// Create a new session (always close after use)
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
 
-	var query string
-	params := make(map[string]interface{})
+	// Build node properties
+	properties := make(map[string]interface{})
+
+	// Common fields
+	properties["uuid"] = node.ID
+	properties["name"] = node.Name
+	properties["group_id"] = node.GroupID
+	properties["created_at"] = node.CreatedAt
+	properties["updated_at"] = time.Now().Format(time.RFC3339)
 
 	switch tableName {
 	case "Episodic":
-		query = `
-              CREATE (n:Episodic {
-                  uuid: $uuid,
-                  name: $name,
-                  group_id: $group_id,
-                  created_at: $created_at,
-                  source: $source,
-                  source_description: $source_description,
-                  content: $content,
-                  valid_at: $valid_at,
-                  entity_edges: $entity_edges
-              })
-          `
+		properties["source"] = string(node.EpisodeType)
+		properties["source_description"] = ""
+		properties["content"] = node.Content
+		properties["valid_at"] = node.ValidFrom
 
-		params["uuid"] = node.ID
-		params["name"] = node.Name
-		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt
-		params["source"] = string(node.EpisodeType)
-		params["source_description"] = ""
-		params["content"] = node.Content
-		params["valid_at"] = node.ValidFrom
-
-		// Memgraph handles empty arrays naturally - no explicit casting needed
 		if len(node.EntityEdges) > 0 {
-			params["entity_edges"] = node.EntityEdges
+			properties["entity_edges"] = node.EntityEdges
 		} else {
-			params["entity_edges"] = []string{}
+			properties["entity_edges"] = []string{}
 		}
 
 	case "Entity":
-		query = `
-              CREATE (n:Entity {
-                  uuid: $uuid,
-                  name: $name,
-                  group_id: $group_id,
-                  labels: $labels,
-                  created_at: $created_at,
-                  name_embedding: $name_embedding,
-                  summary: $summary,
-                  attributes: $attributes
-              })
-          `
+		// Convert Metadata → map
+		if node.Metadata != nil {
+			data, err := json.Marshal(node.Metadata)
+			if err != nil {
+				return fmt.Errorf("failed to marshal metadata: %w", err)
+			}
+			var metadata map[string]interface{}
+			if err := json.Unmarshal(data, &metadata); err != nil {
+				return fmt.Errorf("failed to unmarshal metadata: %w", err)
+			}
+			properties["attributes"] = metadata
+		} else {
+			properties["attributes"] = map[string]interface{}{}
+		}
 
-		params["uuid"] = node.ID
-		params["name"] = node.Name
-		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt
-		params["summary"] = node.Summary
-		params["attributes"] = metadataJSON
-
-		// Handle labels - Memgraph doesn't need explicit casting
+		// Handle labels
 		if node.EntityType != "" {
-			params["labels"] = []string{node.EntityType}
+			properties["labels"] = []string{node.EntityType}
 		} else {
-			params["labels"] = []string{}
+			properties["labels"] = []string{}
 		}
 
-		// Handle name_embedding - Memgraph accepts float32 directly
-		if len(node.NameEmbedding) > 0 {
-			params["name_embedding"] = node.NameEmbedding
-		} else {
-			params["name_embedding"] = []float32{}
+		properties["summary"] = node.Summary
+
+		// Convert []float32 → []float64 for Memgraph compatibility
+		embedding := make([]float64, len(node.NameEmbedding))
+		for i, v := range node.NameEmbedding {
+			embedding[i] = float64(v)
 		}
+		properties["name_embedding"] = embedding
 
 	case "Community":
-		query = `
-              CREATE (n:Community {
-                  uuid: $uuid,
-                  name: $name,
-                  group_id: $group_id,
-                  created_at: $created_at,
-                  name_embedding: $name_embedding,
-                  summary: $summary
-              })
-          `
-
-		params["uuid"] = node.ID
-		params["name"] = node.Name
-		params["group_id"] = node.GroupID
-		params["created_at"] = node.CreatedAt
-		params["summary"] = node.Summary
-
-		// Handle name_embedding - Memgraph accepts float32 directly
-		if len(node.NameEmbedding) > 0 {
-			params["name_embedding"] = node.NameEmbedding
-		} else {
-			params["name_embedding"] = []float32{}
+		properties["summary"] = node.Summary
+		embedding := make([]float64, len(node.NameEmbedding))
+		for i, v := range node.NameEmbedding {
+			embedding[i] = float64(v)
 		}
+		properties["name_embedding"] = embedding
 
 	default:
 		return fmt.Errorf("unknown table: %s", tableName)
 	}
-	fmt.Printf("query: %v\n", query)
-	sparams, _ := json.Marshal(params)
-	fmt.Println(string(sparams))
-	_, _, _, err := m.ExecuteQuery(query, params)
-	return err
+
+	// Build query dynamically based on label (tableName)
+	query := fmt.Sprintf(`
+		MERGE (n:%s {uuid: $uuid, group_id: $group_id})
+		SET n += $properties
+	`, tableName)
+
+	// Execute in write transaction
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		_, err := tx.Run(ctx, query, map[string]any{
+			"uuid":       node.ID,
+			"group_id":   node.GroupID,
+			"properties": properties,
+		})
+		return nil, err
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute write for %s: %w", tableName, err)
+	}
+
+	return nil
 }
 
 // DeleteNode removes a node and its edges.
@@ -1380,16 +1400,20 @@ func (m *MemgraphDriver) CreateIndices(ctx context.Context) error {
 	// Note: Memgraph requires index creation to use auto-commit (implicit) transactions
 	// rather than explicit transactions. Using session.Run() directly instead of ExecuteWrite.
 	indices := []string{
-		"CREATE INDEX ON :Node(id, group_id)",
-		"CREATE INDEX ON :Node(created_at)",
-		"CREATE INDEX ON :Node(type)",
+		"CREATE INDEX ON :Entity(uuid, group_id)",
+		"CREATE INDEX ON :Episodic(uuid, group_id)",
+		"CREATE INDEX ON :Community(uuid, group_id)",
+		"CREATE INDEX ON :Entity(created_at)",
+		"CREATE INDEX ON :Episodic(created_at)",
+		"CREATE INDEX ON :Community(created_at)",
 	}
 
 	for _, indexQuery := range indices {
 		_, err := session.Run(ctx, indexQuery, nil)
 		if err != nil {
-			// Continue with other indices even if one fails (index may already exist)
-			continue
+			if !strings.Contains(err.Error(), "already exists") {
+				return err
+			}
 		}
 	}
 
@@ -1749,6 +1773,11 @@ func (m *MemgraphDriver) GetAossClient() interface{} {
 // Close closes the Memgraph driver.
 func (m *MemgraphDriver) Close() error {
 	return m.client.Close(context.Background())
+}
+
+// VerifyConnectivity checks if the driver can connect to the database.
+func (m *MemgraphDriver) VerifyConnectivity(ctx context.Context) error {
+	return m.client.VerifyConnectivity(ctx)
 }
 
 // MemgraphDriverSession implements GraphDriverSession for Memgraph.
