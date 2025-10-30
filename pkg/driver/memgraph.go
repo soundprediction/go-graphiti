@@ -581,9 +581,9 @@ func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (s {id: $source_id, group_id: $group_id})
-			MATCH (t {id: $target_id, group_id: $group_id})
-			MERGE (s)-[r:RELATES {id: $id, group_id: $group_id}]->(t)
+			MATCH (s {uuid: $source_id, group_id: $group_id})
+			MATCH (t {uuid: $target_id, group_id: $group_id})
+			MERGE (s)-[r:RELATES {uuid: $id, group_id: $group_id}]->(t)
 			SET r += $properties
 			SET r.updated_at = $updated_at
 		`
