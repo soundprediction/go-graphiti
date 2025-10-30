@@ -60,7 +60,7 @@ type GraphDriver interface {
 	// Graph traversal operations
 	GetNeighbors(ctx context.Context, nodeID, groupID string, maxDistance int) ([]*types.Node, error)
 	GetRelatedNodes(ctx context.Context, nodeID, groupID string, edgeTypes []types.EdgeType) ([]*types.Node, error)
-
+	GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error)
 	// GetBetweenNodes retrieves edges between two specific nodes using the proper query pattern
 	GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error)
 

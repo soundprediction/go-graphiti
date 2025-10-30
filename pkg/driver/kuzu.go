@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/kuzudb/go-kuzu"
+
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -2198,4 +2199,39 @@ func (k *KuzuDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNo
 	}
 
 	return edges, nil
+}
+
+func (k *KuzuDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
+	query := `
+		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
+		WITH count(e) AS count, m.uuid AS uuid
+		RETURN uuid, count
+	`
+
+	params := map[string]interface{}{
+		"uuid":     nodeUUID,
+		"group_id": groupID,
+	}
+
+	records, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
+	}
+
+	var neighbors []types.Neighbor
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+	for _, record := range recordSlice {
+		if uuid, ok := record["uuid"].(string); ok {
+			if count, ok := record["count"].(int64); ok {
+				neighbors = append(neighbors, types.Neighbor{
+					NodeUUID:  uuid,
+					EdgeCount: int(count),
+				})
+			}
+		}
+	}
+	return neighbors, nil
 }
