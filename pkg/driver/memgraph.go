@@ -561,33 +561,46 @@ func (m *MemgraphDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool 
 	return result != nil
 }
 
-// UpsertEdge creates or updates an edge.
 func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
-	// Ensure timestamps are initialized
+	// Handle nil edge
+	if edge == nil {
+		return fmt.Errorf("cannot upsert nil edge")
+	}
+
+	// Set timestamps if not already set
 	if edge.CreatedAt.IsZero() {
 		edge.CreatedAt = time.Now()
 	}
 	edge.UpdatedAt = time.Now()
-
 	if edge.ValidFrom.IsZero() {
 		edge.ValidFrom = edge.CreatedAt
 	}
 
-	// Check if the edge already exists in Memgraph
-	if !m.EdgeExists(ctx, edge) {
-		// Create a new edge if not found
-		if err := m.executeEdgeCreateQuery(edge); err != nil {
-			return fmt.Errorf("failed to create edge: %w", err)
-		}
-		return nil
-	}
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
 
-	// Otherwise, update the existing edge
-	if err := m.executeEdgeUpdateQuery(edge); err != nil {
-		return fmt.Errorf("failed to update edge: %w", err)
-	}
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MATCH (s {id: $source_id, group_id: $group_id})
+			MATCH (t {id: $target_id, group_id: $group_id})
+			MERGE (s)-[r:RELATES {id: $id, group_id: $group_id}]->(t)
+			SET r += $properties
+			SET r.updated_at = $updated_at
+		`
 
-	return nil
+		properties := m.edgeToProperties(edge)
+		_, err := tx.Run(ctx, query, map[string]any{
+			"id":         edge.ID,
+			"source_id":  edge.SourceID,
+			"target_id":  edge.TargetID,
+			"group_id":   edge.GroupID,
+			"properties": properties,
+			"updated_at": time.Now().Format(time.RFC3339),
+		})
+		return nil, err
+	})
+
+	return err
 }
 
 func (m *MemgraphDriver) executeEdgeCreateQuery(edge *types.Edge) error {
