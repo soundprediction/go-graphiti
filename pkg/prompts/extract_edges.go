@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -159,7 +160,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 
 </EXAMPLE>
 `, edgeTypesTSV, previousEpisodesTSV, episodeContent, nodesTSV, referenceTime, customPrompt)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -214,7 +215,7 @@ Note: PREVIOUS MESSAGES and EXTRACTED ENTITIES are provided in TSV (tab-separate
 Given the above MESSAGES, list of EXTRACTED ENTITIES entities, and list of EXTRACTED FACTS;
 determine if any facts haven't been extracted.
 `, previousEpisodesTSV, episodeContent, nodesTSV, extractedFacts)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
@@ -248,7 +249,7 @@ Guidelines:
 %v
 </FACT>
 `, episodeContent, referenceTime, fact)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
@@ -108,13 +107,13 @@ func NewOpenAIGenericClient(args ...interface{}) (*OpenAIGenericClient, error) {
 // Chat implements the Client interface
 func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []Message) (*Response, error) {
 	// Debug logging for prompts if DEBUG_LLM_PROMPTS environment variable is set
-	if os.Getenv("DEBUG_LLM_PROMPTS") == "true" {
-		fmt.Printf("\n========== LLM CHAT REQUEST ==========\n")
-		for i, msg := range messages {
-			fmt.Printf("Message %d [%s]:\n%s\n\n", i+1, msg.Role, msg.Content)
-		}
-		fmt.Printf("======================================\n\n")
-	}
+	// if os.Getenv("DEBUG_LLM_PROMPTS") == "true" {
+	// 	fmt.Printf("\n========== LLM CHAT REQUEST ==========\n")
+	// 	for i, msg := range messages {
+	// 		fmt.Printf("Message %d [%s]:\n%s\n\n", i+1, msg.Role, msg.Content)
+	// 	}
+	// 	fmt.Printf("======================================\n\n")
+	// }
 
 	// Use the base client's retry mechanism for regular chat
 	responseMap, err := c.GenerateResponseWithRetry(ctx, c.client, messages, nil, 0, ModelSizeMedium)

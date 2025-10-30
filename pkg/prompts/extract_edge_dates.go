@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 )
@@ -70,7 +71,7 @@ Guidelines:
 4. Leave null if no temporal information is available
 5. Use reference time to resolve relative temporal expressions
 `, previousEpisodesTSV, episodeContent, edgesTSV, referenceTime)
-	logPrompts(context, sysPrompt, userPrompt)
+	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []llm.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),

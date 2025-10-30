@@ -263,6 +263,7 @@ func ExtractNodesAndEdgesBulk(
 	entityTypes []string,
 	excludedEntityTypes []string,
 	edgeTypes []string,
+	logger *slog.Logger,
 ) (*ExtractNodesAndEdgesResult, error) {
 	var allExtractedNodes []*types.Node
 	var allExtractedEdges []*types.Edge
@@ -274,7 +275,7 @@ func ExtractNodesAndEdgesBulk(
 		func(ctx context.Context, batch []EpisodeTuple) ([]*ExtractNodesAndEdgesResult, error) {
 			var results []*ExtractNodesAndEdgesResult
 			for _, episodeTuple := range batch {
-				result, err := extractFromSingleEpisode(ctx, clients, episodeTuple, edgeTypeMap, entityTypes, excludedEntityTypes, edgeTypes)
+				result, err := extractFromSingleEpisode(ctx, clients, episodeTuple, edgeTypeMap, entityTypes, excludedEntityTypes, edgeTypes, logger)
 				if err != nil {
 					return nil, err
 				}
@@ -310,6 +311,7 @@ func extractFromSingleEpisode(
 	entityTypes []string,
 	excludedEntityTypes []string,
 	edgeTypes []string,
+	logger *slog.Logger,
 ) (*ExtractNodesAndEdgesResult, error) {
 	// This is a simplified implementation - in practice this would use
 	// the LLM client and prompts library to extract entities and relationships
@@ -335,6 +337,7 @@ func extractFromSingleEpisode(
 	}
 
 	entityResponse, err := clients.LLM.Chat(ctx, entityMessages)
+	prompts.LogResponses(logger, *entityResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract entities: %w", err)
 	}
@@ -371,6 +374,7 @@ func extractFromSingleEpisode(
 	}
 
 	edgeResponse, err := clients.LLM.Chat(ctx, edgeMessages)
+	prompts.LogResponses(logger, *edgeResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract edges: %w \nprompt: %s \nresponse: \n %s", err, edgeMessages[1].Content, edgeResponse.Content)
 	}
@@ -641,6 +645,7 @@ func DedupeEdgesBulk(
 	extractedEdges []*types.Edge,
 	episodeTuples []EpisodeTuple,
 	embedder embedder.Client,
+	logger *slog.Logger,
 ) (*DedupeEdgesResult, error) {
 	if len(extractedEdges) == 0 {
 		return &DedupeEdgesResult{
@@ -716,6 +721,7 @@ func DedupeEdgesBulk(
 				dedupeMessages, err := clients.Prompts.DedupeEdges().Edge().Call(dedupeContext)
 				if err == nil {
 					response, err := clients.LLM.Chat(ctx, dedupeMessages)
+					prompts.LogResponses(logger, *response)
 					if err == nil && strings.Contains(strings.ToLower(response.Content), "duplicate") {
 						confirmedPairs = append(confirmedPairs, pair)
 					}
