@@ -2247,3 +2247,87 @@ func (k *MemgraphDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targ
 
 	return edges, nil
 }
+
+func (m *MemgraphDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
+	query := `
+      MATCH (n:Entity {uuid: $id, group_id: $group_id})-[:RELATES_TO]->(e:RelatesToNode_)<-[:RELATES_TO]-
+      (m:Entity {group_id: $group_id})
+	  WITH m.uuid AS uuid, count(e) AS count
+	  RETURN uuid, count
+	`
+
+	params := map[string]any{
+		"id":       nodeUUID,
+		"group_id": groupID,
+	}
+
+	result, _, _, err := m.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
+	}
+
+	return m.parseNeighborsFromRecords(result)
+}
+
+// parseNeighborsFromRecords parses Neo4j/Memgraph records into neighbors
+func (m *MemgraphDriver) parseNeighborsFromRecords(result interface{}) ([]types.Neighbor, error) {
+	var neighbors []types.Neighbor
+
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		// Ensure we are dealing with a pointer to a struct (e.g. *db.Record)
+		if record.Kind() == reflect.Interface {
+			record = record.Elem()
+		}
+
+		if !record.IsValid() {
+			continue
+		}
+
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			return nil, fmt.Errorf("record type %T does not have a Get method", record.Interface())
+		}
+
+		// Safely call Get("uuid") and Get("count")
+		uuidResults := getMethod.Call([]reflect.Value{reflect.ValueOf("uuid")})
+		countResults := getMethod.Call([]reflect.Value{reflect.ValueOf("count")})
+
+		if len(uuidResults) == 0 || len(countResults) == 0 {
+			continue
+		}
+
+		uuidInterface := uuidResults[0].Interface()
+		countInterface := countResults[0].Interface()
+
+		uuid, ok := uuidInterface.(string)
+		if !ok || uuid == "" {
+			continue
+		}
+
+		var edgeCount int
+		switch v := countInterface.(type) {
+		case int:
+			edgeCount = v
+		case int64:
+			edgeCount = int(v)
+		case float64:
+			edgeCount = int(v)
+		default:
+			continue
+		}
+
+		neighbors = append(neighbors, types.Neighbor{
+			NodeUUID:  uuid,
+			EdgeCount: edgeCount,
+		})
+	}
+
+	return neighbors, nil
+}

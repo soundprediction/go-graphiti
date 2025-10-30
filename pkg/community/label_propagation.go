@@ -11,7 +11,7 @@ import (
 )
 
 // labelPropagation implements the label propagation community detection algorithm
-func (b *Builder) labelPropagation(projection map[string][]Neighbor) [][]string {
+func (b *Builder) labelPropagation(projection map[string][]types.Neighbor) [][]string {
 	if len(projection) == 0 {
 		return nil
 	}
@@ -108,8 +108,8 @@ func (b *Builder) labelPropagation(projection map[string][]Neighbor) [][]string 
 }
 
 // buildProjection builds the neighbor projection for community detection
-func (b *Builder) buildProjection(ctx context.Context, nodes []*types.Node, groupID string) (map[string][]Neighbor, error) {
-	projection := make(map[string][]Neighbor)
+func (b *Builder) buildProjection(ctx context.Context, nodes []*types.Node, groupID string) (map[string][]types.Neighbor, error) {
+	projection := make(map[string][]types.Neighbor)
 
 	for _, node := range nodes {
 		neighbors, err := b.getNodeNeighbors(ctx, node.ID, groupID)
@@ -123,51 +123,9 @@ func (b *Builder) buildProjection(ctx context.Context, nodes []*types.Node, grou
 }
 
 // getNodeNeighbors gets the neighbors of a node with edge counts
-func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]Neighbor, error) {
+func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
 	// Check if this is a Kuzu driver to use the appropriate query
-	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
-		return b.getNodeNeighborsKuzu(ctx, kuzuDriver, nodeUUID, groupID)
-	}
-
-	// For Neo4j/Memgraph drivers
-	return b.getNodeNeighborsNeo4j(ctx, nodeUUID, groupID)
-}
-
-// getNodeNeighborsKuzu gets neighbors specifically for Kuzu database
-func (b *Builder) getNodeNeighborsKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver, nodeUUID, groupID string) ([]Neighbor, error) {
-	query := `
-		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
-		WITH count(e) AS count, m.uuid AS uuid
-		RETURN uuid, count
-	`
-
-	params := map[string]interface{}{
-		"uuid":     nodeUUID,
-		"group_id": groupID,
-	}
-
-	records, _, _, err := kuzuDriver.ExecuteQuery(query, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
-	}
-
-	var neighbors []Neighbor
-	recordSlice, ok := records.([]map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("unexpected records type: %T", records)
-	}
-	for _, record := range recordSlice {
-		if uuid, ok := record["uuid"].(string); ok {
-			if count, ok := record["count"].(int64); ok {
-				neighbors = append(neighbors, Neighbor{
-					NodeUUID:  uuid,
-					EdgeCount: int(count),
-				})
-			}
-		}
-	}
-
-	return neighbors, nil
+	return b.driver.GetNodeNeighbors(ctx, nodeUUID, groupID)
 }
 
 // getAllGroupIDs gets all distinct group IDs from entity nodes
@@ -287,27 +245,6 @@ func (b *Builder) getNodesByUUIDs(ctx context.Context, uuids []string, groupID s
 
 // ====== Neo4j/Memgraph Implementations ======
 
-func (b *Builder) getNodeNeighborsNeo4j(ctx context.Context, nodeUUID, groupID string) ([]Neighbor, error) {
-	query := `
-      MATCH (n:Entity {uuid: $id, group_id: $group_id})-[:RELATES_TO]->(e:RelatesToNode_)<-[:RELATES_TO]-
-      (m:Entity {group_id: $group_id})
-	  WITH m.uuid AS uuid, count(e) AS count
-	  RETURN uuid, count
-	`
-
-	params := map[string]any{
-		"id":       nodeUUID,
-		"group_id": groupID,
-	}
-
-	result, _, _, err := b.driver.ExecuteQuery(query, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute neighbor query: %w", err)
-	}
-
-	return b.parseNeighborsFromRecords(result)
-}
-
 // getAllGroupIDsNeo4j gets all group IDs for Neo4j/Memgraph
 func (b *Builder) getAllGroupIDsNeo4j(ctx context.Context) ([]string, error) {
 	query := `
@@ -344,69 +281,6 @@ func (b *Builder) getEntityNodesByGroupNeo4j(ctx context.Context, groupID string
 }
 
 // ====== Record Parsing Helpers ======
-
-// parseNeighborsFromRecords parses Neo4j/Memgraph records into neighbors
-func (b *Builder) parseNeighborsFromRecords(result interface{}) ([]Neighbor, error) {
-	var neighbors []Neighbor
-
-	value := reflect.ValueOf(result)
-	if value.Kind() != reflect.Slice {
-		return nil, fmt.Errorf("expected slice, got %T", result)
-	}
-
-	for i := 0; i < value.Len(); i++ {
-		record := value.Index(i)
-
-		// Ensure we are dealing with a pointer to a struct (e.g. *db.Record)
-		if record.Kind() == reflect.Interface {
-			record = record.Elem()
-		}
-
-		if !record.IsValid() {
-			continue
-		}
-
-		getMethod := record.MethodByName("Get")
-		if !getMethod.IsValid() {
-			return nil, fmt.Errorf("record type %T does not have a Get method", record.Interface())
-		}
-
-		// Safely call Get("uuid") and Get("count")
-		uuidResults := getMethod.Call([]reflect.Value{reflect.ValueOf("uuid")})
-		countResults := getMethod.Call([]reflect.Value{reflect.ValueOf("count")})
-
-		if len(uuidResults) == 0 || len(countResults) == 0 {
-			continue
-		}
-
-		uuidInterface := uuidResults[0].Interface()
-		countInterface := countResults[0].Interface()
-
-		uuid, ok := uuidInterface.(string)
-		if !ok || uuid == "" {
-			continue
-		}
-
-		var edgeCount int
-		switch v := countInterface.(type) {
-		case int:
-			edgeCount = v
-		case int64:
-			edgeCount = int(v)
-		case float64:
-			edgeCount = int(v)
-		default:
-			continue
-		}
-
-		neighbors = append(neighbors, Neighbor{
-			NodeUUID:  uuid,
-			EdgeCount: edgeCount,
-		})
-	}
-
-	return neighbors, nil
-}
 
 // parseGroupIDsFromRecords parses group IDs from Neo4j/Memgraph records
 func (b *Builder) parseGroupIDsFromRecords(result interface{}) ([]string, error) {

@@ -34,12 +34,6 @@ func NewBuilder(driver driver.GraphDriver, llmClient llm.Client, embedderClient 
 	}
 }
 
-// Neighbor represents a neighboring node with edge count
-type Neighbor struct {
-	NodeUUID  string `json:"node_uuid"`
-	EdgeCount int    `json:"edge_count"`
-}
-
 // BuildCommunitiesResult represents the result of community building
 type BuildCommunitiesResult struct {
 	CommunityNodes []*types.Node `json:"community_nodes"`
