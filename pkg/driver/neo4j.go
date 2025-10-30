@@ -94,12 +94,12 @@ func (n *Neo4jDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {uuid: $id, group_id: $group_id})
+			MATCH (n {uuid: $uuid, group_id: $group_id})
 			RETURN n.uuid
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
-			"id":       node.ID,
+			"uuid":     node.Uuid,
 			"group_id": node.GroupID,
 		})
 		if err != nil {
@@ -160,7 +160,7 @@ func (n *Neo4jDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 
 		properties := n.nodeToProperties(node)
 		_, err := tx.Run(ctx, query, map[string]any{
-			"uuid":       node.ID,
+			"uuid":       node.Uuid,
 			"group_id":   node.GroupID,
 			"properties": properties,
 			"updated_at": time.Now().Format(time.RFC3339),
@@ -298,7 +298,7 @@ func (n *Neo4jDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 			LIMIT 1
 		`
 		res, err := tx.Run(ctx, query, map[string]any{
-			"id":       edge.ID,
+			"id":       edge.Uuid,
 			"group_id": edge.GroupID,
 		})
 		if err != nil {
@@ -345,7 +345,7 @@ func (n *Neo4jDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 
 		properties := n.edgeToProperties(edge)
 		_, err := tx.Run(ctx, query, map[string]any{
-			"id":         edge.ID,
+			"id":         edge.Uuid,
 			"source_id":  edge.SourceID,
 			"target_id":  edge.TargetID,
 			"group_id":   edge.GroupID,
@@ -709,13 +709,13 @@ func (n *Neo4jDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) erro
 
 			properties := n.nodeToProperties(node)
 			_, err := tx.Run(ctx, query, map[string]any{
-				"id":         node.ID,
+				"id":         node.Uuid,
 				"group_id":   node.GroupID,
 				"properties": properties,
 				"updated_at": time.Now().Format(time.RFC3339),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to upsert node %s: %w", node.ID, err)
+				return nil, fmt.Errorf("failed to upsert node %s: %w", node.Uuid, err)
 			}
 		}
 		return nil, nil
@@ -745,7 +745,7 @@ func (n *Neo4jDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) erro
 
 			properties := n.edgeToProperties(edge)
 			_, err := tx.Run(ctx, query, map[string]any{
-				"id":         edge.ID,
+				"id":         edge.Uuid,
 				"source_id":  edge.SourceID,
 				"target_id":  edge.TargetID,
 				"group_id":   edge.GroupID,
@@ -753,7 +753,7 @@ func (n *Neo4jDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) erro
 				"updated_at": time.Now().Format(time.RFC3339),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to upsert edge %s: %w", edge.ID, err)
+				return nil, fmt.Errorf("failed to upsert edge %s: %w", edge.Uuid, err)
 			}
 		}
 		return nil, nil
@@ -1042,7 +1042,7 @@ func (n *Neo4jDriver) parseCommunityNodesFromRecords(result interface{}) ([]*typ
 		}
 
 		if uuid, ok := props["uuid"].(string); ok {
-			node.ID = uuid
+			node.Uuid = uuid
 		}
 		if name, ok := props["name"].(string); ok {
 			node.Name = name
@@ -1054,7 +1054,7 @@ func (n *Neo4jDriver) parseCommunityNodesFromRecords(result interface{}) ([]*typ
 			node.CreatedAt = createdAt
 		}
 
-		if node.ID != "" {
+		if node.Uuid != "" {
 			nodes = append(nodes, node)
 		}
 	}
@@ -1513,7 +1513,7 @@ func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 
 	// Core fields
 	if id, ok := props["id"].(string); ok {
-		result.ID = id
+		result.Uuid = id
 	}
 	if name, ok := props["name"].(string); ok {
 		result.Name = name
@@ -1614,7 +1614,7 @@ func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 
 func (n *Neo4jDriver) nodeToProperties(node *types.Node) map[string]any {
 	props := map[string]any{
-		"id":         node.ID,
+		"id":         node.Uuid,
 		"name":       node.Name,
 		"type":       string(node.Type),
 		"group_id":   node.GroupID,
@@ -1699,7 +1699,7 @@ func (n *Neo4jDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID,
 
 	// Core fields
 	if id, ok := props["id"].(string); ok {
-		result.ID = id
+		result.Uuid = id
 	}
 	if edgeType, ok := props["type"].(string); ok {
 		result.Type = types.EdgeType(edgeType)
@@ -1804,7 +1804,7 @@ func (n *Neo4jDriver) edgeFromDBRelation(relation dbtype.Relationship, sourceID,
 
 func (n *Neo4jDriver) edgeToProperties(edge *types.Edge) map[string]any {
 	props := map[string]any{
-		"id":         edge.ID,
+		"id":         edge.Uuid,
 		"type":       string(edge.Type),
 		"group_id":   edge.GroupID,
 		"created_at": edge.CreatedAt.Format(time.RFC3339),

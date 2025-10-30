@@ -266,8 +266,8 @@ func (su *SearchUtilities) HybridNodeSearch(ctx context.Context, queries []strin
 	for _, result := range allResults {
 		var uuids []string
 		for _, node := range result {
-			nodeUUIDMap[node.ID] = node
-			uuids = append(uuids, node.ID)
+			nodeUUIDMap[node.Uuid] = node
+			uuids = append(uuids, node.Uuid)
 		}
 		resultUUIDs = append(resultUUIDs, uuids)
 	}

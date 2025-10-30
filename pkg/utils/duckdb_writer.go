@@ -171,7 +171,7 @@ func (w *DuckDBWriter) WriteEpisode(ctx context.Context, episode *types.Node) er
 			created_at, updated_at, valid_from, embedding, metadata
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
-		episode.ID,
+		episode.Uuid,
 		episode.Name,
 		episode.Content,
 		reference,
@@ -242,7 +242,7 @@ func (w *DuckDBWriter) WriteEntityNodes(ctx context.Context, nodes []*types.Node
 		}
 
 		_, err = stmt.ExecContext(ctx,
-			node.ID,
+			node.Uuid,
 			node.Name,
 			node.EntityType,
 			node.GroupID,
@@ -257,7 +257,7 @@ func (w *DuckDBWriter) WriteEntityNodes(ctx context.Context, nodes []*types.Node
 			episodeID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to insert node %s: %w", node.ID, err)
+			return fmt.Errorf("failed to insert node %s: %w", node.Uuid, err)
 		}
 	}
 
@@ -326,7 +326,7 @@ func (w *DuckDBWriter) WriteEntityEdges(ctx context.Context, edges []*types.Edge
 		}
 
 		_, err = stmt.ExecContext(ctx,
-			edge.ID,
+			edge.Uuid,
 			edge.SourceID,
 			edge.TargetID,
 			edge.Name,
@@ -345,7 +345,7 @@ func (w *DuckDBWriter) WriteEntityEdges(ctx context.Context, edges []*types.Edge
 			episodeID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to insert edge %s: %w", edge.ID, err)
+			return fmt.Errorf("failed to insert edge %s: %w", edge.Uuid, err)
 		}
 	}
 
@@ -393,7 +393,7 @@ func (w *DuckDBWriter) WriteEpisodicEdges(ctx context.Context, edges []*types.Ed
 		}
 
 		_, err = stmt.ExecContext(ctx,
-			edge.ID,
+			edge.Uuid,
 			edge.SourceID,
 			edge.TargetID,
 			edge.Name,
@@ -404,7 +404,7 @@ func (w *DuckDBWriter) WriteEpisodicEdges(ctx context.Context, edges []*types.Ed
 			episodeID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to insert episodic edge %s: %w", edge.ID, err)
+			return fmt.Errorf("failed to insert episodic edge %s: %w", edge.Uuid, err)
 		}
 	}
 

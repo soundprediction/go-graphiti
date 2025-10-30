@@ -23,7 +23,7 @@ type UpdateCommunityResult struct {
 // DetermineEntityCommunity determines which community an entity belongs to
 func (b *Builder) DetermineEntityCommunity(ctx context.Context, entity *types.Node) (*DetermineEntityCommunityResult, error) {
 	// First check if the entity is already part of a community
-	existingCommunity, err := b.getExistingCommunity(ctx, entity.ID)
+	existingCommunity, err := b.getExistingCommunity(ctx, entity.Uuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing community: %w", err)
 	}
@@ -36,7 +36,7 @@ func (b *Builder) DetermineEntityCommunity(ctx context.Context, entity *types.No
 	}
 
 	// Find the most common community among connected entities
-	modalCommunity, err := b.findModalCommunity(ctx, entity.ID)
+	modalCommunity, err := b.findModalCommunity(ctx, entity.Uuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find modal community: %w", err)
 	}
@@ -104,15 +104,15 @@ func (b *Builder) UpdateCommunity(ctx context.Context, entity *types.Node) (*Upd
 	if result.IsNew {
 		edge := types.NewEntityEdge(
 			generateUUID(),
-			community.ID,
-			entity.ID,
+			community.Uuid,
+			entity.Uuid,
 			community.GroupID,
 			"HAS_MEMBER",
 			types.CommunityEdgeType,
 		)
 		edge.UpdatedAt = time.Now().UTC()
 		edge.ValidFrom = time.Now().UTC()
-		edge.SourceIDs = []string{community.ID}
+		edge.SourceIDs = []string{community.Uuid}
 		edge.Metadata = make(map[string]interface{})
 
 		if err := b.driver.UpsertEdge(ctx, edge); err != nil {

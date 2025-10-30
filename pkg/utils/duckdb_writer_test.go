@@ -26,7 +26,7 @@ func TestDuckDBWriter(t *testing.T) {
 	// Test episode writing
 	now := time.Now()
 	episode := &types.Node{
-		ID:        "episode-1",
+		Uuid:      "episode-1",
 		Name:      "Test Episode",
 		Type:      types.EpisodicNodeType,
 		GroupID:   "test-group",
@@ -45,7 +45,7 @@ func TestDuckDBWriter(t *testing.T) {
 	// Test entity node writing
 	nodes := []*types.Node{
 		{
-			ID:         "node-1",
+			Uuid:       "node-1",
 			Name:       "Test Entity",
 			Type:       types.EntityNodeType,
 			EntityType: "Person",
@@ -58,7 +58,7 @@ func TestDuckDBWriter(t *testing.T) {
 		},
 	}
 
-	err = writer.WriteEntityNodes(ctx, nodes, episode.ID)
+	err = writer.WriteEntityNodes(ctx, nodes, episode.Uuid)
 	if err != nil {
 		t.Fatalf("Failed to write entity nodes: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestDuckDBWriter(t *testing.T) {
 	edges := []*types.Edge{
 		{
 			BaseEdge: types.BaseEdge{
-				ID:           "edge-1",
+				Uuid:         "edge-1",
 				GroupID:      "test-group",
 				SourceNodeID: "node-1",
 				TargetNodeID: "node-2",
@@ -81,11 +81,11 @@ func TestDuckDBWriter(t *testing.T) {
 			ValidFrom: now,
 			Summary:   "Person knows another person",
 			Fact:      "Person A knows Person B",
-			Episodes:  []string{episode.ID},
+			Episodes:  []string{episode.Uuid},
 		},
 	}
 
-	err = writer.WriteEntityEdges(ctx, edges, episode.ID)
+	err = writer.WriteEntityEdges(ctx, edges, episode.Uuid)
 	if err != nil {
 		t.Fatalf("Failed to write entity edges: %v", err)
 	}
@@ -94,13 +94,13 @@ func TestDuckDBWriter(t *testing.T) {
 	episodicEdges := []*types.Edge{
 		{
 			BaseEdge: types.BaseEdge{
-				ID:           "episodic-edge-1",
+				Uuid:         "episodic-edge-1",
 				GroupID:      "test-group",
-				SourceNodeID: episode.ID,
+				SourceNodeID: episode.Uuid,
 				TargetNodeID: "node-1",
 				CreatedAt:    now,
 			},
-			SourceID:  episode.ID,
+			SourceID:  episode.Uuid,
 			TargetID:  "node-1",
 			Name:      "mentions",
 			Type:      types.EpisodicEdgeType,
@@ -108,7 +108,7 @@ func TestDuckDBWriter(t *testing.T) {
 		},
 	}
 
-	err = writer.WriteEpisodicEdges(ctx, episodicEdges, episode.ID)
+	err = writer.WriteEpisodicEdges(ctx, episodicEdges, episode.Uuid)
 	if err != nil {
 		t.Fatalf("Failed to write episodic edges: %v", err)
 	}

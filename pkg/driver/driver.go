@@ -134,7 +134,7 @@ func convertRecordToEdge(record map[string]interface{}) (*types.Edge, error) {
 
 	// Extract basic fields
 	if uuid, ok := record["uuid"].(string); ok {
-		edge.ID = uuid
+		edge.Uuid = uuid
 	} else {
 		return nil, fmt.Errorf("missing or invalid uuid field")
 	}

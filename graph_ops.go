@@ -22,8 +22,8 @@ func (c *Client) ClearGraph(ctx context.Context, groupID string) error {
 
 	// Delete all nodes (this will also delete associated edges in most graph databases)
 	for _, node := range allNodes {
-		if err := c.driver.DeleteNode(ctx, node.ID, groupID); err != nil {
-			return fmt.Errorf("failed to delete node %s: %w", node.ID, err)
+		if err := c.driver.DeleteNode(ctx, node.Uuid, groupID); err != nil {
+			return fmt.Errorf("failed to delete node %s: %w", node.Uuid, err)
 		}
 	}
 
@@ -67,7 +67,7 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 	// Equivalent to: if edge.episodes and edge.episodes[0] == episode.uuid:
 	var edgesToDelete []*types.Edge
 	for _, edge := range edges {
-		if len(edge.Episodes) > 0 && edge.Episodes[0] == episode.ID {
+		if len(edge.Episodes) > 0 && edge.Episodes[0] == episode.Uuid {
 			edgesToDelete = append(edgesToDelete, edge)
 		}
 	}
@@ -85,7 +85,7 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 		// Equivalent to: query: LiteralString = 'MATCH (e:Episodic)-[:MENTIONS]->(n:Entity {uuid: $uuid}) RETURN count(*) AS episode_count'
 		query := `MATCH (e:Episodic)-[:MENTIONS]->(n:Entity {uuid: $uuid}) RETURN count(*) AS episode_count`
 		records, _, _, err := c.driver.ExecuteQuery(query, map[string]interface{}{
-			"uuid": node.ID,
+			"uuid": node.Uuid,
 		})
 		if err != nil {
 			continue // Skip on error, don't delete
@@ -106,7 +106,7 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 	if len(edgesToDelete) > 0 {
 		edgeUUIDs := make([]string, len(edgesToDelete))
 		for i, edge := range edgesToDelete {
-			edgeUUIDs[i] = edge.ID
+			edgeUUIDs[i] = edge.Uuid
 		}
 		if err := types.DeleteEdgesByUUIDs(ctx, wrapper, edgeUUIDs); err != nil {
 			return fmt.Errorf("failed to delete edges: %w", err)
@@ -118,7 +118,7 @@ func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 	if len(nodesToDelete) > 0 {
 		nodeUUIDs := make([]string, len(nodesToDelete))
 		for i, node := range nodesToDelete {
-			nodeUUIDs[i] = node.ID
+			nodeUUIDs[i] = node.Uuid
 		}
 		if err := types.DeleteNodesByUUIDs(ctx, c.driver, nodeUUIDs); err != nil {
 			return fmt.Errorf("failed to delete nodes: %w", err)

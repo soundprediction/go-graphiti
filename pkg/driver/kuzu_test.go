@@ -106,7 +106,7 @@ func TestKuzuDriver_UpsertNode(t *testing.T) {
 	// Create a test node
 	now := time.Now()
 	testNode := &types.Node{
-		ID:         "test-node-123",
+		Uuid:       "test-node-123",
 		Name:       "Test Entity",
 		Type:       types.EntityNodeType,
 		GroupID:    "test-group",
@@ -121,12 +121,12 @@ func TestKuzuDriver_UpsertNode(t *testing.T) {
 	require.NoError(t, err, "UpsertNode should succeed")
 
 	// Read the node back from the database
-	retrievedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	retrievedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
 	require.NoError(t, err, "GetNode should succeed")
 	require.NotNil(t, retrievedNode, "Retrieved node should not be nil")
 
 	// Verify the node data matches
-	assert.Equal(t, testNode.ID, retrievedNode.ID, "Node ID should match")
+	assert.Equal(t, testNode.Uuid, retrievedNode.Uuid, "Node UUID should match")
 	assert.Equal(t, testNode.Name, retrievedNode.Name, "Node name should match")
 	assert.Equal(t, testNode.Type, retrievedNode.Type, "Node type should match")
 	assert.Equal(t, testNode.GroupID, retrievedNode.GroupID, "Node GroupID should match")
@@ -141,13 +141,13 @@ func TestKuzuDriver_UpsertNode(t *testing.T) {
 	require.NoError(t, err, "Second UpsertNode (update) should succeed")
 
 	// Read the updated node back
-	updatedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	updatedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
 	require.NoError(t, err, "GetNode after update should succeed")
 	require.NotNil(t, updatedNode, "Updated node should not be nil")
 
 	// Verify the update was applied
 	assert.Equal(t, "Updated summary for test entity", updatedNode.Summary, "Node summary should be updated")
-	assert.Equal(t, testNode.ID, updatedNode.ID, "Node ID should remain the same")
+	assert.Equal(t, testNode.Uuid, updatedNode.Uuid, "Node ID should remain the same")
 	assert.Equal(t, testNode.Name, updatedNode.Name, "Node name should remain the same")
 }
 
@@ -165,13 +165,13 @@ func TestKuzuDriver_UpsertEdge(t *testing.T) {
 
 	// Create source and target nodes
 	sourceNode := &types.Node{
-		ID:      "source-node",
+		Uuid:    "source-node",
 		Name:    "Source Node",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group",
 	}
 	targetNode := &types.Node{
-		ID:      "target-node",
+		Uuid:    "target-node",
 		Name:    "Target Node",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group",
@@ -186,7 +186,7 @@ func TestKuzuDriver_UpsertEdge(t *testing.T) {
 	now := time.Now()
 	testEdge := &types.Edge{
 		BaseEdge: types.BaseEdge{
-			ID:           "test-edge-123",
+			Uuid:         "test-edge-123",
 			GroupID:      "test-group",
 			SourceNodeID: "source-node",
 			TargetNodeID: "target-node",
@@ -205,12 +205,12 @@ func TestKuzuDriver_UpsertEdge(t *testing.T) {
 	require.NoError(t, err, "UpsertEdge should succeed")
 
 	// Read the edge back from the database
-	retrievedEdge, err := d.GetEdge(ctx, testEdge.ID, testEdge.GroupID)
+	retrievedEdge, err := d.GetEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	require.NoError(t, err, "GetEdge should succeed")
 	require.NotNil(t, retrievedEdge, "Retrieved edge should not be nil")
 
 	// Verify the edge data matches
-	assert.Equal(t, testEdge.ID, retrievedEdge.ID, "Edge ID should match")
+	assert.Equal(t, testEdge.Uuid, retrievedEdge.Uuid, "Edge ID should match")
 	assert.Equal(t, testEdge.Name, retrievedEdge.Name, "Edge name should match")
 	assert.Equal(t, testEdge.Type, retrievedEdge.Type, "Edge type should match")
 	assert.Equal(t, testEdge.GroupID, retrievedEdge.GroupID, "Edge GroupID should match")
@@ -226,12 +226,12 @@ func TestKuzuDriver_UpsertEdge(t *testing.T) {
 	require.NoError(t, err, "Second UpsertEdge (update) should succeed")
 
 	// Read the updated edge back
-	updatedEdge, err := d.GetEdge(ctx, testEdge.ID, testEdge.GroupID)
+	updatedEdge, err := d.GetEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	require.NoError(t, err, "GetEdge after update should succeed")
 	require.NotNil(t, updatedEdge, "Updated edge should not be nil")
 
 	// Verify the update was applied
 	assert.Equal(t, "Updated fact for test edge", updatedEdge.Fact, "Edge fact should be updated")
-	assert.Equal(t, testEdge.ID, updatedEdge.ID, "Edge ID should remain the same")
+	assert.Equal(t, testEdge.Uuid, updatedEdge.Uuid, "Edge ID should remain the same")
 	assert.Equal(t, testEdge.Name, updatedEdge.Name, "Edge name should remain the same")
 }

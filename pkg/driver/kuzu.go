@@ -513,7 +513,7 @@ func (k *KuzuDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 	`, tableName)
 
 	params := map[string]interface{}{
-		"uuid":     node.ID,
+		"uuid":     node.Uuid,
 		"group_id": node.GroupID,
 	}
 
@@ -674,7 +674,7 @@ func (k *KuzuDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 	`
 
 	params := map[string]interface{}{
-		"uuid":     edge.ID,
+		"uuid":     edge.Uuid,
 		"group_id": edge.GroupID,
 	}
 
@@ -748,7 +748,7 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	params["source_uuid"] = edge.SourceID
 	params["target_uuid"] = edge.TargetID
 	params["group_id"] = edge.GroupID
-	params["uuid"] = edge.ID
+	params["uuid"] = edge.Uuid
 	params["created_at"] = edge.CreatedAt
 	params["name"] = edge.Name
 	params["fact"] = edge.Fact
@@ -787,7 +787,7 @@ func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 	`
 
 	params := make(map[string]interface{})
-	params["uuid"] = edge.ID
+	params["uuid"] = edge.Uuid
 	params["group_id"] = edge.GroupID
 	params["name"] = edge.Name
 	params["fact"] = edge.Fact
@@ -974,7 +974,7 @@ func (k *KuzuDriver) SearchNodesByEmbedding(ctx context.Context, embedding []flo
 		}
 
 		node := &types.Node{
-			ID:        uuid,
+			Uuid:      uuid,
 			Name:      name,
 			GroupID:   groupIDVal,
 			CreatedAt: createdAt,
@@ -1095,7 +1095,7 @@ func (k *KuzuDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []flo
 
 		edge := &types.Edge{
 			BaseEdge: types.BaseEdge{
-				ID:           uuid,
+				Uuid:         uuid,
 				GroupID:      groupIDVal,
 				SourceNodeID: sourceNodeUUID,
 				TargetNodeID: targetNodeUUID,
@@ -1336,7 +1336,7 @@ func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Ti
 		node := &types.Node{}
 
 		if uuid, ok := row["uuid"].(string); ok {
-			node.ID = uuid
+			node.Uuid = uuid
 		}
 		if name, ok := row["name"].(string); ok {
 			node.Name = name
@@ -1409,7 +1409,7 @@ func (k *KuzuDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Ti
 		}
 
 		if uuid, ok := row["uuid"].(string); ok {
-			edge.ID = uuid
+			edge.Uuid = uuid
 		}
 		if fact, ok := row["fact"].(string); ok {
 			edge.Name = fact
@@ -1577,7 +1577,7 @@ func (k *KuzuDriver) parseCommunityNodesFromRecords(result interface{}) ([]*type
 		}
 
 		if uuid, ok := record["uuid"].(string); ok {
-			node.ID = uuid
+			node.Uuid = uuid
 		}
 		if name, ok := record["name"].(string); ok {
 			node.Name = name
@@ -1589,7 +1589,7 @@ func (k *KuzuDriver) parseCommunityNodesFromRecords(result interface{}) ([]*type
 			node.CreatedAt = createdAt
 		}
 
-		if node.ID != "" {
+		if node.Uuid != "" {
 			nodes = append(nodes, node)
 		}
 	}
@@ -1674,9 +1674,9 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 	node := &types.Node{}
 
 	if id, ok := data["node.uuid"]; ok {
-		node.ID = fmt.Sprintf("%v", id)
+		node.Uuid = fmt.Sprintf("%v", id)
 	} else if id, ok := data["n.uuid"]; ok {
-		node.ID = fmt.Sprintf("%v", id)
+		node.Uuid = fmt.Sprintf("%v", id)
 	}
 	if name, ok := data["node.name"]; ok {
 		node.Name = fmt.Sprintf("%v", name)
@@ -1747,7 +1747,7 @@ func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error)
 	edge := &types.Edge{}
 
 	if id, ok := data["uuid"]; ok {
-		edge.ID = fmt.Sprintf("%v", id)
+		edge.Uuid = fmt.Sprintf("%v", id)
 	}
 	if groupID, ok := data["group_id"]; ok {
 		edge.GroupID = fmt.Sprintf("%v", groupID)
@@ -1831,7 +1831,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 			})
 		`, entityEdgesValue)
 
-		params["uuid"] = node.ID
+		params["uuid"] = node.Uuid
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
 		params["created_at"] = node.CreatedAt
@@ -1878,7 +1878,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 			})
 		`, labelsValue, embeddingValue)
 
-		params["uuid"] = node.ID
+		params["uuid"] = node.Uuid
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
 		params["created_at"] = node.CreatedAt
@@ -1912,7 +1912,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 			})
 		`, embeddingValue)
 
-		params["uuid"] = node.ID
+		params["uuid"] = node.Uuid
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
 		params["created_at"] = node.CreatedAt
@@ -1945,7 +1945,7 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 	params := make(map[string]interface{})
 	setClauses := []string{}
 
-	params["uuid"] = node.ID
+	params["uuid"] = node.Uuid
 	params["group_id"] = node.GroupID
 
 	switch tableName {

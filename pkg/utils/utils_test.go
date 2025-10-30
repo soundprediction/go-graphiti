@@ -18,7 +18,7 @@ func TestEdgeOperations(t *testing.T) {
 		// Create test edges
 		extractedEdge := &types.Edge{
 			BaseEdge: types.BaseEdge{
-				ID:           "new-edge",
+				Uuid:         "new-edge",
 				GroupID:      groupID,
 				SourceNodeID: "source-uuid",
 				TargetNodeID: "target-uuid",
@@ -36,7 +36,7 @@ func TestEdgeOperations(t *testing.T) {
 		relatedEdges := []*types.Edge{
 			{
 				BaseEdge: types.BaseEdge{
-					ID:           "related-edge",
+					Uuid:         "related-edge",
 					GroupID:      groupID,
 					SourceNodeID: "source-uuid-2",
 					TargetNodeID: "target-uuid-2",
@@ -55,7 +55,7 @@ func TestEdgeOperations(t *testing.T) {
 		existingEdges := []*types.Edge{
 			{
 				BaseEdge: types.BaseEdge{
-					ID:           "existing-edge",
+					Uuid:         "existing-edge",
 					GroupID:      groupID,
 					SourceNodeID: "source-uuid-3",
 					TargetNodeID: "target-uuid-3",
@@ -82,8 +82,8 @@ func TestEdgeOperations(t *testing.T) {
 
 		uniqueEdgeIDs := make(map[string]bool)
 		for _, edge := range allEdges {
-			assert.False(t, uniqueEdgeIDs[edge.BaseEdge.ID], "Edge ID should be unique: %s", edge.BaseEdge.ID)
-			uniqueEdgeIDs[edge.BaseEdge.ID] = true
+			assert.False(t, uniqueEdgeIDs[edge.BaseEdge.Uuid], "Edge ID should be unique: %s", edge.BaseEdge.Uuid)
+			uniqueEdgeIDs[edge.BaseEdge.Uuid] = true
 		}
 	})
 }
@@ -96,7 +96,7 @@ func TestCommunityOperations(t *testing.T) {
 		// Create test entity nodes
 		entities := []*types.Node{
 			{
-				ID:         "entity-1",
+				Uuid:       "entity-1",
 				Name:       "Alice",
 				Type:       types.EntityNodeType,
 				GroupID:    groupID,
@@ -105,7 +105,7 @@ func TestCommunityOperations(t *testing.T) {
 				Summary:    "A person named Alice",
 			},
 			{
-				ID:         "entity-2",
+				Uuid:       "entity-2",
 				Name:       "Bob",
 				Type:       types.EntityNodeType,
 				GroupID:    groupID,
@@ -130,7 +130,7 @@ func TestCommunityOperations(t *testing.T) {
 		// Create test community nodes
 		communities := []*types.Node{
 			{
-				ID:        "community-1",
+				Uuid:      "community-1",
 				Name:      "Community A",
 				Type:      types.CommunityNodeType,
 				GroupID:   groupID,
@@ -143,7 +143,7 @@ func TestCommunityOperations(t *testing.T) {
 				},
 			},
 			{
-				ID:        "community-2",
+				Uuid:      "community-2",
 				Name:      "Community B",
 				Type:      types.CommunityNodeType,
 				GroupID:   groupID,
@@ -173,7 +173,7 @@ func TestCommunityOperations(t *testing.T) {
 	t.Run("remove communities", func(t *testing.T) {
 		// Test community removal logic
 		communityToRemove := &types.Node{
-			ID:        "community-to-remove",
+			Uuid:      "community-to-remove",
 			Name:      "Community to Remove",
 			Type:      types.CommunityNodeType,
 			GroupID:   groupID,
@@ -197,21 +197,21 @@ func TestTemporalOperations(t *testing.T) {
 		// Create nodes with different timestamps
 		nodes := []*types.Node{
 			{
-				ID:        "node-past",
+				Uuid:      "node-past",
 				Name:      "Past Node",
 				Type:      types.EntityNodeType,
 				GroupID:   groupID,
 				CreatedAt: past,
 			},
 			{
-				ID:        "node-present",
+				Uuid:      "node-present",
 				Name:      "Present Node",
 				Type:      types.EntityNodeType,
 				GroupID:   groupID,
 				CreatedAt: now,
 			},
 			{
-				ID:        "node-future",
+				Uuid:      "node-future",
 				Name:      "Future Node",
 				Type:      types.EntityNodeType,
 				GroupID:   groupID,
@@ -232,7 +232,7 @@ func TestTemporalOperations(t *testing.T) {
 
 		// Should only include the present node
 		assert.Len(t, filteredNodes, 1)
-		assert.Equal(t, "node-present", filteredNodes[0].ID)
+		assert.Equal(t, "node-present", filteredNodes[0].Uuid)
 	})
 
 	t.Run("edge temporal operations", func(t *testing.T) {
@@ -240,7 +240,7 @@ func TestTemporalOperations(t *testing.T) {
 		edges := []*types.Edge{
 			{
 				BaseEdge: types.BaseEdge{
-					ID:           "edge-valid",
+					Uuid:         "edge-valid",
 					GroupID:      groupID,
 					SourceNodeID: "source-1",
 					TargetNodeID: "target-1",
@@ -254,7 +254,7 @@ func TestTemporalOperations(t *testing.T) {
 			},
 			{
 				BaseEdge: types.BaseEdge{
-					ID:           "edge-expired",
+					Uuid:         "edge-expired",
 					GroupID:      groupID,
 					SourceNodeID: "source-2",
 					TargetNodeID: "target-2",
@@ -280,7 +280,7 @@ func TestTemporalOperations(t *testing.T) {
 
 		// Should only include the first edge (still valid)
 		assert.Len(t, validEdges, 1)
-		assert.Equal(t, "edge-valid", validEdges[0].BaseEdge.ID)
+		assert.Equal(t, "edge-valid", validEdges[0].BaseEdge.Uuid)
 	})
 }
 
@@ -292,21 +292,21 @@ func TestBulkOperations(t *testing.T) {
 		// Create multiple nodes for bulk operations
 		nodes := []*types.Node{
 			{
-				ID:        "bulk-node-1",
+				Uuid:      "bulk-node-1",
 				Name:      "Bulk Node 1",
 				Type:      types.EntityNodeType,
 				GroupID:   groupID,
 				CreatedAt: now,
 			},
 			{
-				ID:        "bulk-node-2",
+				Uuid:      "bulk-node-2",
 				Name:      "Bulk Node 2",
 				Type:      types.EntityNodeType,
 				GroupID:   groupID,
 				CreatedAt: now,
 			},
 			{
-				ID:        "bulk-node-3",
+				Uuid:      "bulk-node-3",
 				Name:      "Bulk Node 3",
 				Type:      types.EpisodicNodeType,
 				GroupID:   groupID,
@@ -316,7 +316,7 @@ func TestBulkOperations(t *testing.T) {
 
 		// Test bulk validation
 		for _, node := range nodes {
-			assert.NotEmpty(t, node.ID)
+			assert.NotEmpty(t, node.Uuid)
 			assert.NotEmpty(t, node.Name)
 			assert.Equal(t, groupID, node.GroupID)
 		}
@@ -342,7 +342,7 @@ func TestBulkOperations(t *testing.T) {
 		edges := []*types.Edge{
 			{
 				BaseEdge: types.BaseEdge{
-					ID:           "bulk-edge-1",
+					Uuid:         "bulk-edge-1",
 					GroupID:      groupID,
 					SourceNodeID: "source-1",
 					TargetNodeID: "target-1",
@@ -354,7 +354,7 @@ func TestBulkOperations(t *testing.T) {
 			},
 			{
 				BaseEdge: types.BaseEdge{
-					ID:           "bulk-edge-2",
+					Uuid:         "bulk-edge-2",
 					GroupID:      groupID,
 					SourceNodeID: "episode-1",
 					TargetNodeID: "entity-1",
@@ -368,7 +368,7 @@ func TestBulkOperations(t *testing.T) {
 
 		// Test bulk validation
 		for _, edge := range edges {
-			assert.NotEmpty(t, edge.BaseEdge.ID)
+			assert.NotEmpty(t, edge.BaseEdge.Uuid)
 			assert.NotEmpty(t, edge.SourceID)
 			assert.NotEmpty(t, edge.TargetID)
 			assert.Equal(t, groupID, edge.BaseEdge.GroupID)

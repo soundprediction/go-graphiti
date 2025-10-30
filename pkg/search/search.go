@@ -215,7 +215,7 @@ func (s *Searcher) searchNodes(ctx context.Context, query string, queryVector []
 			searchResults = append(searchResults, nodes)
 			// Collect UUIDs for BFS
 			for _, node := range nodes {
-				bfsOriginNodes = append(bfsOriginNodes, node.ID)
+				bfsOriginNodes = append(bfsOriginNodes, node.Uuid)
 			}
 
 		case CosineSimilarity:
@@ -229,7 +229,7 @@ func (s *Searcher) searchNodes(ctx context.Context, query string, queryVector []
 			searchResults = append(searchResults, nodes)
 			// Collect UUIDs for BFS
 			for _, node := range nodes {
-				bfsOriginNodes = append(bfsOriginNodes, node.ID)
+				bfsOriginNodes = append(bfsOriginNodes, node.Uuid)
 			}
 
 		case BreadthFirstSearch:
@@ -394,7 +394,7 @@ func (s *Searcher) rerankNodes(ctx context.Context, query string, queryVector []
 	nodeMap := make(map[string]*types.Node)
 	for _, results := range searchResults {
 		for _, node := range results {
-			nodeMap[node.ID] = node
+			nodeMap[node.Uuid] = node
 		}
 	}
 
@@ -429,7 +429,7 @@ func (s *Searcher) rerankEdges(ctx context.Context, query string, queryVector []
 	edgeMap := make(map[string]*types.Edge)
 	for _, results := range searchResults {
 		for _, edge := range results {
-			edgeMap[edge.ID] = edge
+			edgeMap[edge.Uuid] = edge
 		}
 	}
 
@@ -462,12 +462,12 @@ func (s *Searcher) rrfRerankNodes(searchResults [][]*types.Node, limit int) ([]*
 
 	for _, results := range searchResults {
 		for rank, node := range results {
-			if _, exists := scoreMap[node.ID]; !exists {
-				scoreMap[node.ID] = 0
+			if _, exists := scoreMap[node.Uuid]; !exists {
+				scoreMap[node.Uuid] = 0
 			}
 			// RRF formula: 1 / (rank + k), where k is typically 60
-			scoreMap[node.ID] += 1.0 / float64(rank+60)
-			nodeMap[node.ID] = node
+			scoreMap[node.Uuid] += 1.0 / float64(rank+60)
+			nodeMap[node.Uuid] = node
 		}
 	}
 
@@ -507,12 +507,12 @@ func (s *Searcher) rrfRerankEdges(searchResults [][]*types.Edge, limit int) ([]*
 
 	for _, results := range searchResults {
 		for rank, edge := range results {
-			if _, exists := scoreMap[edge.ID]; !exists {
-				scoreMap[edge.ID] = 0
+			if _, exists := scoreMap[edge.Uuid]; !exists {
+				scoreMap[edge.Uuid] = 0
 			}
 			// RRF formula: 1 / (rank + k), where k is typically 60
-			scoreMap[edge.ID] += 1.0 / float64(rank+60)
-			edgeMap[edge.ID] = edge
+			scoreMap[edge.Uuid] += 1.0 / float64(rank+60)
+			edgeMap[edge.Uuid] = edge
 		}
 	}
 
@@ -573,7 +573,7 @@ func (s *Searcher) mmrRerankNodes(ctx context.Context, queryVector []float32, no
 	// Create node map for lookup
 	nodeMap := make(map[string]*types.Node)
 	for _, node := range nodes {
-		nodeMap[node.ID] = node
+		nodeMap[node.Uuid] = node
 	}
 
 	// Build result arrays based on MMR ranking
@@ -619,7 +619,7 @@ func (s *Searcher) mmrRerankEdges(ctx context.Context, queryVector []float32, ed
 	// Create edge map for lookup
 	edgeMap := make(map[string]*types.Edge)
 	for _, edge := range edges {
-		edgeMap[edge.ID] = edge
+		edgeMap[edge.Uuid] = edge
 	}
 
 	// Build result arrays based on MMR ranking

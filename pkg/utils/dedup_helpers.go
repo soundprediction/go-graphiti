@@ -237,17 +237,17 @@ func BuildCandidateIndexes(existingNodes []*types.Node) *DedupCandidateIndexes {
 	for _, candidate := range existingNodes {
 		normalized := NormalizeStringExact(candidate.Name)
 		indexes.NormalizedExisting[normalized] = append(indexes.NormalizedExisting[normalized], candidate)
-		indexes.NodesByUUID[candidate.ID] = candidate
+		indexes.NodesByUUID[candidate.Uuid] = candidate
 
 		shingles := CachedShingles(normalizeNameForFuzzy(candidate.Name))
-		indexes.ShinglesByCandidate[candidate.ID] = shingles
+		indexes.ShinglesByCandidate[candidate.Uuid] = shingles
 
 		signature := MinHashSignature(shingles)
 		bands := LSHBands(signature)
 		for bandIndex, band := range bands {
 			// Create a key for this band
 			bandKey := fmt.Sprintf("%d:%v", bandIndex, band)
-			indexes.LSHBuckets[bandKey] = append(indexes.LSHBuckets[bandKey], candidate.ID)
+			indexes.LSHBuckets[bandKey] = append(indexes.LSHBuckets[bandKey], candidate.Uuid)
 		}
 	}
 
@@ -274,8 +274,8 @@ func ResolveWithSimilarity(
 		if len(existingMatches) == 1 {
 			match := existingMatches[0]
 			state.ResolvedNodes[idx] = match
-			state.UUIDMap[node.ID] = match.ID
-			if match.ID != node.ID {
+			state.UUIDMap[node.Uuid] = match.Uuid
+			if match.Uuid != node.Uuid {
 				state.DuplicatePairs = append(state.DuplicatePairs, NodePair{
 					Source: node,
 					Target: match,
@@ -316,8 +316,8 @@ func ResolveWithSimilarity(
 
 		if bestCandidate != nil && bestScore >= FuzzyJaccardThreshold {
 			state.ResolvedNodes[idx] = bestCandidate
-			state.UUIDMap[node.ID] = bestCandidate.ID
-			if bestCandidate.ID != node.ID {
+			state.UUIDMap[node.Uuid] = bestCandidate.Uuid
+			if bestCandidate.Uuid != node.Uuid {
 				state.DuplicatePairs = append(state.DuplicatePairs, NodePair{
 					Source: node,
 					Target: bestCandidate,

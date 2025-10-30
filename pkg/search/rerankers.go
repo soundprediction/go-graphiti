@@ -325,7 +325,7 @@ func GetEmbeddingsForNodes(ctx context.Context, driver driver.GraphDriver, nodes
 		if node.Metadata != nil {
 			if embeddingData, exists := node.Metadata["name_embedding"]; exists {
 				if embedding := toFloat32Slice(embeddingData); embedding != nil {
-					embeddings[node.ID] = embedding
+					embeddings[node.Uuid] = embedding
 				}
 			}
 		}
@@ -343,7 +343,7 @@ func GetEmbeddingsForEdges(ctx context.Context, driver driver.GraphDriver, edges
 		if edge.Metadata != nil {
 			if embeddingData, exists := edge.Metadata["name_embedding"]; exists {
 				if embedding := toFloat32Slice(embeddingData); embedding != nil {
-					embeddings[edge.ID] = embedding
+					embeddings[edge.Uuid] = embedding
 				}
 			}
 		}
@@ -361,7 +361,7 @@ func GetEmbeddingsForCommunities(ctx context.Context, driver driver.GraphDriver,
 		if community.Metadata != nil {
 			if embeddingData, exists := community.Metadata["name_embedding"]; exists {
 				if embedding := toFloat32Slice(embeddingData); embedding != nil {
-					embeddings[community.ID] = embedding
+					embeddings[community.Uuid] = embedding
 				}
 			}
 		}

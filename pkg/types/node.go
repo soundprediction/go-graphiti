@@ -39,7 +39,7 @@ func GetEpisodicNodeByUUID(ctx context.Context, driver NodeOperations, uuid stri
 	}
 
 	if id, ok := record["uuid"].(string); ok {
-		episode.ID = id
+		episode.Uuid = id
 	}
 	if name, ok := record["name"].(string); ok {
 		episode.Name = name
@@ -81,7 +81,7 @@ func DeleteNode(ctx context.Context, driver NodeOperations, node *Node) error {
 	`
 
 	_, _, _, err := driver.ExecuteQuery(query, map[string]interface{}{
-		"uuid": node.ID,
+		"uuid": node.Uuid,
 	})
 
 	return err
@@ -123,7 +123,7 @@ func GetMentionedNodes(ctx context.Context, driver NodeOperations, episodes []*N
 
 	episodeUUIDs := make([]string, len(episodes))
 	for i, episode := range episodes {
-		episodeUUIDs[i] = episode.ID
+		episodeUUIDs[i] = episode.Uuid
 	}
 
 	// Match the Python get_mentioned_nodes query
@@ -149,7 +149,7 @@ func GetMentionedNodes(ctx context.Context, driver NodeOperations, episodes []*N
 			}
 
 			if uuid, ok := record["uuid"].(string); ok {
-				node.ID = uuid
+				node.Uuid = uuid
 			}
 			if name, ok := record["name"].(string); ok {
 				node.Name = name

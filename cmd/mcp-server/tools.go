@@ -198,7 +198,7 @@ func (s *MCPServer) SearchMemoryNodesTool(ctx *ai.ToolContext, input *SearchRequ
 	nodeResults := make([]map[string]interface{}, len(results.Nodes))
 	for i, node := range results.Nodes {
 		nodeResults[i] = map[string]interface{}{
-			"uuid":       node.ID,
+			"uuid":       node.Uuid,
 			"name":       node.Name,
 			"summary":    node.Summary,
 			"labels":     []string{string(node.Type)}, // Convert to labels array like Python
@@ -289,7 +289,7 @@ func (s *MCPServer) SearchMemoryFactsTool(ctx *ai.ToolContext, input *SearchRequ
 	facts := make([]map[string]interface{}, len(results.Edges))
 	for i, edge := range results.Edges {
 		facts[i] = map[string]interface{}{
-			"uuid":       edge.ID,
+			"uuid":       edge.Uuid,
 			"type":       string(edge.Type),
 			"source_id":  edge.SourceID,
 			"target_id":  edge.TargetID,
@@ -336,7 +336,7 @@ func (s *MCPServer) DeleteEntityEdgeTool(ctx *ai.ToolContext, input *UUIDRequest
 	}
 
 	// Delete the edge using the driver
-	err = s.client.GetDriver().DeleteEdge(context.Background(), edge.ID, edge.GroupID)
+	err = s.client.GetDriver().DeleteEdge(context.Background(), edge.Uuid, edge.GroupID)
 	if err != nil {
 		s.logger.Error("Failed to delete entity edge", "uuid", input.UUID, "error", err)
 		return &ToolResponse{
@@ -409,7 +409,7 @@ func (s *MCPServer) GetEntityEdgeTool(ctx *ai.ToolContext, input *UUIDRequest) (
 
 	// Format edge result
 	result := map[string]interface{}{
-		"uuid":       edge.ID,
+		"uuid":       edge.Uuid,
 		"type":       string(edge.Type),
 		"source_id":  edge.SourceID,
 		"target_id":  edge.TargetID,
@@ -475,7 +475,7 @@ func (s *MCPServer) GetEpisodesTool(ctx *ai.ToolContext, input *GetEpisodesReque
 	var episodes []map[string]interface{}
 	for _, node := range episodeNodes {
 		episode := map[string]interface{}{
-			"uuid":       node.ID,
+			"uuid":       node.Uuid,
 			"name":       node.Name,
 			"content":    node.Content,
 			"group_id":   node.GroupID,

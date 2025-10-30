@@ -705,7 +705,7 @@ func (s *MCPServer) SearchMemoryNodesTool(ctx context.Context, input *SearchRequ
 	nodeResults := make([]map[string]interface{}, len(results.Nodes))
 	for i, node := range results.Nodes {
 		nodeResults[i] = map[string]interface{}{
-			"uuid":       node.ID,
+			"uuid":       node.Uuid,
 			"name":       node.Name,
 			"summary":    node.Summary,
 			"type":       string(node.Type),
@@ -773,7 +773,7 @@ func (s *MCPServer) SearchMemoryFactsTool(ctx context.Context, input *SearchRequ
 	facts := make([]map[string]interface{}, len(results.Edges))
 	for i, edge := range results.Edges {
 		facts[i] = map[string]interface{}{
-			"uuid":       edge.ID,
+			"uuid":       edge.Uuid,
 			"type":       string(edge.Type),
 			"source_id":  edge.SourceID,
 			"target_id":  edge.TargetID,
@@ -827,7 +827,7 @@ func (s *MCPServer) GetEpisodesTool(ctx context.Context, input *GetEpisodesReque
 	var episodes []map[string]interface{}
 	for _, node := range episodeNodes {
 		episode := map[string]interface{}{
-			"uuid":       node.ID,
+			"uuid":       node.Uuid,
 			"name":       node.Name,
 			"content":    node.Content,
 			"group_id":   node.GroupID,

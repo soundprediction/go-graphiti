@@ -118,7 +118,7 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	now := time.Now()
 	testID := "test-node-memgraph-" + time.Now().Format("20060102150405")
 	testNode := &types.Node{
-		ID:         testID,
+		Uuid:       testID,
 		Name:       "Test Entity Memgraph",
 		Type:       types.EntityNodeType,
 		GroupID:    "test-group-memgraph",
@@ -130,7 +130,7 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 
 	// Cleanup at the end
 	defer func() {
-		d.DeleteNode(ctx, testNode.ID, testNode.GroupID)
+		d.DeleteNode(ctx, testNode.Uuid, testNode.GroupID)
 	}()
 
 	// Upsert the node
@@ -138,12 +138,12 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	require.NoError(t, err, "UpsertNode should succeed")
 
 	// Read the node back from the database
-	retrievedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	retrievedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
 	require.NoError(t, err, "GetNode should succeed")
 	require.NotNil(t, retrievedNode, "Retrieved node should not be nil")
 
 	// Verify the node data matches
-	assert.Equal(t, testNode.ID, retrievedNode.ID, "Node ID should match")
+	assert.Equal(t, testNode.Uuid, retrievedNode.Uuid, "Node ID should match")
 	assert.Equal(t, testNode.Name, retrievedNode.Name, "Node name should match")
 	assert.Equal(t, testNode.Type, retrievedNode.Type, "Node type should match")
 	assert.Equal(t, testNode.GroupID, retrievedNode.GroupID, "Node GroupID should match")
@@ -158,13 +158,13 @@ func TestMemgraphDriver_UpsertNode(t *testing.T) {
 	require.NoError(t, err, "Second UpsertNode (update) should succeed")
 
 	// Read the updated node back
-	updatedNode, err := d.GetNode(ctx, testNode.ID, testNode.GroupID)
+	updatedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
 	require.NoError(t, err, "GetNode after update should succeed")
 	require.NotNil(t, updatedNode, "Updated node should not be nil")
 
 	// Verify the update was applied
 	assert.Equal(t, "Updated summary for test entity in Memgraph", updatedNode.Summary, "Node summary should be updated")
-	assert.Equal(t, testNode.ID, updatedNode.ID, "Node ID should remain the same")
+	assert.Equal(t, testNode.Uuid, updatedNode.Uuid, "Node ID should remain the same")
 	assert.Equal(t, testNode.Name, updatedNode.Name, "Node name should remain the same")
 }
 
@@ -184,13 +184,13 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 	// Create source and target nodes with unique IDs
 	timestamp := time.Now().Format("20060102150405")
 	sourceNode := &types.Node{
-		ID:      "source-node-memgraph-" + timestamp,
+		Uuid:    "source-node-memgraph-" + timestamp,
 		Name:    "Source Node Memgraph",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
 	}
 	targetNode := &types.Node{
-		ID:      "target-node-memgraph-" + timestamp,
+		Uuid:    "target-node-memgraph-" + timestamp,
 		Name:    "Target Node Memgraph",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
@@ -198,8 +198,8 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 
 	// Cleanup at the end
 	defer func() {
-		d.DeleteNode(ctx, sourceNode.ID, sourceNode.GroupID)
-		d.DeleteNode(ctx, targetNode.ID, targetNode.GroupID)
+		d.DeleteNode(ctx, sourceNode.Uuid, sourceNode.GroupID)
+		d.DeleteNode(ctx, targetNode.Uuid, targetNode.GroupID)
 	}()
 
 	err = d.UpsertNode(ctx, sourceNode)
@@ -211,14 +211,14 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 	now := time.Now()
 	testEdge := &types.Edge{
 		BaseEdge: types.BaseEdge{
-			ID:           "test-edge-memgraph-" + timestamp,
+			Uuid:         "test-edge-memgraph-" + timestamp,
 			GroupID:      "test-group-memgraph",
-			SourceNodeID: sourceNode.ID,
-			TargetNodeID: targetNode.ID,
+			SourceNodeID: sourceNode.Uuid,
+			TargetNodeID: targetNode.Uuid,
 			CreatedAt:    now,
 		},
-		SourceID:  sourceNode.ID,
-		TargetID:  targetNode.ID,
+		SourceID:  sourceNode.Uuid,
+		TargetID:  targetNode.Uuid,
 		Type:      types.EntityEdgeType,
 		UpdatedAt: now,
 		Name:      "RELATES_TO",
@@ -227,7 +227,7 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 
 	// Cleanup edge at the end
 	defer func() {
-		d.DeleteEdge(ctx, testEdge.ID, testEdge.GroupID)
+		d.DeleteEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	}()
 
 	// Upsert the edge
@@ -235,12 +235,12 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 	require.NoError(t, err, "UpsertEdge should succeed")
 
 	// Read the edge back from the database
-	retrievedEdge, err := d.GetEdge(ctx, testEdge.ID, testEdge.GroupID)
+	retrievedEdge, err := d.GetEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	require.NoError(t, err, "GetEdge should succeed")
 	require.NotNil(t, retrievedEdge, "Retrieved edge should not be nil")
 
 	// Verify the edge data matches
-	assert.Equal(t, testEdge.ID, retrievedEdge.ID, "Edge ID should match")
+	assert.Equal(t, testEdge.Uuid, retrievedEdge.Uuid, "Edge ID should match")
 	assert.Equal(t, testEdge.Name, retrievedEdge.Name, "Edge name should match")
 	assert.Equal(t, testEdge.Type, retrievedEdge.Type, "Edge type should match")
 	assert.Equal(t, testEdge.GroupID, retrievedEdge.GroupID, "Edge GroupID should match")
@@ -256,13 +256,13 @@ func TestMemgraphDriver_UpsertEdge(t *testing.T) {
 	require.NoError(t, err, "Second UpsertEdge (update) should succeed")
 
 	// Read the updated edge back
-	updatedEdge, err := d.GetEdge(ctx, testEdge.ID, testEdge.GroupID)
+	updatedEdge, err := d.GetEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	require.NoError(t, err, "GetEdge after update should succeed")
 	require.NotNil(t, updatedEdge, "Updated edge should not be nil")
 
 	// Verify the update was applied
 	assert.Equal(t, "Updated fact for test edge in Memgraph", updatedEdge.Fact, "Edge fact should be updated")
-	assert.Equal(t, testEdge.ID, updatedEdge.ID, "Edge ID should remain the same")
+	assert.Equal(t, testEdge.Uuid, updatedEdge.Uuid, "Edge ID should remain the same")
 	assert.Equal(t, testEdge.Name, updatedEdge.Name, "Edge name should remain the same")
 }
 
@@ -277,14 +277,14 @@ func TestMemgraphDriver_NodeExists(t *testing.T) {
 
 	// Create a test node
 	testNode := &types.Node{
-		ID:      "exists-test-memgraph-" + time.Now().Format("20060102150405"),
+		Uuid:    "exists-test-memgraph-" + time.Now().Format("20060102150405"),
 		Name:    "Exists Test",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
 	}
 
 	defer func() {
-		d.DeleteNode(ctx, testNode.ID, testNode.GroupID)
+		d.DeleteNode(ctx, testNode.Uuid, testNode.GroupID)
 	}()
 
 	// Should not exist initially
@@ -317,21 +317,21 @@ func TestMemgraphDriver_EdgeExists(t *testing.T) {
 
 	// Create source and target nodes
 	sourceNode := &types.Node{
-		ID:      "source-exists-memgraph-" + timestamp,
+		Uuid:    "source-exists-memgraph-" + timestamp,
 		Name:    "Source Exists Test",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
 	}
 	targetNode := &types.Node{
-		ID:      "target-exists-memgraph-" + timestamp,
+		Uuid:    "target-exists-memgraph-" + timestamp,
 		Name:    "Target Exists Test",
 		Type:    types.EntityNodeType,
 		GroupID: "test-group-memgraph",
 	}
 
 	defer func() {
-		d.DeleteNode(ctx, sourceNode.ID, sourceNode.GroupID)
-		d.DeleteNode(ctx, targetNode.ID, targetNode.GroupID)
+		d.DeleteNode(ctx, sourceNode.Uuid, sourceNode.GroupID)
+		d.DeleteNode(ctx, targetNode.Uuid, targetNode.GroupID)
 	}()
 
 	err := d.UpsertNode(ctx, sourceNode)
@@ -342,18 +342,18 @@ func TestMemgraphDriver_EdgeExists(t *testing.T) {
 	// Create test edge
 	testEdge := &types.Edge{
 		BaseEdge: types.BaseEdge{
-			ID:           "edge-exists-memgraph-" + timestamp,
+			Uuid:         "edge-exists-memgraph-" + timestamp,
 			GroupID:      "test-group-memgraph",
-			SourceNodeID: sourceNode.ID,
-			TargetNodeID: targetNode.ID,
+			SourceNodeID: sourceNode.Uuid,
+			TargetNodeID: targetNode.Uuid,
 		},
-		SourceID: sourceNode.ID,
-		TargetID: targetNode.ID,
+		SourceID: sourceNode.Uuid,
+		TargetID: targetNode.Uuid,
 		Type:     types.EntityEdgeType,
 	}
 
 	defer func() {
-		d.DeleteEdge(ctx, testEdge.ID, testEdge.GroupID)
+		d.DeleteEdge(ctx, testEdge.Uuid, testEdge.GroupID)
 	}()
 
 	// Should not exist initially
@@ -388,19 +388,19 @@ func TestMemgraphDriver_GetNodes(t *testing.T) {
 	// Create multiple nodes
 	nodes := []*types.Node{
 		{
-			ID:      "batch-node-1-" + timestamp,
+			Uuid:    "batch-node-1-" + timestamp,
 			Name:    "Batch Node 1",
 			Type:    types.EntityNodeType,
 			GroupID: groupID,
 		},
 		{
-			ID:      "batch-node-2-" + timestamp,
+			Uuid:    "batch-node-2-" + timestamp,
 			Name:    "Batch Node 2",
 			Type:    types.EntityNodeType,
 			GroupID: groupID,
 		},
 		{
-			ID:      "batch-node-3-" + timestamp,
+			Uuid:    "batch-node-3-" + timestamp,
 			Name:    "Batch Node 3",
 			Type:    types.EntityNodeType,
 			GroupID: groupID,
@@ -409,7 +409,7 @@ func TestMemgraphDriver_GetNodes(t *testing.T) {
 
 	defer func() {
 		for _, node := range nodes {
-			d.DeleteNode(ctx, node.ID, node.GroupID)
+			d.DeleteNode(ctx, node.Uuid, node.GroupID)
 		}
 	}()
 
@@ -420,7 +420,7 @@ func TestMemgraphDriver_GetNodes(t *testing.T) {
 	}
 
 	// Get all nodes
-	nodeIDs := []string{nodes[0].ID, nodes[1].ID, nodes[2].ID}
+	nodeIDs := []string{nodes[0].Uuid, nodes[1].Uuid, nodes[2].Uuid}
 	retrievedNodes, err := d.GetNodes(ctx, nodeIDs, groupID)
 	require.NoError(t, err)
 	assert.Len(t, retrievedNodes, 3, "Should retrieve all 3 nodes")

@@ -167,7 +167,7 @@ func (b *Builder) buildCommunity(ctx context.Context, cluster []*types.Node) (*t
 	// Create community node
 	now := time.Now().UTC()
 	communityNode := &types.Node{
-		ID:        generateUUID(),
+		Uuid:      generateUUID(),
 		Name:      communityName,
 		Type:      types.CommunityNodeType,
 		GroupID:   cluster[0].GroupID,
@@ -329,15 +329,15 @@ func (b *Builder) buildCommunityEdges(entityNodes []*types.Node, communityNode *
 	for i, entityNode := range entityNodes {
 		edge := types.NewEntityEdge(
 			generateUUID(),
-			communityNode.ID,
-			entityNode.ID,
+			communityNode.Uuid,
+			entityNode.Uuid,
 			communityNode.GroupID,
 			"HAS_MEMBER",
 			types.CommunityEdgeType,
 		)
 		edge.UpdatedAt = createdAt
 		edge.ValidFrom = createdAt
-		edge.SourceIDs = []string{communityNode.ID}
+		edge.SourceIDs = []string{communityNode.Uuid}
 		edge.Metadata = make(map[string]interface{})
 		edges[i] = edge
 	}

@@ -6,7 +6,7 @@ import (
 
 // Node represents a node in the knowledge graph.
 type Node struct {
-	ID        string    `json:"uuid" mapstructure:"uuid"`
+	Uuid      string    `json:"uuid" mapstructure:"uuid"`
 	Name      string    `json:"name" mapstructure:"name"`
 	Type      NodeType  `json:"type" mapstructure:"type"`
 	GroupID   string    `json:"group_id mapstructure:"group_id""`

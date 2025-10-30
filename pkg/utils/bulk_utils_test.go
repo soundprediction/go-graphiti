@@ -52,14 +52,14 @@ func TestRetrievePreviousEpisodesBulk(t *testing.T) {
 func TestExtractNodesAndEdgesResult(t *testing.T) {
 	// Test the result structure
 	node1 := &types.Node{
-		ID:   "node1",
+		Uuid: "node1",
 		Name: "Test Node 1",
 		Type: types.EntityNodeType,
 	}
 
 	edge1 := &types.Edge{
 		BaseEdge: types.BaseEdge{
-			ID:           "edge1",
+			Uuid:         "edge1",
 			SourceNodeID: "node1",
 			TargetNodeID: "node2",
 		},
@@ -81,8 +81,8 @@ func TestExtractNodesAndEdgesResult(t *testing.T) {
 		t.Errorf("Expected 1 edge, got %d", len(result.ExtractedEdges))
 	}
 
-	if result.ExtractedNodes[0].ID != "node1" {
-		t.Errorf("Expected node1, got %s", result.ExtractedNodes[0].ID)
+	if result.ExtractedNodes[0].Uuid != "node1" {
+		t.Errorf("Expected node1, got %s", result.ExtractedNodes[0].Uuid)
 	}
 }
 
