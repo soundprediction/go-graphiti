@@ -231,7 +231,7 @@ func runGraphitiIntegrationExample() error {
 		neo4jPassword = "password"
 	}
 
-	neo4jDriver, err := driver.NewNeo4jDriver(neo4jURI, neo4jUser, neo4jPassword, "neo4j")
+	neo4jDriver, err := driver.NewMemgraphDriver(neo4jURI, neo4jUser, neo4jPassword, "neo4j")
 	if err != nil {
 		return fmt.Errorf("failed to create Neo4j driver: %w", err)
 	}

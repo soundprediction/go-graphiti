@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 // NodeOperations provides methods for node-related database operations
@@ -169,4 +170,67 @@ func GetMentionedNodes(ctx context.Context, driver NodeOperations, episodes []*N
 	}
 
 	return nodes, nil
+}
+
+// parseNodeFromMap converts a map to a Node
+func ParseNodeFromMap(data map[string]interface{}) (*Node, error) {
+	node := &Node{
+		Metadata: make(map[string]interface{}),
+	}
+
+	// Parse basic fields
+	if id, ok := data["uuid"].(string); ok {
+		node.Uuid = id
+	} else if id, ok := data["id"].(string); ok {
+		node.Uuid = id
+	}
+
+	if name, ok := data["name"].(string); ok {
+		node.Name = name
+	}
+
+	if groupID, ok := data["group_id"].(string); ok {
+		node.GroupID = groupID
+	}
+
+	if content, ok := data["content"].(string); ok {
+		node.Content = content
+	}
+
+	if summary, ok := data["summary"].(string); ok {
+		node.Summary = summary
+	}
+
+	// Parse timestamps
+	// Python uses 'valid_at' but Go Node struct uses 'ValidFrom'
+	if validAt, ok := data["valid_at"].(time.Time); ok {
+		node.ValidFrom = validAt
+	} else if validFrom, ok := data["valid_from"].(time.Time); ok {
+		node.ValidFrom = validFrom
+	}
+
+	if createdAt, ok := data["created_at"].(time.Time); ok {
+		node.CreatedAt = createdAt
+	}
+
+	if updatedAt, ok := data["updated_at"].(time.Time); ok {
+		node.UpdatedAt = updatedAt
+	}
+
+	// Set type
+	node.Type = EpisodicNodeType
+
+	// Parse episode type
+	if episodeTypeStr, ok := data["episode_type"].(string); ok {
+		node.EpisodeType = EpisodeType(episodeTypeStr)
+	}
+
+	return node, nil
+}
+
+// reverseNodes reverses a slice of nodes in place
+func ReverseNodes(nodes []*Node) {
+	for i, j := 0, len(nodes)-1; i < j; i, j = i+1, j-1 {
+		nodes[i], nodes[j] = nodes[j], nodes[i]
+	}
 }

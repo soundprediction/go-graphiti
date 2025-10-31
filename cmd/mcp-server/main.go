@@ -151,16 +151,7 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
 		}
-	case "neo4j":
-		graphDriver, err = driver.NewNeo4jDriver(
-			config.DatabaseURI,
-			config.DatabaseUser,
-			config.DatabasePassword,
-			"neo4j",
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
-		}
+
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", config.DatabaseDriver)
 	}

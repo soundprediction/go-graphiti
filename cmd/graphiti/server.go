@@ -220,16 +220,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
 		}
-	case "neo4j":
-		graphDriver, err = driver.NewNeo4jDriver(
-			cfg.Database.URI,
-			cfg.Database.Username,
-			cfg.Database.Password,
-			cfg.Database.Database,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
-		}
+
 	case "falkordb":
 		// FalkorDB support would be implemented here
 		return nil, fmt.Errorf("FalkorDB driver not yet implemented")

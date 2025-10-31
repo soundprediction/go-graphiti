@@ -276,7 +276,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 			if err != nil {
 				fmt.Printf("⚠️  Background: Failed to create episode: %v\n", err)
 			} else if result != nil && len(result.Episodes) > 0 {
-				fmt.Printf("✨ Background: Created episode %s\n", result.Episodes[0].ID)
+				fmt.Printf("✨ Background: Created episode %s\n", result.Episodes[0].Uuid)
 			}
 		}(episode)
 	} else {
@@ -325,7 +325,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 	fmt.Println("\n🤖 Assistant:")
 	fmt.Println(strings.Repeat("-", 70))
 
-	messages := []llm.Message{
+	messages := []types.Message{
 		{Role: llm.RoleUser, Content: prompt},
 	}
 

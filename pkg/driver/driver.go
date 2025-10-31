@@ -89,6 +89,13 @@ type GraphDriver interface {
 	// Database maintenance
 	CreateIndices(ctx context.Context) error
 	GetStats(ctx context.Context, groupID string) (*GraphStats, error)
+
+	// Parsing
+	ParseNodesFromRecords(records any) ([]*types.Node, error)
+	// ParseEdgesFromRecords(records any) ([]*types.Edge, error)
+
+	// Getters by group
+	GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error)
 }
 
 // GraphStats holds statistics about the graph.
