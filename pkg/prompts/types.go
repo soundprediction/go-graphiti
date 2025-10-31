@@ -14,23 +14,16 @@ import (
 	"unicode"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
-
-// PromptFunction is a function that generates prompt messages from context.
-type PromptFunction func(context map[string]interface{}) ([]llm.Message, error)
-
-// PromptVersion represents a versioned prompt function.
-type PromptVersion interface {
-	Call(context map[string]interface{}) ([]llm.Message, error)
-}
 
 // promptVersionImpl implements PromptVersion.
 type promptVersionImpl struct {
-	fn PromptFunction
+	fn types.PromptFunction
 }
 
 // Call executes the prompt function with the given context.
-func (p *promptVersionImpl) Call(context map[string]interface{}) ([]llm.Message, error) {
+func (p *promptVersionImpl) Call(context map[string]interface{}) ([]types.Message, error) {
 	messages, err := p.fn(context)
 	if err != nil {
 		return nil, err
@@ -47,7 +40,7 @@ func (p *promptVersionImpl) Call(context map[string]interface{}) ([]llm.Message,
 }
 
 // NewPromptVersion creates a new PromptVersion from a function.
-func NewPromptVersion(fn PromptFunction) PromptVersion {
+func NewPromptVersion(fn types.PromptFunction) types.PromptVersion {
 	return &promptVersionImpl{fn: fn}
 }
 
@@ -344,7 +337,7 @@ func logPrompts(logger *slog.Logger, sysPrompt, userPrompt string) {
 
 }
 
-func LogResponses(logger *slog.Logger, response llm.Response) {
+func LogResponses(logger *slog.Logger, response types.Response) {
 	debugPrompts := false
 	if os.Getenv("DEBUG_LLM_PROMPTS") == "true" {
 		debugPrompts = true

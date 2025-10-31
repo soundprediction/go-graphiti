@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // Example usage of GenerateJSONResponseWithContinuation
@@ -118,16 +119,16 @@ type mockLLMClient struct {
 	callCount int
 }
 
-func (m *mockLLMClient) Chat(ctx context.Context, messages []llm.Message) (*llm.Response, error) {
+func (m *mockLLMClient) Chat(ctx context.Context, messages []types.Message) (*types.Response, error) {
 	if m.callCount >= len(m.responses) {
-		return &llm.Response{Content: m.responses[len(m.responses)-1]}, nil
+		return &types.Response{Content: m.responses[len(m.responses)-1]}, nil
 	}
 	response := m.responses[m.callCount]
 	m.callCount++
-	return &llm.Response{Content: response}, nil
+	return &types.Response{Content: response}, nil
 }
 
-func (m *mockLLMClient) ChatWithStructuredOutput(ctx context.Context, messages []llm.Message, schema any) (json.RawMessage, error) {
+func (m *mockLLMClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
 	// Not used in these tests
 	return nil, nil
 }
@@ -241,7 +242,7 @@ func TestGenerateJSONResponseWithContinuationMessages_Success(t *testing.T) {
 	}
 
 	// Build messages manually
-	messages := []llm.Message{
+	messages := []types.Message{
 		{Role: "system", Content: "Return JSON"},
 		{Role: "user", Content: "Generate test data"},
 	}
@@ -280,7 +281,7 @@ func TestGenerateJSONResponseWithContinuationMessages_WithHistory(t *testing.T) 
 	}
 
 	// Build messages with conversation history
-	messages := []llm.Message{
+	messages := []types.Message{
 		{Role: "system", Content: "You are a helpful assistant"},
 		{Role: "user", Content: "What are some items?"},
 		{Role: "assistant", Content: "I can provide items in JSON format."},

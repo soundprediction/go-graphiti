@@ -3,6 +3,8 @@ package llm
 import (
 	"strings"
 	"unicode"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // TokenCounter provides token counting functionality.
@@ -53,7 +55,7 @@ func GetTokenCount(text string) int {
 }
 
 // EstimateTokensFromMessages estimates tokens for a slice of messages.
-func EstimateTokensFromMessages(messages []Message) int {
+func EstimateTokensFromMessages(messages []types.Message) int {
 	totalTokens := 0
 	for _, msg := range messages {
 		totalTokens += GetTokenCount(msg.Content)

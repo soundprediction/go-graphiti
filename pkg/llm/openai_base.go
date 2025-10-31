@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // Constants matching Python defaults
@@ -59,7 +60,7 @@ func NewBaseOpenAIClient(config *LLMConfig, reasoning, verbosity string) *BaseOp
 }
 
 // ConvertMessagesToOpenAIFormat converts internal Message format to OpenAI format
-func (b *BaseOpenAIClient) ConvertMessagesToOpenAIFormat(messages []Message) []openai.ChatCompletionMessage {
+func (b *BaseOpenAIClient) ConvertMessagesToOpenAIFormat(messages []types.Message) []openai.ChatCompletionMessage {
 	openaiMessages := make([]openai.ChatCompletionMessage, 0, len(messages))
 
 	for _, m := range messages {
@@ -116,9 +117,9 @@ func (b *BaseOpenAIClient) HandleJSONResponse(response openai.ChatCompletionResp
 }
 
 // PrepareMessages prepares messages for sending to the LLM
-func (b *BaseOpenAIClient) PrepareMessages(messages []Message, responseModel interface{}) ([]Message, error) {
+func (b *BaseOpenAIClient) PrepareMessages(messages []types.Message, responseModel interface{}) ([]types.Message, error) {
 	// Make a copy to avoid modifying the original
-	preparedMessages := make([]Message, len(messages))
+	preparedMessages := make([]types.Message, len(messages))
 	copy(preparedMessages, messages)
 
 	// Add structured output instructions if response model is provided
@@ -187,7 +188,7 @@ func (b *BaseOpenAIClient) BuildChatRequest(messages []openai.ChatCompletionMess
 func (b *BaseOpenAIClient) GenerateResponseWithRetry(
 	ctx context.Context,
 	client *openai.Client,
-	messages []Message,
+	messages []types.Message,
 	responseModel interface{},
 	maxTokens int,
 	modelSize ModelSize,

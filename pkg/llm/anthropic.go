@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // AnthropicClient implements the Client interface for Anthropic Claude models.
@@ -64,7 +66,7 @@ type anthropicError struct {
 }
 
 // Chat implements the Client interface for Anthropic.
-func (a *AnthropicClient) Chat(ctx context.Context, messages []Message) (string, error) {
+func (a *AnthropicClient) Chat(ctx context.Context, messages []types.Message) (string, error) {
 	if len(messages) == 0 {
 		return "", fmt.Errorf("no messages provided")
 	}
@@ -141,14 +143,14 @@ func (a *AnthropicClient) Chat(ctx context.Context, messages []Message) (string,
 // ChatWithStructuredOutput implements structured output for Anthropic.
 // Note: Anthropic doesn't natively support structured output like OpenAI,
 // so this implementation uses prompt engineering to request JSON format.
-func (a *AnthropicClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema interface{}) (string, error) {
+func (a *AnthropicClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (string, error) {
 	// Add a message requesting JSON format
 	schemaBytes, err := json.Marshal(schema)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
-	modifiedMessages := append(messages, Message{
+	modifiedMessages := append(messages, types.Message{
 		Role:    "user",
 		Content: fmt.Sprintf("Please respond with valid JSON that matches this schema: %s", string(schemaBytes)),
 	})

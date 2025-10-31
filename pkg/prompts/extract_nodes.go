@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // filterEntityTypes removes the entity_type_description field from entity types
@@ -64,7 +65,7 @@ func (e *ExtractNodesVersions) ExtractAttributesBatch() PromptVersion {
 
 // extractMessagePrompt extracts entity nodes from conversational messages.
 // Uses TSV format for episodes and entity types to reduce token usage and improve LLM parsing.
-func extractMessagePrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractMessagePrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an AI assistant that extracts entity nodes from conversational messages.
 Your primary task is to extract and classify the speaker and other significant entities mentioned in the conversation.`
 
@@ -133,7 +134,7 @@ reference entities. Only extract distinct entities from the CURRENT MESSAGE. Don
 
 %v`, entityTypesTSV, previousEpisodesTSV, episodeContent, customPrompt)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -141,7 +142,7 @@ reference entities. Only extract distinct entities from the CURRENT MESSAGE. Don
 
 // extractJSONPrompt extracts entity nodes from JSON.
 // Uses TSV format for entity types to reduce token usage and improve LLM parsing.
-func extractJSONPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractJSONPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an AI assistant that extracts entity nodes from JSON.
 Your primary task is to extract and classify relevant entities from JSON files`
 
@@ -189,7 +190,7 @@ Guidelines:
 2. Do NOT extract any properties that contain dates
 `, entityTypesTSV, sourceDescription, episodeContent, customPrompt)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -197,7 +198,7 @@ Guidelines:
 
 // extractTextPrompt extracts entity nodes from text.
 // Uses TSV format for entity types to reduce token usage and improve LLM parsing.
-func extractTextPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractTextPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an AI assistant that extracts entity nodes from text.
 Your primary task is to extract and classify the speaker and other significant entities mentioned in the provided text.`
 
@@ -260,7 +261,7 @@ Use the EXAMPLE as a guide
 Finish your response with a new line
 `, entityTypesTSV, episodeContent, customPrompt)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -268,7 +269,7 @@ Finish your response with a new line
 
 // extractNodesReflexionPrompt determines which entities have not been extracted.
 // Uses TSV format for episodes to reduce token usage and improve LLM parsing.
-func extractNodesReflexionPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractNodesReflexionPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an AI assistant that determines which entities have not been extracted from the given context`
 
 	previousEpisodes := context["previous_episodes"]
@@ -305,7 +306,7 @@ Given the above previous messages, current message, and list of extracted entiti
 extracted.
 `, previousEpisodesTSV, episodeContent, extractedEntities)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -313,7 +314,7 @@ extracted.
 
 // classifyNodesPrompt classifies entity nodes.
 // Uses TSV format for episodes and entity types to reduce token usage and improve LLM parsing.
-func classifyNodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func classifyNodesPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an AI assistant that classifies entity nodes given the context from which they were extracted`
 
 	previousEpisodes := context["previous_episodes"]
@@ -366,7 +367,7 @@ Guidelines:
 3. If none of the provided entity types accurately classify an extracted node, the type should be set to None
 `, previousEpisodesTSV, episodeContent, extractedEntities, entityTypesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -374,7 +375,7 @@ Guidelines:
 
 // extractNodesAttributesPrompt extracts entity properties from text.
 // Uses TSV format for episodes to reduce token usage and improve LLM parsing.
-func extractNodesAttributesPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractNodesAttributesPrompt(context map[string]interface{}) ([]types.Message, error) {
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
 	node := context["node"]
@@ -415,7 +416,7 @@ Guidelines:
 </ENTITY>
 `, previousEpisodesTSV, episodeContent, node)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -423,7 +424,7 @@ Guidelines:
 
 // extractSummaryPrompt extracts entity summaries from text.
 // Uses TSV format for episodes to reduce token usage and improve LLM parsing.
-func extractSummaryPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractSummaryPrompt(context map[string]interface{}) ([]types.Message, error) {
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
 	node := context["node"]
@@ -466,7 +467,7 @@ Guidelines:
 </ENTITY>
 `, previousEpisodesTSV, episodeContent, node)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -474,7 +475,7 @@ Guidelines:
 
 // extractAttributesBatchPrompt extracts attributes and summaries for multiple nodes in batch using TSV output.
 // Uses TSV format for episodes and nodes to reduce token usage and improve LLM parsing.
-func extractAttributesBatchPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractAttributesBatchPrompt(context map[string]interface{}) ([]types.Message, error) {
 	previousEpisodes := context["previous_episodes"]
 	episodeContent := context["episode_content"]
 	nodes := context["nodes"]
@@ -539,7 +540,7 @@ Use the node_id field from each entity to identify it in your TSV output.
 Finish your response with a new line.
 `, previousEpisodesTSV, episodeContent, nodesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

@@ -66,7 +66,7 @@ func runOllamaExample() error {
 	defer client.Close()
 
 	// Test basic chat functionality
-	messages := []llm.Message{
+	messages := []types.Message{
 		llm.NewUserMessage("Explain what a knowledge graph is in one sentence."),
 	}
 
@@ -103,7 +103,7 @@ func runLocalAIExample() error {
 	}
 	defer client.Close()
 
-	messages := []llm.Message{
+	messages := []types.Message{
 		llm.NewSystemMessage("You are a helpful assistant specialized in graph databases."),
 		llm.NewUserMessage("What are the benefits of using Neo4j for knowledge graphs?"),
 	}
@@ -137,7 +137,7 @@ func runVLLMExample() error {
 	}
 	defer client.Close()
 
-	messages := []llm.Message{
+	messages := []types.Message{
 		llm.NewUserMessage("How do you implement efficient graph traversal algorithms?"),
 	}
 
@@ -173,7 +173,7 @@ func runCustomServiceExample() error {
 	defer client.Close()
 
 	// Test structured output (if your service supports it)
-	messages := []llm.Message{
+	messages := []types.Message{
 		llm.NewSystemMessage("You are an expert in data structures. Respond with valid JSON."),
 		llm.NewUserMessage("Describe a graph data structure with its properties."),
 	}

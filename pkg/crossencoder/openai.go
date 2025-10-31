@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // OpenAIRerankerClient implements cross-encoder functionality using OpenAI's API
@@ -95,7 +96,7 @@ func (c *OpenAIRerankerClient) Rank(ctx context.Context, query string, passages 
 
 // scorePassage scores a single passage against the query using OpenAI's logprobs
 func (c *OpenAIRerankerClient) scorePassage(ctx context.Context, query, passage string) (float64, error) {
-	messages := []llm.Message{
+	messages := []types.Message{
 		llm.NewSystemMessage("You are an expert tasked with determining whether the passage is relevant to the query"),
 		llm.NewUserMessage(fmt.Sprintf(`Respond with "True" if PASSAGE is relevant to QUERY and "False" otherwise.
 <PASSAGE>

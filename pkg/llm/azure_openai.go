@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // AzureOpenAIClient implements the Client interface for Azure OpenAI models.
@@ -80,7 +82,7 @@ type azureOpenAIError struct {
 }
 
 // Chat implements the Client interface for Azure OpenAI.
-func (a *AzureOpenAIClient) Chat(ctx context.Context, messages []Message) (string, error) {
+func (a *AzureOpenAIClient) Chat(ctx context.Context, messages []types.Message) (string, error) {
 	if len(messages) == 0 {
 		return "", fmt.Errorf("no messages provided")
 	}
@@ -155,14 +157,14 @@ func (a *AzureOpenAIClient) Chat(ctx context.Context, messages []Message) (strin
 
 // ChatWithStructuredOutput implements structured output for Azure OpenAI.
 // Azure OpenAI supports structured output similar to OpenAI.
-func (a *AzureOpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema interface{}) (string, error) {
+func (a *AzureOpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (string, error) {
 	// For now, use prompt engineering approach
 	schemaBytes, err := json.Marshal(schema)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
-	modifiedMessages := append(messages, Message{
+	modifiedMessages := append(messages, types.Message{
 		Role:    RoleUser,
 		Content: fmt.Sprintf("Please respond with valid JSON that matches this schema: %s", string(schemaBytes)),
 	})
