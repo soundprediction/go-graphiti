@@ -178,54 +178,8 @@ func (b *Builder) getAllGroupIDsKuzu(ctx context.Context, kuzuDriver *driver.Kuz
 
 // getEntityNodesByGroup gets all entity nodes for a specific group
 func (b *Builder) getEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
-	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
-		return b.getEntityNodesByGroupKuzu(ctx, kuzuDriver, groupID)
-	}
-
 	// For Neo4j/Memgraph drivers
-	return b.getEntityNodesByGroupNeo4j(ctx, groupID)
-}
-
-// getEntityNodesByGroupKuzu gets entity nodes specifically for Kuzu
-func (b *Builder) getEntityNodesByGroupKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver, groupID string) ([]*types.Node, error) {
-	query := `
-		MATCH (n:Entity {group_id: $group_id})
-		RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, n.created_at AS created_at
-	`
-	params := map[string]interface{}{
-		"group_id": groupID,
-	}
-
-	records, _, _, err := kuzuDriver.ExecuteQuery(query, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
-	}
-
-	var nodes []*types.Node
-	recordSlice, ok := records.([]map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("unexpected records type: %T", records)
-	}
-	for _, record := range recordSlice {
-		node := &types.Node{
-			Type:    types.EntityNodeType,
-			GroupID: groupID,
-		}
-
-		if uuid, ok := record["uuid"].(string); ok {
-			node.Uuid = uuid
-		}
-		if name, ok := record["name"].(string); ok {
-			node.Name = name
-		}
-		if summary, ok := record["summary"].(string); ok {
-			node.Summary = summary
-		}
-
-		nodes = append(nodes, node)
-	}
-
-	return nodes, nil
+	return b.driver.GetEntityNodesByGroup(ctx, groupID)
 }
 
 // getNodesByUUIDs gets nodes by their UUIDs
@@ -261,24 +215,7 @@ func (b *Builder) getAllGroupIDsNeo4j(ctx context.Context) ([]string, error) {
 	return b.parseGroupIDsFromRecords(result)
 }
 
-// getEntityNodesByGroupNeo4j gets entity nodes for Neo4j/Memgraph
-func (b *Builder) getEntityNodesByGroupNeo4j(ctx context.Context, groupID string) ([]*types.Node, error) {
-	query := `
-		MATCH (n:Entity {group_id: $group_id})
-		RETURN n.uuid AS uuid, n.name AS name, n.type AS type, n.entity_type AS entity_type, n.group_id AS group_id, n.summary AS summary, n.created_at AS created_at
-	`
 
-	params := map[string]interface{}{
-		"group_id": groupID,
-	}
-
-	result, _, _, err := b.driver.ExecuteQuery(query, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
-	}
-	nodes, _ := driver.ParseNeo4JRecords[*types.Node](result)
-	return nodes, nil
-}
 
 // ====== Record Parsing Helpers ======
 

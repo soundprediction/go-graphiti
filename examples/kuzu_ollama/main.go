@@ -35,12 +35,12 @@ func main() {
 	// ========================================
 	log.Println("\n📊 Setting up Kuzu embedded graph database...")
 
-	kuzuDriver, err := driver.NewKuzuDriver("./example_graph.db")
+	kuzuDriver, err := driver.NewKuzuDriver("./example_graph.db", 1)
 	if err != nil {
 		log.Fatalf("Failed to create Kuzu driver: %v", err)
 	}
 	defer func() {
-		if err := kuzuDriver.Close(ctx); err != nil {
+		if err := kuzuDriver.Close(); err != nil {
 			log.Printf("Error closing Kuzu driver: %v", err)
 		}
 	}()
@@ -104,7 +104,7 @@ func main() {
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(kuzuDriver, ollama, embedderClient, graphitiConfig)
+	client := graphiti.NewClient(kuzuDriver, ollama, embedderClient, graphitiConfig, nil)
 	defer func() {
 		if err := client.Close(ctx); err != nil {
 			log.Printf("Error closing Graphiti client: %v", err)
@@ -147,7 +147,7 @@ func main() {
 
 	// Note: In current implementation, this will demonstrate the API
 	// but actual storage won't work until Kuzu library is available
-	err = client.Add(ctx, episodes, nil)
+	_, err = client.Add(ctx, episodes, nil)
 	if err != nil {
 		log.Printf("⚠️  Expected error with stub implementation: %v", err)
 		log.Println("   This will work once the Kuzu Go library is available")
@@ -197,7 +197,7 @@ func main() {
 	log.Println("\n💭 Testing Ollama LLM integration...")
 
 	// Test the LLM directly to show it works
-	testMessages := []llm.Message{
+	testMessages := []types.Message{
 		llm.NewSystemMessage("You are a helpful assistant discussing graph databases and local AI setups."),
 		llm.NewUserMessage("What are the advantages of using an embedded graph database like Kuzu compared to a server-based solution like Neo4j?"),
 	}

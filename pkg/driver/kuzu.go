@@ -1935,7 +1935,7 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 
 	var metadataJSON string
 	var err error
-	if node.Metadata != nil && len(node.Metadata) > 0 {
+	if len(node.Metadata) > 0 {
 		data, marshalErr := json.Marshal(node.Metadata)
 		if marshalErr != nil {
 			return fmt.Errorf("failed to marshal node metadata: %w", marshalErr)
@@ -2236,4 +2236,79 @@ func (k *KuzuDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID str
 		}
 	}
 	return neighbors, nil
+}
+
+func (k *KuzuDriver) ParseNodesFromRecords(records interface{}) ([]*types.Node, error) {
+	var nodes []*types.Node
+	switch v := records.(type) {
+	case []map[string]interface{}:
+		// Result is a list of records (Kuzu format)
+		for _, record := range v {
+			if nodeData, ok := record["e"].(map[string]interface{}); ok {
+				node, err := types.ParseNodeFromMap(nodeData)
+				if err != nil {
+					continue // Skip malformed nodes
+				}
+				nodes = append(nodes, node)
+			}
+		}
+	case []interface{}:
+		// Result is a list of interfaces
+		for _, item := range v {
+			if record, ok := item.(map[string]interface{}); ok {
+				if nodeData, ok := record["e"].(map[string]interface{}); ok {
+					node, err := types.ParseNodeFromMap(nodeData)
+					if err != nil {
+						continue // Skip malformed nodes
+					}
+					nodes = append(nodes, node)
+				}
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unexpected result type: %T", records)
+	}
+	return nodes, nil
+}
+
+// getEntityNodesByGroupKuzu gets entity nodes specifically for Kuzu
+func (k *KuzuDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
+	query := `
+		MATCH (n:Entity {group_id: $group_id})
+		RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, n.created_at AS created_at
+	`
+	params := map[string]interface{}{
+		"group_id": groupID,
+	}
+
+	records, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
+	}
+
+	var nodes []*types.Node
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+	for _, record := range recordSlice {
+		node := &types.Node{
+			Type:    types.EntityNodeType,
+			GroupID: groupID,
+		}
+
+		if uuid, ok := record["uuid"].(string); ok {
+			node.Uuid = uuid
+		}
+		if name, ok := record["name"].(string); ok {
+			node.Name = name
+		}
+		if summary, ok := record["summary"].(string); ok {
+			node.Summary = summary
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
 }

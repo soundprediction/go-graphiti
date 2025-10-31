@@ -171,252 +171,6 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 	return err
 }
 
-// UpsertNode creates or updates a node.
-func (m *MemgraphDriver) UpsertNode2(ctx context.Context, node *types.Node) error {
-	// Handle nil node
-	if node == nil {
-		return fmt.Errorf("cannot upsert nil node")
-	}
-
-	// Set timestamps if not already set
-	if node.CreatedAt.IsZero() {
-		node.CreatedAt = time.Now()
-	}
-	node.UpdatedAt = time.Now()
-	if node.ValidFrom.IsZero() {
-		node.ValidFrom = node.CreatedAt
-	}
-
-	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
-	defer session.Close(ctx)
-	label := m.getLabelForNodeType(node.Type)
-
-	// Try to create first
-	if !m.NodeExists(ctx, node) {
-		err := m.executeNodeCreateQuery(ctx, node, label)
-		if err != nil {
-			return fmt.Errorf("failed to create node %w", err)
-		}
-		return err
-
-	}
-
-	updateErr := m.executeNodeUpdateQuery(node, label)
-	if updateErr != nil {
-		return fmt.Errorf("failed to update node %w", updateErr)
-	}
-
-	return nil
-}
-func (m *MemgraphDriver) executeNodeUpdateQuery(node *types.Node, tableName string) error {
-	// Defensive nil check for node
-	if node == nil {
-		return fmt.Errorf("cannot update nil node")
-	}
-
-	var metadataJSON string
-	var err error
-	if node.Metadata != nil && len(node.Metadata) > 0 {
-		data, marshalErr := json.Marshal(node.Metadata)
-		if marshalErr != nil {
-			return fmt.Errorf("failed to marshal node metadata: %w", marshalErr)
-		}
-		metadataJSON = string(data)
-	}
-
-	var query string
-	params := make(map[string]interface{})
-	setClauses := []string{}
-
-	params["uuid"] = node.Uuid
-	params["group_id"] = node.GroupID
-
-	switch tableName {
-	case "Episodic":
-		// Always update name, content, and valid_at for episodic nodes
-		setClauses = append(setClauses, "n.name = $name")
-		params["name"] = node.Name
-
-		setClauses = append(setClauses, "n.content = $content")
-		params["content"] = node.Content
-
-		setClauses = append(setClauses, "n.valid_at = $valid_at")
-		params["valid_at"] = node.ValidFrom
-
-		// Update entity_edges - Memgraph handles empty arrays naturally
-		setClauses = append(setClauses, "n.entity_edges = $entity_edges")
-		if len(node.EntityEdges) > 0 {
-			params["entity_edges"] = node.EntityEdges
-		} else {
-			params["entity_edges"] = []string{}
-		}
-
-	case "Entity":
-		// Dynamically add SET clauses for non-empty fields
-		if node.Name != "" {
-			setClauses = append(setClauses, "n.name = $name")
-			params["name"] = node.Name
-		}
-		if node.Summary != "" {
-			setClauses = append(setClauses, "n.summary = $summary")
-			params["summary"] = node.Summary
-		}
-		if metadataJSON != "" {
-			setClauses = append(setClauses, "n.attributes = $attributes")
-			params["attributes"] = metadataJSON
-		}
-
-		// Update labels - Memgraph handles empty arrays naturally
-		setClauses = append(setClauses, "n.labels = $labels")
-		if node.EntityType != "" {
-			params["labels"] = []string{node.EntityType}
-		} else {
-			params["labels"] = []string{}
-		}
-
-		// Update name_embedding - Memgraph accepts float32 directly
-		setClauses = append(setClauses, "n.name_embedding = $name_embedding")
-		if len(node.NameEmbedding) > 0 {
-			params["name_embedding"] = node.NameEmbedding
-		} else {
-			params["name_embedding"] = []float32{}
-		}
-
-	case "Community":
-		// Dynamically add SET clauses for non-empty fields
-		if node.Name != "" {
-			setClauses = append(setClauses, "n.name = $name")
-			params["name"] = node.Name
-		}
-		if node.Summary != "" {
-			setClauses = append(setClauses, "n.summary = $summary")
-			params["summary"] = node.Summary
-		}
-
-		// Update name_embedding - Memgraph accepts float32 directly
-		setClauses = append(setClauses, "n.name_embedding = $name_embedding")
-		if len(node.NameEmbedding) > 0 {
-			params["name_embedding"] = node.NameEmbedding
-		} else {
-			params["name_embedding"] = []float32{}
-		}
-
-	default:
-		return fmt.Errorf("unknown table: %s", tableName)
-	}
-
-	// Only execute query if there are fields to update
-	if len(setClauses) == 0 {
-		return nil // Nothing to update
-	}
-
-	query = fmt.Sprintf(`
-          MATCH (n:%s)
-          WHERE n.uuid = $uuid AND n.group_id = $group_id
-          SET %s
-      `, tableName, strings.Join(setClauses, ", "))
-
-	_, _, _, err = m.ExecuteQuery(query, params)
-	return err
-}
-func (m *MemgraphDriver) executeNodeCreateQuery(ctx context.Context, node *types.Node, tableName string) error {
-	if node == nil {
-		return fmt.Errorf("cannot create nil node")
-	}
-
-	// Create a new session (always close after use)
-	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
-	defer session.Close(ctx)
-
-	// Build node properties
-	properties := make(map[string]interface{})
-
-	// Common fields
-	properties["uuid"] = node.Uuid
-	properties["name"] = node.Name
-	properties["group_id"] = node.GroupID
-	properties["created_at"] = node.CreatedAt
-	properties["updated_at"] = time.Now().Format(time.RFC3339)
-
-	switch tableName {
-	case "Episodic":
-		properties["source"] = string(node.EpisodeType)
-		properties["source_description"] = ""
-		properties["content"] = node.Content
-		properties["valid_at"] = node.ValidFrom
-
-		if len(node.EntityEdges) > 0 {
-			properties["entity_edges"] = node.EntityEdges
-		} else {
-			properties["entity_edges"] = []string{}
-		}
-
-	case "Entity":
-		// Convert Metadata → map
-		if node.Metadata != nil {
-			data, err := json.Marshal(node.Metadata)
-			if err != nil {
-				return fmt.Errorf("failed to marshal metadata: %w", err)
-			}
-			var metadata map[string]interface{}
-			if err := json.Unmarshal(data, &metadata); err != nil {
-				return fmt.Errorf("failed to unmarshal metadata: %w", err)
-			}
-			properties["attributes"] = metadata
-		} else {
-			properties["attributes"] = map[string]interface{}{}
-		}
-
-		// Handle labels
-		if node.EntityType != "" {
-			properties["labels"] = []string{node.EntityType}
-		} else {
-			properties["labels"] = []string{}
-		}
-
-		properties["summary"] = node.Summary
-
-		// Convert []float32 → []float64 for Memgraph compatibility
-		embedding := make([]float64, len(node.NameEmbedding))
-		for i, v := range node.NameEmbedding {
-			embedding[i] = float64(v)
-		}
-		properties["name_embedding"] = embedding
-
-	case "Community":
-		properties["summary"] = node.Summary
-		embedding := make([]float64, len(node.NameEmbedding))
-		for i, v := range node.NameEmbedding {
-			embedding[i] = float64(v)
-		}
-		properties["name_embedding"] = embedding
-
-	default:
-		return fmt.Errorf("unknown table: %s", tableName)
-	}
-
-	// Build query dynamically based on label (tableName)
-	query := fmt.Sprintf(`
-		MERGE (n:%s {uuid: $uuid, group_id: $group_id})
-		SET n += $properties
-	`, tableName)
-
-	// Execute in write transaction
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		_, err := tx.Run(ctx, query, map[string]any{
-			"uuid":       node.Uuid,
-			"group_id":   node.GroupID,
-			"properties": properties,
-		})
-		return nil, err
-	})
-	if err != nil {
-		return fmt.Errorf("failed to execute write for %s: %w", tableName, err)
-	}
-
-	return nil
-}
-
 // DeleteNode removes a node and its edges.
 func (m *MemgraphDriver) DeleteNode(ctx context.Context, nodeID, groupID string) error {
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
@@ -2002,9 +1756,8 @@ func (m *MemgraphDriver) nodeToProperties(node *types.Node) map[string]any {
 		props["episode_type"] = string(node.EpisodeType)
 	}
 	if len(node.EntityEdges) > 0 {
-		if entityEdgesJSON, err := json.Marshal(node.EntityEdges); err == nil {
-			props["entity_edges"] = string(entityEdgesJSON)
-		}
+		props["entity_edges"] = node.EntityEdges
+
 	}
 
 	// Embeddings - distinguish between name and generic embeddings
@@ -2374,4 +2127,124 @@ func (m *MemgraphDriver) parseNeighborsFromRecords(result interface{}) ([]types.
 	}
 
 	return neighbors, nil
+}
+
+// parseNeo4jRecords parses Neo4j/Memgraph driver records into nodes.
+// This handles the []*db.Record type returned by Memgraph's ExecuteQuery.
+func (m *MemgraphDriver) ParseNodesFromRecords(result interface{}) ([]*types.Node, error) {
+	var episodes []*types.Node
+
+	// Use reflection to handle Neo4j driver records
+	// The result should be []*db.Record
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	// Iterate through records
+	for i := 0; i < value.Len(); i++ {
+		record := value.Index(i)
+
+		// Call Get("e") method on the record to get the node
+		getMethod := record.MethodByName("Get")
+		if !getMethod.IsValid() {
+			continue
+		}
+
+		// Call Get("e")
+		results := getMethod.Call([]reflect.Value{reflect.ValueOf("e")})
+		if len(results) < 1 {
+			continue
+		}
+
+		nodeInterface := results[0].Interface()
+
+		// Convert the node to a map
+		nodeMap, err := convertNodeToMap(nodeInterface)
+		if err != nil {
+			continue // Skip nodes that can't be converted
+		}
+
+		// Use existing parseNodeFromMap function
+		node, err := types.ParseNodeFromMap(nodeMap)
+		if err != nil {
+			continue // Skip malformed nodes
+		}
+
+		episodes = append(episodes, node)
+	}
+
+	return episodes, nil
+}
+
+// getEntityNodesByGroupNeo4j gets entity nodes for Neo4j/Memgraph
+func (m *MemgraphDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
+	query := `
+		MATCH (n:Entity {group_id: $group_id})
+		RETURN n.uuid AS uuid, n.name AS name, n.type AS type, n.entity_type AS entity_type, n.group_id AS group_id, n.summary AS summary, n.created_at AS created_at
+	`
+
+	params := map[string]interface{}{
+		"group_id": groupID,
+	}
+
+	result, _, _, err := m.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
+	}
+	nodes, _ := m.ParseNodesFromRecords(result)
+	return nodes, nil
+}
+
+func convertNodeToMap(nodeInterface interface{}) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+
+	// Use reflection to access the node's properties
+	nodeValue := reflect.ValueOf(nodeInterface)
+
+	// Handle pointer types
+	if nodeValue.Kind() == reflect.Ptr {
+		nodeValue = nodeValue.Elem()
+	}
+
+	// Try to get Props or Properties method
+	propsMethod := nodeValue.MethodByName("Props")
+	if !propsMethod.IsValid() {
+		propsMethod = nodeValue.MethodByName("Properties")
+	}
+
+	if propsMethod.IsValid() {
+		// Call Props() or Properties()
+		results := propsMethod.Call(nil)
+		if len(results) > 0 {
+			if props, ok := results[0].Interface().(map[string]interface{}); ok {
+				// Copy all properties to result
+				for k, v := range props {
+					result[k] = v
+				}
+			}
+		}
+	} else {
+		// Try to access fields directly
+		nodeType := nodeValue.Type()
+		for i := 0; i < nodeValue.NumField(); i++ {
+			field := nodeType.Field(i)
+			fieldValue := nodeValue.Field(i)
+
+			// Look for a field that contains properties
+			if field.Name == "Props" || field.Name == "Properties" {
+				if fieldValue.Kind() == reflect.Map {
+					for _, key := range fieldValue.MapKeys() {
+						result[key.String()] = fieldValue.MapIndex(key).Interface()
+					}
+				}
+			}
+		}
+	}
+
+	if len(result) == 0 {
+		return nil, fmt.Errorf("no properties found in node")
+	}
+
+	return result, nil
 }
