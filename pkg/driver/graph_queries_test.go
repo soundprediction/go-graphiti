@@ -1,8 +1,13 @@
 package driver
 
 import (
+	"context"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 func TestGraphProvider(t *testing.T) {
@@ -234,4 +239,223 @@ func TestBuildParameterizedQuery(t *testing.T) {
 			t.Errorf("Expected param %s = %v, got %v", key, value, resultParams[key])
 		}
 	}
+}
+
+func TestEntityEdgeIntegration(t *testing.T) {
+	ctx := context.Background()
+	groupID := "test-group"
+
+	// Test data
+	node1 := &types.Node{
+		Uuid:      "entity-1",
+		Name:      "Alice",
+		Type:      types.EntityNodeType,
+		GroupID:   groupID,
+		Summary:   "A software engineer who loves Go programming",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		ValidFrom: time.Now(),
+	}
+
+	node2 := &types.Node{
+		Uuid:      "entity-2",
+		Name:      "Bob",
+		Type:      types.EntityNodeType,
+		GroupID:   groupID,
+		Summary:   "A data scientist working with Python",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		ValidFrom: time.Now(),
+	}
+
+	edge := types.NewEntityEdge(
+		"edge-1",
+		"entity-1",
+		"entity-2",
+		groupID,
+		"WORKS_WITH",
+		types.EntityEdgeType,
+	)
+	edge.Fact = "Alice works with Bob on the ML project"
+	edge.CreatedAt = time.Now()
+	edge.ValidFrom = time.Now()
+
+	// Setup Kuzu driver
+	t.Run("Kuzu", func(t *testing.T) {
+		// Create temp directory for Kuzu database
+		tempDir := t.TempDir()
+		dbPath := filepath.Join(tempDir, "test_db")
+
+		kuzuDriver, err := NewKuzuDriver(dbPath, 4)
+		if err != nil {
+			t.Fatalf("Failed to create Kuzu driver: %v", err)
+		}
+		defer kuzuDriver.Close()
+
+		// Create indices
+		err = kuzuDriver.CreateIndices(ctx)
+		if err != nil {
+			t.Fatalf("Failed to create indices: %v", err)
+		}
+
+		// Upsert nodes
+		err = kuzuDriver.UpsertNode(ctx, node1)
+		if err != nil {
+			t.Fatalf("Failed to upsert node1: %v", err)
+		}
+
+		err = kuzuDriver.UpsertNode(ctx, node2)
+		if err != nil {
+			t.Fatalf("Failed to upsert node2: %v", err)
+		}
+
+		// Upsert edge
+		err = kuzuDriver.UpsertEdge(ctx, edge)
+		if err != nil {
+			t.Fatalf("Failed to upsert edge: %v", err)
+		}
+
+		// Retrieve and validate node1
+		retrievedNode1, err := kuzuDriver.GetNode(ctx, "entity-1", groupID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve node1: %v", err)
+		}
+		if retrievedNode1.Uuid != node1.Uuid {
+			t.Errorf("Node1 UUID mismatch: got %s, want %s", retrievedNode1.Uuid, node1.Uuid)
+		}
+		if retrievedNode1.Name != node1.Name {
+			t.Errorf("Node1 Name mismatch: got %s, want %s", retrievedNode1.Name, node1.Name)
+		}
+		if retrievedNode1.Summary != node1.Summary {
+			t.Errorf("Node1 Summary mismatch: got %s, want %s", retrievedNode1.Summary, node1.Summary)
+		}
+
+		// Retrieve and validate node2
+		retrievedNode2, err := kuzuDriver.GetNode(ctx, "entity-2", groupID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve node2: %v", err)
+		}
+		if retrievedNode2.Uuid != node2.Uuid {
+			t.Errorf("Node2 UUID mismatch: got %s, want %s", retrievedNode2.Uuid, node2.Uuid)
+		}
+		if retrievedNode2.Name != node2.Name {
+			t.Errorf("Node2 Name mismatch: got %s, want %s", retrievedNode2.Name, node2.Name)
+		}
+
+		// Retrieve and validate edge
+		retrievedEdge, err := kuzuDriver.GetEdge(ctx, "edge-1", groupID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve edge: %v", err)
+		}
+		if retrievedEdge.Uuid != edge.Uuid {
+			t.Errorf("Edge UUID mismatch: got %s, want %s", retrievedEdge.Uuid, edge.Uuid)
+		}
+		if retrievedEdge.SourceID != edge.SourceID {
+			t.Errorf("Edge SourceID mismatch: got %s, want %s", retrievedEdge.SourceID, edge.SourceID)
+		}
+		if retrievedEdge.TargetID != edge.TargetID {
+			t.Errorf("Edge TargetID mismatch: got %s, want %s", retrievedEdge.TargetID, edge.TargetID)
+		}
+		if retrievedEdge.Fact != edge.Fact {
+			t.Errorf("Edge Fact mismatch: got %s, want %s", retrievedEdge.Fact, edge.Fact)
+		}
+
+		t.Logf("✓ Kuzu: Successfully created, upserted, and retrieved 2 nodes and 1 edge")
+	})
+
+	// Setup Memgraph driver
+	t.Run("Memgraph", func(t *testing.T) {
+		// Try to connect to Memgraph on default port
+		uri := "bolt://localhost:7687"
+		username := ""
+		password := ""
+
+		memgraphDriver, err := NewMemgraphDriver(uri, username, password, "memgraph")
+		if err != nil {
+			t.Skipf("Skipping Memgraph test: cannot connect to %s: %v", uri, err)
+			return
+		}
+		defer memgraphDriver.Close()
+
+		// Verify connectivity
+		err = memgraphDriver.VerifyConnectivity(ctx)
+		if err != nil {
+			t.Skipf("Skipping Memgraph test: cannot verify connectivity: %v", err)
+			return
+		}
+
+		// Clean up before test
+		cleanupQuery := `
+			MATCH (n {group_id: $group_id})
+			DETACH DELETE n
+		`
+		_, _, _, _ = memgraphDriver.ExecuteQuery(cleanupQuery, map[string]interface{}{"group_id": groupID})
+
+		// Create indices
+		err = memgraphDriver.CreateIndices(ctx)
+		if err != nil {
+			t.Logf("Warning: Failed to create indices (may already exist): %v", err)
+		}
+
+		// Upsert nodes
+		err = memgraphDriver.UpsertNode(ctx, node1)
+		if err != nil {
+			t.Fatalf("Failed to upsert node1: %v", err)
+		}
+
+		err = memgraphDriver.UpsertNode(ctx, node2)
+		if err != nil {
+			t.Fatalf("Failed to upsert node2: %v", err)
+		}
+
+		// Upsert edge
+		err = memgraphDriver.UpsertEdge(ctx, edge)
+		if err != nil {
+			t.Fatalf("Failed to upsert edge: %v", err)
+		}
+
+		// Retrieve and validate node1
+		retrievedNode1, err := memgraphDriver.GetNode(ctx, "entity-1", groupID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve node1: %v", err)
+		}
+		if retrievedNode1.Uuid != node1.Uuid {
+			t.Errorf("Node1 UUID mismatch: got %s, want %s", retrievedNode1.Uuid, node1.Uuid)
+		}
+		if retrievedNode1.Name != node1.Name {
+			t.Errorf("Node1 Name mismatch: got %s, want %s", retrievedNode1.Name, node1.Name)
+		}
+
+		// Retrieve and validate node2
+		retrievedNode2, err := memgraphDriver.GetNode(ctx, "entity-2", groupID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve node2: %v", err)
+		}
+		if retrievedNode2.Uuid != node2.Uuid {
+			t.Errorf("Node2 UUID mismatch: got %s, want %s", retrievedNode2.Uuid, node2.Uuid)
+		}
+		if retrievedNode2.Name != node2.Name {
+			t.Errorf("Node2 Name mismatch: got %s, want %s", retrievedNode2.Name, node2.Name)
+		}
+
+		// Retrieve and validate edge
+		retrievedEdge, err := memgraphDriver.GetEdge(ctx, "edge-1", groupID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve edge: %v", err)
+		}
+		if retrievedEdge.Uuid != edge.Uuid {
+			t.Errorf("Edge UUID mismatch: got %s, want %s", retrievedEdge.Uuid, edge.Uuid)
+		}
+		if retrievedEdge.SourceID != edge.SourceID {
+			t.Errorf("Edge SourceID mismatch: got %s, want %s", retrievedEdge.SourceID, edge.SourceID)
+		}
+		if retrievedEdge.TargetID != edge.TargetID {
+			t.Errorf("Edge TargetID mismatch: got %s, want %s", retrievedEdge.TargetID, edge.TargetID)
+		}
+
+		// Clean up after test
+		_, _, _, _ = memgraphDriver.ExecuteQuery(cleanupQuery, map[string]interface{}{"group_id": groupID})
+
+		t.Logf("✓ Memgraph: Successfully created, upserted, and retrieved 2 nodes and 1 edge")
+	})
 }
