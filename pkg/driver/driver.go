@@ -79,12 +79,14 @@ type GraphDriver interface {
 	// Temporal operations
 	GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error)
 	GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error)
+	RetrieveEpisodes(ctx context.Context, referenceTime time.Time, groupIDs []string, limit int, episodeType *types.EpisodeType) ([]*types.Node, error)
 
 	// Community operations
 	GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error)
 	BuildCommunities(ctx context.Context, groupID string) error
 	GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error)
 	FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error)
+	RemoveCommunities(ctx context.Context) error
 
 	// Database maintenance
 	CreateIndices(ctx context.Context) error
@@ -96,6 +98,7 @@ type GraphDriver interface {
 
 	// Getters by group
 	GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error)
+	GetAllGroupIDs(ctx context.Context) ([]string, error)
 }
 
 // GraphStats holds statistics about the graph.

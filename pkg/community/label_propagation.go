@@ -3,10 +3,8 @@ package community
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -130,55 +128,11 @@ func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string
 
 // getAllGroupIDs gets all distinct group IDs from entity nodes
 func (b *Builder) getAllGroupIDs(ctx context.Context) ([]string, error) {
-	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
-		return b.getAllGroupIDsKuzu(ctx, kuzuDriver)
-	}
-
-	// For Neo4j/Memgraph drivers
-	return b.getAllGroupIDsNeo4j(ctx)
-}
-
-// getAllGroupIDsKuzu gets all group IDs specifically for Kuzu
-func (b *Builder) getAllGroupIDsKuzu(ctx context.Context, kuzuDriver *driver.KuzuDriver) ([]string, error) {
-	query := `
-		MATCH (n:Entity)
-		WHERE n.group_id IS NOT NULL
-		RETURN collect(DISTINCT n.group_id) AS group_ids
-	`
-
-	records, _, _, err := kuzuDriver.ExecuteQuery(query, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
-	}
-
-	recordSlice, ok := records.([]map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("unexpected records type: %T", records)
-	}
-
-	if len(recordSlice) == 0 {
-		return []string{}, nil
-	}
-
-	// Extract group IDs from the result
-	if groupIDsInterface, ok := recordSlice[0]["group_ids"]; ok {
-		if groupIDs, ok := groupIDsInterface.([]interface{}); ok {
-			var result []string
-			for _, gid := range groupIDs {
-				if gidStr, ok := gid.(string); ok {
-					result = append(result, gidStr)
-				}
-			}
-			return result, nil
-		}
-	}
-
-	return []string{}, nil
+	return b.driver.GetAllGroupIDs(ctx)
 }
 
 // getEntityNodesByGroup gets all entity nodes for a specific group
 func (b *Builder) getEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
-	// For Neo4j/Memgraph drivers
 	return b.driver.GetEntityNodesByGroup(ctx, groupID)
 }
 
@@ -195,71 +149,6 @@ func (b *Builder) getNodesByUUIDs(ctx context.Context, uuids []string, groupID s
 	}
 
 	return nodes, nil
-}
-
-// ====== Neo4j/Memgraph Implementations ======
-
-// getAllGroupIDsNeo4j gets all group IDs for Neo4j/Memgraph
-func (b *Builder) getAllGroupIDsNeo4j(ctx context.Context) ([]string, error) {
-	query := `
-		MATCH (n:Entity)
-		WHERE n.group_id IS NOT NULL
-		RETURN collect(DISTINCT n.group_id) AS group_ids
-	`
-
-	result, _, _, err := b.driver.ExecuteQuery(query, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
-	}
-
-	return b.parseGroupIDsFromRecords(result)
-}
-
-
-
-// ====== Record Parsing Helpers ======
-
-// parseGroupIDsFromRecords parses group IDs from Neo4j/Memgraph records
-func (b *Builder) parseGroupIDsFromRecords(result interface{}) ([]string, error) {
-	value := reflect.ValueOf(result)
-	if value.Kind() != reflect.Slice {
-		return nil, fmt.Errorf("expected slice, got %T", result)
-	}
-
-	if value.Len() == 0 {
-		return []string{}, nil
-	}
-
-	// Get first record
-	record := value.Index(0)
-	getMethod := record.MethodByName("Get")
-	if !getMethod.IsValid() {
-		return []string{}, nil
-	}
-
-	// Get group_ids field
-	results := getMethod.Call([]reflect.Value{reflect.ValueOf("group_ids")})
-	if len(results) < 1 {
-		return []string{}, nil
-	}
-
-	groupIDsInterface := results[0].Interface()
-
-	// Handle different types
-	switch gids := groupIDsInterface.(type) {
-	case []interface{}:
-		var groupIDs []string
-		for _, gid := range gids {
-			if gidStr, ok := gid.(string); ok {
-				groupIDs = append(groupIDs, gidStr)
-			}
-		}
-		return groupIDs, nil
-	case []string:
-		return gids, nil
-	}
-
-	return []string{}, nil
 }
 
 // DummyMemgraphNode mimics a memgraph.Node struct

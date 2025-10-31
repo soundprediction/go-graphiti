@@ -107,6 +107,10 @@ func (c *Client) GetStats(ctx context.Context) (*driver.GraphStats, error) {
 //   - episodeType: Optional episode type filter (nil for all types)
 //
 // Returns episodes in chronological order (oldest first).
+//
+// Note: This method delegates to driver-specific implementations to handle
+// database-specific temporal type comparisons (e.g., Memgraph's zoned_date_time
+// vs Kuzu's TIMESTAMP).
 func (c *Client) RetrieveEpisodes(
 	ctx context.Context,
 	referenceTime time.Time,
@@ -114,59 +118,8 @@ func (c *Client) RetrieveEpisodes(
 	limit int,
 	episodeType *types.EpisodeType,
 ) ([]*types.Node, error) {
-	if limit <= 0 {
-		limit = 10
-	}
-
-	// Build query parameters
-	queryParams := make(map[string]interface{})
-	queryParams["reference_time"] = referenceTime
-	queryParams["num_episodes"] = limit
-
-	// Build conditional filters
-	queryFilter := ""
-
-	// Group ID filter
-	if groupIDs != nil && len(groupIDs) > 0 {
-		queryFilter += "\nAND e.group_id IN $group_ids"
-		queryParams["group_ids"] = groupIDs
-	}
-
-	// Optional episode type filter
-	if episodeType != nil {
-		queryFilter += "\nAND e.episode_type = $source"
-		queryParams["source"] = string(*episodeType)
-	}
-
-	// Build complete query
-	// Match Python's query structure exactly from graph_data_operations.py:154-171
-	// Python uses 'valid_at' not 'valid_from'
-	query := fmt.Sprintf(`
-		MATCH (e:Episodic)
-		WHERE e.valid_at <= $reference_time
-		%s
-		RETURN e
-		ORDER BY e.valid_at DESC
-		LIMIT $num_episodes
-	`, queryFilter)
-
-	// Execute query
-	result, _, _, err := c.driver.ExecuteQuery(query, queryParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve episodes: %w", err)
-	}
-
-	// Parse results - the exact format depends on the driver implementation
-	episodes, err := c.parseEpisodicNodesFromQueryResult(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse episodes: %w", err)
-	}
-
-	// Reverse to return in chronological order (oldest first)
-	// This matches Python's: return list(reversed(episodes))
-	types.ReverseNodes(episodes)
-
-	return episodes, nil
+	// Call the driver-specific implementation
+	return c.driver.RetrieveEpisodes(ctx, referenceTime, groupIDs, limit, episodeType)
 }
 
 // GetEpisodes retrieves recent episodes from the knowledge graph.
@@ -181,49 +134,6 @@ func (c *Client) GetEpisodes(ctx context.Context, groupID string, limit int) ([]
 
 	// Call the full RetrieveEpisodes with temporal filtering
 	return c.RetrieveEpisodes(ctx, referenceTime, []string{groupID}, limit, nil)
-}
-
-// parseEpisodicNodesFromQueryResult parses query results into episodic nodes
-func (c *Client) parseEpisodicNodesFromQueryResult(result interface{}) ([]*types.Node, error) {
-	var episodes []*types.Node
-
-	// Handle different result formats from ExecuteQuery
-	switch v := result.(type) {
-	case []map[string]interface{}:
-		// Result is a list of records (Kuzu format)
-		for _, record := range v {
-			if nodeData, ok := record["e"].(map[string]interface{}); ok {
-				node, err := types.ParseNodeFromMap(nodeData)
-				if err != nil {
-					continue // Skip malformed nodes
-				}
-				episodes = append(episodes, node)
-			}
-		}
-	case []interface{}:
-		// Result is a list of interfaces
-		for _, item := range v {
-			if record, ok := item.(map[string]interface{}); ok {
-				if nodeData, ok := record["e"].(map[string]interface{}); ok {
-					node, err := types.ParseNodeFromMap(nodeData)
-					if err != nil {
-						continue // Skip malformed nodes
-					}
-					episodes = append(episodes, node)
-				}
-			}
-		}
-	default:
-		// Try to handle as Neo4j/Memgraph records using reflection
-		// This handles []*db.Record from neo4j driver
-		node, err := c.driver.ParseNodesFromRecords(result)
-		if err != nil {
-			return nil, fmt.Errorf("unexpected query result type: %T - %w", result, err)
-		}
-		return node, nil
-	}
-
-	return episodes, nil
 }
 
 // GetNodesAndEdgesByEpisode retrieves all nodes and edges mentioned in a specific episode.

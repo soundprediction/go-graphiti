@@ -961,6 +961,85 @@ func (m *MemgraphDriver) GetEdgesInTimeRange(ctx context.Context, start, end tim
 	return edges, nil
 }
 
+// RetrieveEpisodes retrieves episodic nodes with temporal filtering.
+// Memgraph-specific implementation that handles zoned_date_time comparison.
+func (m *MemgraphDriver) RetrieveEpisodes(
+	ctx context.Context,
+	referenceTime time.Time,
+	groupIDs []string,
+	limit int,
+	episodeType *types.EpisodeType,
+) ([]*types.Node, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
+
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		// Build query parameters
+		queryParams := make(map[string]any)
+		// For Memgraph, we pass the time as a string and use LocalDateTime() to convert it
+		queryParams["reference_time"] = referenceTime.Format(time.RFC3339)
+		queryParams["num_episodes"] = limit
+
+		// Build conditional filters
+		queryFilter := ""
+
+		// Group ID filter
+		if len(groupIDs) > 0 {
+			queryFilter += "\nAND e.group_id IN $group_ids"
+			queryParams["group_ids"] = groupIDs
+		}
+
+		// Optional episode type filter
+		if episodeType != nil {
+			queryFilter += "\nAND e.episode_type = $source"
+			queryParams["source"] = string(*episodeType)
+		}
+
+		// For Memgraph, use LocalDateTime() to convert the string to a temporal type
+		// that can be compared with the zoned_date_time field
+		query := fmt.Sprintf(`
+			MATCH (e:Episodic)
+			WHERE e.valid_at <= LocalDateTime($reference_time)
+			%s
+			RETURN e
+			ORDER BY e.valid_at DESC
+			LIMIT $num_episodes
+		`, queryFilter)
+
+		res, err := tx.Run(ctx, query, queryParams)
+		if err != nil {
+			return nil, err
+		}
+
+		records, err := res.Collect(ctx)
+		return records, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve episodes: %w", err)
+	}
+
+	records := result.([]*db.Record)
+	episodes := make([]*types.Node, 0, len(records))
+
+	for _, record := range records {
+		nodeValue, found := record.Get("e")
+		if !found {
+			continue
+		}
+		node := nodeValue.(dbtype.Node)
+		episodes = append(episodes, m.nodeFromDBNode(node))
+	}
+
+	// Reverse to return in chronological order (oldest first)
+	types.ReverseNodes(episodes)
+
+	return episodes, nil
+}
+
 func (m *MemgraphDriver) GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error) {
 	// For basic implementation, return nodes grouped by a hypothetical community property
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
@@ -1159,6 +1238,25 @@ func (m *MemgraphDriver) parseCommunityNodesFromRecords(result interface{}) ([]*
 	}
 
 	return nodes, nil
+}
+
+// RemoveCommunities removes all community nodes and their relationships from the graph.
+// Memgraph-specific implementation using DETACH DELETE.
+func (m *MemgraphDriver) RemoveCommunities(ctx context.Context) error {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := "MATCH (c:Community) DETACH DELETE c"
+		_, err := tx.Run(ctx, query, nil)
+		return nil, err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to remove communities: %w", err)
+	}
+
+	return nil
 }
 
 func (m *MemgraphDriver) CreateIndices(ctx context.Context) error {
@@ -2194,6 +2292,66 @@ func (m *MemgraphDriver) GetEntityNodesByGroup(ctx context.Context, groupID stri
 	}
 	nodes, _ := m.ParseNodesFromRecords(result)
 	return nodes, nil
+}
+
+// GetAllGroupIDs retrieves all distinct group IDs from entity nodes.
+// Memgraph-specific implementation.
+func (m *MemgraphDriver) GetAllGroupIDs(ctx context.Context) ([]string, error) {
+	query := `
+		MATCH (n:Entity)
+		WHERE n.group_id IS NOT NULL
+		RETURN collect(DISTINCT n.group_id) AS group_ids
+	`
+
+	result, _, _, err := m.ExecuteQuery(query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
+	}
+
+	return m.parseGroupIDsFromRecords(result)
+}
+
+// parseGroupIDsFromRecords parses group IDs from Neo4j/Memgraph records
+func (m *MemgraphDriver) parseGroupIDsFromRecords(result interface{}) ([]string, error) {
+	value := reflect.ValueOf(result)
+	if value.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("expected slice, got %T", result)
+	}
+
+	if value.Len() == 0 {
+		return []string{}, nil
+	}
+
+	// Get first record
+	record := value.Index(0)
+	getMethod := record.MethodByName("Get")
+	if !getMethod.IsValid() {
+		return []string{}, nil
+	}
+
+	// Get group_ids field
+	results := getMethod.Call([]reflect.Value{reflect.ValueOf("group_ids")})
+	if len(results) < 1 {
+		return []string{}, nil
+	}
+
+	groupIDsInterface := results[0].Interface()
+
+	// Handle different types
+	switch gids := groupIDsInterface.(type) {
+	case []interface{}:
+		var groupIDs []string
+		for _, gid := range gids {
+			if gidStr, ok := gid.(string); ok {
+				groupIDs = append(groupIDs, gidStr)
+			}
+		}
+		return groupIDs, nil
+	case []string:
+		return gids, nil
+	}
+
+	return []string{}, nil
 }
 
 func convertNodeToMap(nodeInterface interface{}) (map[string]interface{}, error) {

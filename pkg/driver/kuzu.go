@@ -1462,6 +1462,113 @@ func (k *KuzuDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Ti
 	return edges, nil
 }
 
+// RetrieveEpisodes retrieves episodic nodes with temporal filtering.
+// Kuzu-specific implementation that works with TIMESTAMP type.
+func (k *KuzuDriver) RetrieveEpisodes(
+	ctx context.Context,
+	referenceTime time.Time,
+	groupIDs []string,
+	limit int,
+	episodeType *types.EpisodeType,
+) ([]*types.Node, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Build query parameters
+	queryParams := make(map[string]interface{})
+	queryParams["reference_time"] = referenceTime
+	queryParams["num_episodes"] = limit
+
+	// Build conditional filters
+	queryFilter := ""
+
+	// Group ID filter
+	if len(groupIDs) > 0 {
+		queryFilter += "\nAND e.group_id IN $group_ids"
+		queryParams["group_ids"] = groupIDs
+	}
+
+	// Optional episode type filter
+	if episodeType != nil {
+		queryFilter += "\nAND e.source = $source"
+		queryParams["source"] = string(*episodeType)
+	}
+
+	// Build complete query
+	// Kuzu uses TIMESTAMP type, so direct comparison works
+	query := fmt.Sprintf(`
+		MATCH (e:Episodic)
+		WHERE e.valid_at <= $reference_time
+		%s
+		RETURN e.uuid AS uuid,
+		       e.name AS name,
+		       e.group_id AS group_id,
+		       e.created_at AS created_at,
+		       e.source AS episode_type,
+		       e.content AS content,
+		       e.valid_at AS valid_at,
+		       e.entity_edges AS entity_edges
+		ORDER BY e.valid_at DESC
+		LIMIT $num_episodes
+	`, queryFilter)
+
+	// Execute query
+	result, _, _, err := k.ExecuteQuery(query, queryParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve episodes: %w", err)
+	}
+
+	// Parse results
+	rows, ok := result.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result type: %T", result)
+	}
+
+	episodes := make([]*types.Node, 0, len(rows))
+	for _, row := range rows {
+		node := &types.Node{}
+
+		if uuid, ok := row["uuid"].(string); ok {
+			node.Uuid = uuid
+		}
+		if name, ok := row["name"].(string); ok {
+			node.Name = name
+		}
+		if groupID, ok := row["group_id"].(string); ok {
+			node.GroupID = groupID
+		}
+		if createdAt, ok := row["created_at"].(time.Time); ok {
+			node.CreatedAt = createdAt
+		}
+		if episodeTypeStr, ok := row["episode_type"].(string); ok {
+			node.EpisodeType = types.EpisodeType(episodeTypeStr)
+		}
+		if content, ok := row["content"].(string); ok {
+			node.Content = content
+		}
+		if validAt, ok := row["valid_at"].(time.Time); ok {
+			node.ValidFrom = validAt
+		}
+		if entityEdges, ok := row["entity_edges"].([]interface{}); ok {
+			node.EntityEdges = make([]string, len(entityEdges))
+			for i, edge := range entityEdges {
+				if s, ok := edge.(string); ok {
+					node.EntityEdges[i] = s
+				}
+			}
+		}
+
+		node.Type = types.EpisodicNodeType
+		episodes = append(episodes, node)
+	}
+
+	// Reverse to return in chronological order (oldest first)
+	types.ReverseNodes(episodes)
+
+	return episodes, nil
+}
+
 // GetCommunities retrieves community nodes
 func (k *KuzuDriver) GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error) {
 	return []*types.Node{}, nil // Placeholder
@@ -1595,6 +1702,22 @@ func (k *KuzuDriver) parseCommunityNodesFromRecords(result interface{}) ([]*type
 	}
 
 	return nodes, nil
+}
+
+// RemoveCommunities removes all community nodes and their relationships from the graph.
+// Kuzu-specific implementation using DELETE.
+func (k *KuzuDriver) RemoveCommunities(ctx context.Context) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	query := "MATCH (c:Community) DETACH DELETE c"
+
+	_, _, _, err := k.ExecuteQuery(query, nil)
+	if err != nil {
+		return fmt.Errorf("failed to remove communities: %w", err)
+	}
+
+	return nil
 }
 
 // CreateIndices creates database indices
@@ -2311,4 +2434,43 @@ func (k *KuzuDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) 
 	}
 
 	return nodes, nil
+}
+
+// GetAllGroupIDs retrieves all distinct group IDs from entity nodes.
+// Kuzu-specific implementation.
+func (k *KuzuDriver) GetAllGroupIDs(ctx context.Context) ([]string, error) {
+	query := `
+		MATCH (n:Entity)
+		WHERE n.group_id IS NOT NULL
+		RETURN collect(DISTINCT n.group_id) AS group_ids
+	`
+
+	records, _, _, err := k.ExecuteQuery(query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute group IDs query: %w", err)
+	}
+
+	recordSlice, ok := records.([]map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected records type: %T", records)
+	}
+
+	if len(recordSlice) == 0 {
+		return []string{}, nil
+	}
+
+	// Extract group IDs from the result
+	if groupIDsInterface, ok := recordSlice[0]["group_ids"]; ok {
+		if groupIDs, ok := groupIDsInterface.([]interface{}); ok {
+			var result []string
+			for _, gid := range groupIDs {
+				if gidStr, ok := gid.(string); ok {
+					result = append(result, gidStr)
+				}
+			}
+			return result, nil
+		}
+	}
+
+	return []string{}, nil
 }

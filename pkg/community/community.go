@@ -347,17 +347,7 @@ func (b *Builder) buildCommunityEdges(entityNodes []*types.Node, communityNode *
 
 // RemoveCommunities removes all community nodes and edges from the graph
 func (b *Builder) RemoveCommunities(ctx context.Context) error {
-	query := "MATCH (c:Community) DETACH DELETE c"
-
-	// Execute based on driver type
-	if kuzuDriver, ok := b.driver.(*driver.KuzuDriver); ok {
-		// For Kuzu, use the executeQuery method
-		_, _, _, err := kuzuDriver.ExecuteQuery(query, nil)
-		return err
-	}
-
-	// For other drivers, implement accordingly
-	return fmt.Errorf("driver type not supported for community removal")
+	return b.driver.RemoveCommunities(ctx)
 }
 
 // generateUUID generates a simple UUID-like string
