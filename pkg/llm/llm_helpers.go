@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -312,4 +313,195 @@ func ExtractJSONFromResponse(response string) string {
 
 	// Return as-is if no extraction possible
 	return response
+}
+
+// CSVParserFunc is a function type for parsing CSV/TSV strings into a slice of type T.
+type CSVParserFunc[T any] func(csvContent string) ([]*T, error)
+
+// GenerateCSVResponse generates a CSV response from an LLM and parses it into a slice of type T.
+// It handles retries with continuation prompts when parsing fails.
+//
+// Parameters:
+//   - ctx: Context for the LLM call
+//   - llmClient: The LLM client to use
+//   - logger: Logger for debugging (can be nil)
+//   - messages: The initial message history
+//   - csvParser: Function to parse CSV content into []T
+//   - maxRetries: Maximum number of retry attempts (default 3 if <= 0)
+//
+// Returns:
+//   - []T: Successfully parsed CSV records
+//   - *types.BadLlmCsvResponse: Error information including messages, response, and error
+//   - error: Error if all retries fail or if there's a critical error
+//
+// The function:
+//   - Makes LLM calls with the provided messages
+//   - Strips HTML tags and cleans up the response
+//   - Parses CSV using the provided parser function
+//   - Retries with continuation prompts if parsing fails
+//   - Returns detailed error information via BadLlmCsvResponse
+//
+// Example:
+//
+//	type Entity struct {
+//	    Name string `csv:"name"`
+//	    Type string `csv:"type"`
+//	}
+//
+//	// Create a parser function
+//	parser := func(csvContent string) ([]*Entity, error) {
+//	    return utils.DuckDbUnmarshalCSV[Entity](csvContent, '\t')
+//	}
+//
+//	entities, badResp, err := GenerateCSVResponse[Entity](
+//	    ctx, llmClient, logger,
+//	    []types.Message{
+//	        {Role: "system", Content: "You are a CSV generator."},
+//	        {Role: "user", Content: "Generate entity data in TSV format."},
+//	    },
+//	    parser,
+//	    3,
+//	)
+func GenerateCSVResponse[T any](
+	ctx context.Context,
+	llmClient Client,
+	logger *slog.Logger,
+	messages []types.Message,
+	csvParser CSVParserFunc[T],
+	maxRetries int,
+) ([]T, *types.BadLlmCsvResponse, error) {
+	if maxRetries <= 0 {
+		maxRetries = 3
+	}
+
+	// Make a copy of messages to avoid modifying the original slice
+	workingMessages := make([]types.Message, len(messages))
+	copy(workingMessages, messages)
+
+	var lastResponse *types.Response
+	var lastError error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Make LLM call
+		response, err := llmClient.Chat(ctx, workingMessages)
+		if err != nil {
+			lastError = fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
+			lastResponse = response
+
+			// Add continuation prompt for next attempt
+			if attempt < maxRetries {
+				workingMessages = append(workingMessages, types.Message{
+					Role:    RoleAssistant,
+					Content: "",
+				})
+				workingMessages = append(workingMessages, types.Message{
+					Role:    RoleUser,
+					Content: "The previous response failed. Please try again with valid CSV/TSV format:",
+				})
+			}
+			continue
+		}
+
+		if response == nil || response.Content == "" {
+			lastError = fmt.Errorf("empty response from LLM on attempt %d", attempt+1)
+			lastResponse = response
+
+			// Add continuation prompt for next attempt
+			if attempt < maxRetries {
+				workingMessages = append(workingMessages, types.Message{
+					Role:    RoleAssistant,
+					Content: "",
+				})
+				workingMessages = append(workingMessages, types.Message{
+					Role:    RoleUser,
+					Content: "No response received. Please provide the CSV/TSV data:",
+				})
+			}
+			continue
+		}
+
+		lastResponse = response
+
+		// Log response if logger is provided
+		if logger != nil {
+			logger.Debug("LLM CSV response received", "attempt", attempt+1, "length", len(response.Content))
+		}
+
+		// Clean up the response
+		cleanedResponse := StripHtmlTags(response.Content)
+		if strings.HasSuffix(cleanedResponse, "\n") {
+			lines := strings.Split(cleanedResponse, "\n")
+			if len(lines) > 1 {
+				cleanedResponse = strings.Join(lines[:len(lines)-1], "\n")
+			}
+		}
+
+		// Try to parse the CSV/TSV using the provided parser
+		resultPtrs, err := csvParser(cleanedResponse)
+		if err != nil {
+			lastError = fmt.Errorf("failed to parse CSV on attempt %d: %w", attempt+1, err)
+
+			if logger != nil {
+				logger.Debug("CSV parsing failed", "attempt", attempt+1, "error", err, "response", cleanedResponse)
+			}
+
+			// Add continuation prompt for next attempt
+			if attempt < maxRetries {
+				workingMessages = append(workingMessages, types.Message{
+					Role:    RoleAssistant,
+					Content: response.Content,
+				})
+				workingMessages = append(workingMessages, types.Message{
+					Role:    RoleUser,
+					Content: fmt.Sprintf("The CSV/TSV format was invalid: %v. Please provide valid TSV data with tab-separated values:", err),
+				})
+			}
+			continue
+		}
+
+		// Convert pointer slice to value slice
+		results := make([]T, 0, len(resultPtrs))
+		for _, ptr := range resultPtrs {
+			if ptr != nil {
+				results = append(results, *ptr)
+			}
+		}
+
+		// Success!
+		if logger != nil {
+			logger.Debug("CSV parsing successful", "attempt", attempt+1, "records", len(results))
+		}
+
+		return results, nil, nil
+	}
+
+	// All retries exhausted - return error information
+	badResponse := &types.BadLlmCsvResponse{
+		Messages: make([]*types.Message, 0, len(workingMessages)),
+		Response: "",
+		Error:    lastError,
+	}
+
+	// Copy messages for error reporting
+	for i := range workingMessages {
+		msg := workingMessages[i]
+		badResponse.Messages = append(badResponse.Messages, &msg)
+	}
+
+	if lastResponse != nil {
+		badResponse.Response = lastResponse.Content
+	}
+
+	if logger != nil {
+		logger.Error("CSV generation failed after all retries",
+			"attempts", maxRetries+1,
+			"error", lastError,
+		)
+	}
+
+	if lastError != nil {
+		return nil, badResponse, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, lastError)
+	}
+
+	return nil, badResponse, fmt.Errorf("failed to generate valid CSV after %d attempts", maxRetries+1)
 }
