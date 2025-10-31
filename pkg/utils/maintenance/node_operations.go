@@ -2,14 +2,12 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
 	"strings"
 	"time"
 
-	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -257,26 +255,33 @@ func (no *NodeOperations) extractNodesReflexion(ctx context.Context, episode *ty
 		return nil, fmt.Errorf("failed to create reflexion prompt: %w", err)
 	}
 
-	response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.MissedEntities{})
+	// Create CSV parser function for MissedEntitiesTSV
+	csvParser := func(csvContent string) ([]*prompts.MissedEntitiesTSV, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.MissedEntitiesTSV](csvContent, '\t')
+	}
+
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	missedEntitiesSlice, badResp, err := llm.GenerateCSVResponse[prompts.MissedEntitiesTSV](
+		ctx, no.llm, no.logger, messages, csvParser, 3,
+	)
 	if err != nil {
+		if badResp != nil {
+			no.logger.Error("Failed to parse reflexion response",
+				"error", err,
+				"last_response", badResp.Response,
+				"conversation", badResp.Messages,
+			)
+		}
 		return nil, fmt.Errorf("failed to run reflexion: %w", err)
 	}
 
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
-
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	// Convert slice of MissedEntitiesTSV to slice of entity names
+	missedEntityNames := make([]string, 0, len(missedEntitiesSlice))
+	for _, entity := range missedEntitiesSlice {
+		missedEntityNames = append(missedEntityNames, entity.EntityName)
 	}
 
-	var missedEntities prompts.MissedEntities
-	if err := json.Unmarshal(rawJSON, &missedEntities); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal reflexion response: %w", err)
-	}
-
-	return missedEntities.MissedEntities, nil
+	return missedEntityNames, nil
 }
 
 // ResolveExtractedNodes resolves newly extracted nodes against existing ones in the graph

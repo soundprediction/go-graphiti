@@ -304,6 +304,14 @@ Note: PREVIOUS MESSAGES are provided in TSV (tab-separated values) format.
 
 Given the above previous messages, current message, and list of extracted entities; determine if any entities haven't been
 extracted.
+
+Return the results in TSV (tab-separated values) format with the following structure:
+
+entity_name
+John Smith
+Acme Corp
+
+Output ONLY the TSV data with a header row. Include one row per missed entity. If no entities were missed, return only the header row.
 `, previousEpisodesTSV, episodeContent, extractedEntities)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []types.Message{

@@ -73,7 +73,14 @@ Edges should be invalidated if:
 2. The relationship has ended according to the message
 3. New information makes the edge no longer accurate
 
-Return a list of edge IDs from EXISTING EDGES that should be invalidated.
+Return the results in TSV (tab-separated values) format with the following structure:
+
+fact_id
+0
+5
+12
+
+Output ONLY the TSV data with a header row. Include one row per invalidated edge ID. If no edges should be invalidated, return only the header row.
 `, previousEpisodesTSV, episodeContent, existingEdgesTSV, referenceTime)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []types.Message{
