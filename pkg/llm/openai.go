@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // OpenAIClient implements the Client interface for OpenAI's language models.
@@ -63,7 +64,7 @@ func NewOpenAIClient(apiKey string, config Config) (*OpenAIClient, error) {
 }
 
 // Chat sends a chat completion request to OpenAI or OpenAI-compatible service.
-func (c *OpenAIClient) Chat(ctx context.Context, messages []Message) (*Response, error) {
+func (c *OpenAIClient) Chat(ctx context.Context, messages []types.Message) (*types.Response, error) {
 	req := c.buildChatRequest(messages, false, nil)
 
 	resp, err := c.client.CreateChatCompletion(ctx, req)
@@ -82,14 +83,14 @@ func (c *OpenAIClient) Chat(ctx context.Context, messages []Message) (*Response,
 	}
 
 	choice := resp.Choices[0]
-	response := &Response{
+	response := &types.Response{
 		Content:      choice.Message.Content,
 		FinishReason: string(choice.FinishReason),
 	}
 
 	// Include token usage if available (some OpenAI-compatible services might not provide this)
 	if resp.Usage.TotalTokens > 0 {
-		response.TokensUsed = &TokenUsage{
+		response.TokensUsed = &types.TokenUsage{
 			PromptTokens:     resp.Usage.PromptTokens,
 			CompletionTokens: resp.Usage.CompletionTokens,
 			TotalTokens:      resp.Usage.TotalTokens,
@@ -100,7 +101,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, messages []Message) (*Response,
 }
 
 // ChatWithStructuredOutput sends a chat completion request with structured output.
-func (c *OpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema any) (json.RawMessage, error) {
+func (c *OpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
 	req := c.buildChatRequest(messages, true, schema)
 
 	resp, err := c.client.CreateChatCompletion(ctx, req)
@@ -121,7 +122,7 @@ func (c *OpenAIClient) Close() error {
 	return nil
 }
 
-func (c *OpenAIClient) buildChatRequest(messages []Message, structuredOutput bool, schema any) openai.ChatCompletionRequest {
+func (c *OpenAIClient) buildChatRequest(messages []types.Message, structuredOutput bool, schema any) openai.ChatCompletionRequest {
 	openaiMessages := make([]openai.ChatCompletionMessage, len(messages))
 	for i, msg := range messages {
 		openaiMessages[i] = openai.ChatCompletionMessage{

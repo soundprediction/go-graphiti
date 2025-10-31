@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // GeminiRerankerClient implements cross-encoder functionality using Google Gemini models
@@ -95,7 +96,7 @@ func (c *GeminiRerankerClient) Rank(ctx context.Context, query string, passages 
 
 // scorePassage scores a single passage against the query using Gemini's classification
 func (c *GeminiRerankerClient) scorePassage(ctx context.Context, query, passage string) (float64, error) {
-	messages := []llm.Message{
+	messages := []types.Message{
 		llm.NewSystemMessage("You are an expert document relevance scorer. Your task is to determine how relevant a passage is to a given query. Respond with a single number between 0 and 1, where 0 means completely irrelevant and 1 means perfectly relevant."),
 		llm.NewUserMessage(fmt.Sprintf(`Rate the relevance of this PASSAGE to the QUERY on a scale from 0.0 to 1.0.
 

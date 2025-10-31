@@ -1405,3 +1405,7 @@ func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.
 
 	return nil
 }
+
+func GenerateViaCsv[T any](ctx context.Context, client Graphiti, messages []types.Message) ([]T, error) {
+	return nil, nil
+}

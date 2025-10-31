@@ -5,31 +5,34 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // SummarizeNodesPrompt defines the interface for summarize nodes prompts.
 type SummarizeNodesPrompt interface {
-	SummarizePair() PromptVersion
-	SummarizeContext() PromptVersion
-	SummaryDescription() PromptVersion
+	SummarizePair() types.PromptVersion
+	SummarizeContext() types.PromptVersion
+	SummaryDescription() types.PromptVersion
 }
 
 // SummarizeNodesVersions holds all versions of summarize nodes prompts.
 type SummarizeNodesVersions struct {
-	summarizePairPrompt      PromptVersion
-	summarizeContextPrompt   PromptVersion
-	summaryDescriptionPrompt PromptVersion
+	summarizePairPrompt      types.PromptVersion
+	summarizeContextPrompt   types.PromptVersion
+	summaryDescriptionPrompt types.PromptVersion
 }
 
-func (s *SummarizeNodesVersions) SummarizePair() PromptVersion    { return s.summarizePairPrompt }
-func (s *SummarizeNodesVersions) SummarizeContext() PromptVersion { return s.summarizeContextPrompt }
-func (s *SummarizeNodesVersions) SummaryDescription() PromptVersion {
+func (s *SummarizeNodesVersions) SummarizePair() types.PromptVersion { return s.summarizePairPrompt }
+func (s *SummarizeNodesVersions) SummarizeContext() types.PromptVersion {
+	return s.summarizeContextPrompt
+}
+func (s *SummarizeNodesVersions) SummaryDescription() types.PromptVersion {
 	return s.summaryDescriptionPrompt
 }
 
 // summarizePairPrompt combines summaries.
 // Uses TSV format for node summaries to reduce token usage.
-func summarizePairPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func summarizePairPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that combines summaries.`
 
 	nodeSummaries := context["node_summaries"]
@@ -54,7 +57,7 @@ Summaries are provided in TSV (tab-separated values) format:
 %s
 `, nodeSummariesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -62,7 +65,7 @@ Summaries are provided in TSV (tab-separated values) format:
 
 // summarizeContextPrompt extracts entity properties from provided text.
 // Uses TSV format for episodes and attributes to reduce token usage.
-func summarizeContextPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func summarizeContextPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that extracts entity properties from the provided text.`
 
 	previousEpisodes := context["previous_episodes"]
@@ -123,7 +126,7 @@ Guidelines:
 </ATTRIBUTES>
 `, previousEpisodesTSV, episodeContent, nodeName, nodeSummary, attributesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -131,7 +134,7 @@ Guidelines:
 
 // summaryDescriptionPrompt describes provided contents in a single sentence.
 // Uses TSV format for summary data to reduce token usage.
-func summaryDescriptionPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func summaryDescriptionPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that describes provided contents in a single sentence.`
 
 	summary := context["summary"]
@@ -155,7 +158,7 @@ Summary (in TSV format):
 %s
 `, summaryTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

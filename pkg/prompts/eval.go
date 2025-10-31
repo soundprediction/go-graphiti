@@ -5,7 +5,16 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
+
+// PromptFunction is a function that generates prompt messages from context.
+type PromptFunction func(context map[string]interface{}) ([]types.Message, error)
+
+// PromptVersion represents a versioned prompt function.
+type PromptVersion interface {
+	Call(context map[string]interface{}) ([]types.Message, error)
+}
 
 // EvalPrompt defines the interface for evaluation prompts.
 type EvalPrompt interface {
@@ -30,7 +39,7 @@ func (e *EvalVersions) EvalAddEpisodeResults() PromptVersion { return e.evalAddE
 
 // queryExpansionPrompt rephrases questions into queries used in a database retrieval system.
 // Uses TSV format for query data to reduce token usage and improve LLM parsing.
-func queryExpansionPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func queryExpansionPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an expert at rephrasing questions into queries used in a database retrieval system`
 
 	query := context["query"]
@@ -56,7 +65,7 @@ that maintains the relevant context?
 Note: Query data is provided in TSV (tab-separated values) format.
 `, queryTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -64,7 +73,7 @@ Note: Query data is provided in TSV (tab-separated values) format.
 
 // qaPrompt answers questions from Alice's first person perspective.
 // Uses TSV format for entity summaries and facts to reduce token usage and improve LLM parsing.
-func qaPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func qaPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are Alice and should respond to all questions from the first person perspective of Alice`
 
 	entitySummaries := context["entity_summaries"]
@@ -105,14 +114,14 @@ Note: ENTITY_SUMMARIES and FACTS are provided in TSV (tab-separated values) form
 </QUESTION>
 `, entitySummariesTSV, factsTSV, query)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
 }
 
 // evalPrompt determines if answers to questions match a gold standard answer.
-func evalPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func evalPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a judge that determines if answers to questions match a gold standard answer`
 
 	query := context["query"]
@@ -134,7 +143,7 @@ as the gold standard ANSWER. Also include your reasoning for the grade.
 </RESPONSE>
 `, query, answer, response)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -142,7 +151,7 @@ as the gold standard ANSWER. Also include your reasoning for the grade.
 
 // evalAddEpisodeResultsPrompt determines whether a baseline graph building result is better than a candidate.
 // Uses TSV format for previous messages, baseline, and candidate data to reduce token usage and improve LLM parsing.
-func evalAddEpisodeResultsPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func evalAddEpisodeResultsPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a judge that determines whether a baseline graph building result from a list of messages is better
 than a candidate graph building result based on the same messages.`
 
@@ -198,7 +207,7 @@ BASELINE extraction are nearly identical in quality, return True. Add your reaso
 Note: PREVIOUS MESSAGES, BASELINE, and CANDIDATE are provided in TSV (tab-separated values) format.
 `, previousMessagesTSV, message, baselineTSV, candidateTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // DedupeEdgesPrompt defines the interface for dedupe edges prompts.
@@ -27,7 +28,7 @@ func (d *DedupeEdgesVersions) ResolveEdge() PromptVersion { return d.ResolveEdge
 
 // dedupeEdgePrompt determines if edges are duplicates or contradictory.
 // Uses TSV format for episodes and facts to reduce token usage and improve LLM parsing.
-func dedupeEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
+func dedupeEdgePrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether or not edges extracted from a conversation are duplicates or contradictions of existing edges.`
 
 	previousEpisodes := context["previous_episodes"]
@@ -108,7 +109,7 @@ fact_type: string
 </SCHEMA>
 `, previousEpisodesTSV, episodeContent, newFactTSV, existingFactsTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -116,7 +117,7 @@ fact_type: string
 
 // dedupeEdgeListPrompt handles batch edge deduplication.
 // Uses TSV format for edges to reduce token usage and improve LLM parsing.
-func dedupeEdgeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func dedupeEdgeListPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that de-duplicates edges from edge lists.`
 
 	edges := context["edges"]
@@ -143,14 +144,14 @@ Task:
 Return a list of unique facts, removing any duplicates.
 `, edgesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
 }
 
 // resolveEdgePrompt resolves conflicts between edges using TSV output.
-func resolveEdgePrompt(context map[string]interface{}) ([]llm.Message, error) {
+func resolveEdgePrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether extracted edges are duplicates or contradictions of existing edges.`
 
 	existingEdges := context["existing_edges"]
@@ -246,7 +247,7 @@ duplicate_facts\tcontradicted_facts\tfact_type
 Provide only the TSV header and data row. Finish your response with a new line.
 `, newEdge, existingEdgesTSV, edgeInvalidationCandidatesTSV, edgeTypesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

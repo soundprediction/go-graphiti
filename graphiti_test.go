@@ -145,13 +145,13 @@ func (m *MockGraphDriver) GetAossClient() interface{} {
 // MockLLMClient is a mock LLM implementation for testing
 type MockLLMClient struct{}
 
-func (m *MockLLMClient) Chat(ctx context.Context, messages []llm.Message) (*llm.Response, error) {
+func (m *MockLLMClient) Chat(ctx context.Context, messages []types.Message) (*llm.Response, error) {
 	return &llm.Response{
 		Content: "Mock response",
 	}, nil
 }
 
-func (m *MockLLMClient) ChatWithStructuredOutput(ctx context.Context, messages []llm.Message, schema any) (json.RawMessage, error) {
+func (m *MockLLMClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
 	return json.RawMessage(`{"mock": "response"}`), nil
 }
 

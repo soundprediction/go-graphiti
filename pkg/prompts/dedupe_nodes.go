@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // filterNodes removes the entity_type_description field from nodes
@@ -39,26 +40,26 @@ func filterNodes(nodes interface{}) interface{} {
 
 // DedupeNodesPrompt defines the interface for dedupe nodes prompts.
 type DedupeNodesPrompt interface {
-	Node() PromptVersion
-	NodeList() PromptVersion
-	Nodes() PromptVersion
+	Node() types.PromptVersion
+	NodeList() types.PromptVersion
+	Nodes() types.PromptVersion
 }
 
 // DedupeNodesVersions holds all versions of dedupe nodes prompts.
 type DedupeNodesVersions struct {
-	NodePrompt     PromptVersion
-	NodeListPrompt PromptVersion
-	NodesPrompt    PromptVersion
+	NodePrompt     types.PromptVersion
+	NodeListPrompt types.PromptVersion
+	NodesPrompt    types.PromptVersion
 }
 
-func (d *DedupeNodesVersions) Node() PromptVersion     { return d.NodePrompt }
-func (d *DedupeNodesVersions) NodeList() PromptVersion { return d.NodeListPrompt }
-func (d *DedupeNodesVersions) Nodes() PromptVersion    { return d.NodesPrompt }
+func (d *DedupeNodesVersions) Node() types.PromptVersion     { return d.NodePrompt }
+func (d *DedupeNodesVersions) NodeList() types.PromptVersion { return d.NodeListPrompt }
+func (d *DedupeNodesVersions) Nodes() types.PromptVersion    { return d.NodesPrompt }
 
 // nodePrompt determines if a new entity is a duplicate of existing entities.
 // Note: If entity_type is an array (e.g., ["Entity", "ANATOMY"]), only the last (most specific)
 // element will be used in the TSV output (e.g., "ANATOMY").
-func nodePrompt(context map[string]interface{}) ([]llm.Message, error) {
+func nodePrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether or not a NEW ENTITY is a duplicate of any EXISTING ENTITIES.`
 
 	previousEpisodes := context["previous_episodes"]
@@ -136,7 +137,7 @@ Also return the full name of the NEW ENTITY (whether it is the name of the NEW E
 is a duplicate of, or a combination of the two).
 `, previousEpisodesTSV, episodeContent, extractedNodeTSV, entityTypeDescriptionTSV, existingNodesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -145,7 +146,7 @@ is a duplicate of, or a combination of the two).
 // nodesPrompt determines whether entities extracted from a conversation are duplicates.
 // Note: If entity_type is an array (e.g., ["Entity", "ANATOMY"]), only the last (most specific)
 // element will be used in the TSV output (e.g., "ANATOMY").
-func nodesPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func nodesPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines whether or not ENTITIES extracted from a conversation are duplicates of existing entities.`
 
 	previousEpisodes := context["previous_episodes"]
@@ -243,7 +244,7 @@ id\tname\tduplicate_idx\tduplicates
 Finish your response with a new line
 `, previousEpisodesTSV, episodeContent, extractedNodesTSV, existingNodesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -252,7 +253,7 @@ Finish your response with a new line
 // nodeListPrompt de-duplicates nodes from node lists.
 // Note: If entity_type is an array (e.g., ["Entity", "ANATOMY"]), only the last (most specific)
 // element will be used in the TSV output (e.g., "ANATOMY").
-func nodeListPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func nodeListPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that de-duplicates nodes from node lists.`
 
 	nodes := context["nodes"]
@@ -300,7 +301,7 @@ where
 conclude your response with a new line
 `, nodesTSV)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

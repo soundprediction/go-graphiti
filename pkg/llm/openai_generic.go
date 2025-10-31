@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // OpenAIGenericClient implements the Client interface for OpenAI's language models
@@ -105,7 +106,7 @@ func NewOpenAIGenericClient(args ...interface{}) (*OpenAIGenericClient, error) {
 }
 
 // Chat implements the Client interface
-func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []Message) (*Response, error) {
+func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []types.Message) (*types.Response, error) {
 	// Debug logging for prompts if DEBUG_LLM_PROMPTS environment variable is set
 	// if os.Getenv("DEBUG_LLM_PROMPTS") == "true" {
 	// 	fmt.Printf("\n========== LLM CHAT REQUEST ==========\n")
@@ -122,7 +123,7 @@ func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []Message) (*Re
 	}
 
 	// Convert map response to Response struct
-	response := &Response{}
+	response := &types.Response{}
 
 	// Try to extract content from various possible keys
 	if content, ok := responseMap["content"].(string); ok {
@@ -142,7 +143,7 @@ func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []Message) (*Re
 }
 
 // ChatWithStructuredOutput implements the Client interface
-func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema interface{}) (json.RawMessage, error) {
+func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (json.RawMessage, error) {
 	// Use continuation-based JSON generation for more robust handling
 	jsonStr, err := GenerateJSONResponseWithContinuationMessages(ctx, c, messages, schema, c.maxRetries)
 	if err != nil {
@@ -155,14 +156,14 @@ func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, mess
 // generateResponseWithEnhancedRetry implements the Python-style retry logic with error feedback
 func (c *OpenAIGenericClient) generateResponseWithEnhancedRetry(
 	ctx context.Context,
-	messages []Message,
+	messages []types.Message,
 	responseModel interface{},
 	maxTokens int,
 	modelSize ModelSize,
 ) (map[string]interface{}, error) {
 	var lastError error
 	retryCount := 0
-	workingMessages := make([]Message, len(messages))
+	workingMessages := make([]types.Message, len(messages))
 	copy(workingMessages, messages)
 
 	// Prepare messages with schema if needed

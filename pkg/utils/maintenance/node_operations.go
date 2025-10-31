@@ -101,7 +101,7 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 
 	for entitiesMissed && reflexionIterations <= maxReflexionIterations {
 		// Choose the appropriate extraction method based on episode source
-		var messages []llm.Message
+		var messages []types.Message
 		var err error
 
 		switch strings.ToLower(string(episode.EpisodeType)) {

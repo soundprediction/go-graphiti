@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // InvalidateEdgesPrompt defines the interface for invalidate edges prompts.
@@ -21,7 +22,7 @@ func (i *InvalidateEdgesVersions) Invalidate() PromptVersion { return i.Invalida
 
 // invalidatePrompt determines which edges should be invalidated.
 // Uses TSV format for edge data to reduce token usage and improve LLM parsing.
-func invalidatePrompt(context map[string]interface{}) ([]llm.Message, error) {
+func invalidatePrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that determines which existing edges should be invalidated based on new information.`
 
 	previousEpisodes := context["previous_episodes"]
@@ -75,7 +76,7 @@ Edges should be invalidated if:
 Return a list of edge IDs from EXISTING EDGES that should be invalidated.
 `, previousEpisodesTSV, episodeContent, existingEdgesTSV, referenceTime)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

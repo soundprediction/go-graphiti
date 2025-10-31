@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // ExtractEdgeDatesPrompt defines the interface for extract edge dates prompts.
@@ -21,7 +22,7 @@ func (e *ExtractEdgeDatesVersions) ExtractDates() PromptVersion { return e.Extra
 
 // extractDatesPrompt extracts dates from edges.
 // Uses TSV format for episodes and edges to reduce token usage and improve LLM parsing.
-func extractDatesPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractDatesPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an expert temporal information extractor that identifies valid_at and invalid_at dates for relationships from text.`
 
 	previousEpisodes := context["previous_episodes"]
@@ -72,7 +73,7 @@ Guidelines:
 5. Use reference time to resolve relative temporal expressions
 `, previousEpisodesTSV, episodeContent, edgesTSV, referenceTime)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil

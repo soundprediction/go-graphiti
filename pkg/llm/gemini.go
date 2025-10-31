@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // GeminiClient implements the Client interface for Google Gemini models.
@@ -74,7 +76,7 @@ type geminiError struct {
 }
 
 // Chat implements the Client interface for Gemini.
-func (g *GeminiClient) Chat(ctx context.Context, messages []Message) (string, error) {
+func (g *GeminiClient) Chat(ctx context.Context, messages []types.Message) (string, error) {
 	if len(messages) == 0 {
 		return "", fmt.Errorf("no messages provided")
 	}
@@ -169,14 +171,14 @@ func (g *GeminiClient) Chat(ctx context.Context, messages []Message) (string, er
 
 // ChatWithStructuredOutput implements structured output for Gemini.
 // Similar to Anthropic, Gemini uses prompt engineering for structured output.
-func (g *GeminiClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema interface{}) (string, error) {
+func (g *GeminiClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (string, error) {
 	// Add a message requesting JSON format
 	schemaBytes, err := json.Marshal(schema)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
-	modifiedMessages := append(messages, Message{
+	modifiedMessages := append(messages, types.Message{
 		Role:    "user",
 		Content: fmt.Sprintf("Please respond with valid JSON that matches this schema: %s", string(schemaBytes)),
 	})

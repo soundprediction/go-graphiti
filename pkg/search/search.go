@@ -742,7 +742,7 @@ Nodes to score:`, query)
 Please respond with only comma-separated scores for each node in order (e.g., "0.9,0.3,0.7,0.1").
 Consider semantic relevance, topical alignment, and contextual importance.`
 
-		messages := []llm.Message{
+		messages := []types.Message{
 			llm.NewSystemMessage("You are a relevance scoring system. Score how relevant each node is to the given query."),
 			llm.NewUserMessage(prompt),
 		}
@@ -910,7 +910,7 @@ Edges to score (format: source -> target: description):`, query)
 Please respond with only comma-separated scores for each edge in order (e.g., "0.9,0.3,0.7,0.1").
 Consider semantic relevance, relationship importance, and contextual significance.`
 
-		messages := []llm.Message{
+		messages := []types.Message{
 			llm.NewSystemMessage("You are a relevance scoring system. Score how relevant each relationship edge is to the given query."),
 			llm.NewUserMessage(prompt),
 		}

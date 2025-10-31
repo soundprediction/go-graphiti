@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	jsonrepair "github.com/kaptinlin/jsonrepair"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // GenerateJSONResponseWithContinuation makes repeated LLM calls with continuation prompts
@@ -65,7 +66,7 @@ func GenerateJSONResponseWithContinuation(
 	maxRetries int,
 ) (string, error) {
 	// Build initial messages
-	messages := []Message{
+	messages := []types.Message{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
@@ -132,7 +133,7 @@ func truncateToLastCloseBrace(s string) string {
 func GenerateJSONResponseWithContinuationMessages(
 	ctx context.Context,
 	llmClient Client,
-	messages []Message,
+	messages []types.Message,
 	targetStruct interface{},
 	maxRetries int,
 ) (string, error) {
@@ -141,7 +142,7 @@ func GenerateJSONResponseWithContinuationMessages(
 	}
 
 	// Make a copy of messages to avoid modifying the original slice
-	workingMessages := make([]Message, len(messages))
+	workingMessages := make([]types.Message, len(messages))
 	copy(workingMessages, messages)
 	var accumulatedResponse string
 	var lastError error
@@ -206,7 +207,7 @@ func GenerateJSONWithContinuation(
 	}
 
 	// Build initial messages
-	messages := []Message{
+	messages := []types.Message{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
@@ -247,11 +248,11 @@ func GenerateJSONWithContinuation(
 
 			if attempt < maxRetries {
 				// Add continuation prompt
-				messages = append(messages, Message{
+				messages = append(messages, types.Message{
 					Role:    "assistant",
 					Content: accumulatedResponse,
 				})
-				messages = append(messages, Message{
+				messages = append(messages, types.Message{
 					Role:    "user",
 					Content: "The JSON response was incomplete or invalid. Please continue from where you left off and complete the JSON:",
 				})

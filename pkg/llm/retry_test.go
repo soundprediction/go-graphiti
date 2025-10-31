@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // mockClient is a mock LLM client for testing
@@ -14,10 +16,10 @@ type mockClient struct {
 	callCount        int
 	failUntilCall    int
 	errorToReturn    error
-	responseToReturn *Response
+	responseToReturn *types.Response
 }
 
-func (m *mockClient) Chat(ctx context.Context, messages []Message) (*Response, error) {
+func (m *mockClient) Chat(ctx context.Context, messages []types.Message) (*types.Response, error) {
 	m.callCount++
 	if m.callCount <= m.failUntilCall {
 		return nil, m.errorToReturn
@@ -25,10 +27,10 @@ func (m *mockClient) Chat(ctx context.Context, messages []Message) (*Response, e
 	if m.responseToReturn != nil {
 		return m.responseToReturn, nil
 	}
-	return &Response{Content: "success"}, nil
+	return &types.Response{Content: "success"}, nil
 }
 
-func (m *mockClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema any) (json.RawMessage, error) {
+func (m *mockClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
 	m.callCount++
 	if m.callCount <= m.failUntilCall {
 		return nil, m.errorToReturn
@@ -54,7 +56,7 @@ func TestRetryClient_SuccessOnFirstAttempt(t *testing.T) {
 
 	retryClient := NewRetryClient(mock, config)
 
-	resp, err := retryClient.Chat(context.Background(), []Message{{Role: RoleUser, Content: "test"}})
+	resp, err := retryClient.Chat(context.Background(), []types.Message{{Role: RoleUser, Content: "test"}})
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -84,7 +86,7 @@ func TestRetryClient_SuccessAfterRetries(t *testing.T) {
 	retryClient := NewRetryClient(mock, config)
 
 	start := time.Now()
-	resp, err := retryClient.Chat(context.Background(), []Message{{Role: RoleUser, Content: "test"}})
+	resp, err := retryClient.Chat(context.Background(), []types.Message{{Role: RoleUser, Content: "test"}})
 	duration := time.Since(start)
 
 	if err != nil {
@@ -121,7 +123,7 @@ func TestRetryClient_FailAfterMaxRetries(t *testing.T) {
 
 	retryClient := NewRetryClient(mock, config)
 
-	_, err := retryClient.Chat(context.Background(), []Message{{Role: RoleUser, Content: "test"}})
+	_, err := retryClient.Chat(context.Background(), []types.Message{{Role: RoleUser, Content: "test"}})
 	if err == nil {
 		t.Fatal("expected error after max retries, got nil")
 	}
@@ -150,7 +152,7 @@ func TestRetryClient_NonRetryableError(t *testing.T) {
 
 	retryClient := NewRetryClient(mock, config)
 
-	_, err := retryClient.Chat(context.Background(), []Message{{Role: RoleUser, Content: "test"}})
+	_, err := retryClient.Chat(context.Background(), []types.Message{{Role: RoleUser, Content: "test"}})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -176,7 +178,7 @@ func TestRetryClient_RateLimitError(t *testing.T) {
 
 	retryClient := NewRetryClient(mock, config)
 
-	resp, err := retryClient.Chat(context.Background(), []Message{{Role: RoleUser, Content: "test"}})
+	resp, err := retryClient.Chat(context.Background(), []types.Message{{Role: RoleUser, Content: "test"}})
 	if err != nil {
 		t.Fatalf("expected success after retries, got error: %v", err)
 	}
@@ -208,7 +210,7 @@ func TestRetryClient_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := retryClient.Chat(ctx, []Message{{Role: RoleUser, Content: "test"}})
+	_, err := retryClient.Chat(ctx, []types.Message{{Role: RoleUser, Content: "test"}})
 	if err == nil {
 		t.Fatal("expected error due to context cancellation, got nil")
 	}
@@ -303,7 +305,7 @@ func TestRetryClient_ChatWithStructuredOutput(t *testing.T) {
 
 	result, err := retryClient.ChatWithStructuredOutput(
 		context.Background(),
-		[]Message{{Role: RoleUser, Content: "test"}},
+		[]types.Message{{Role: RoleUser, Content: "test"}},
 		map[string]interface{}{"type": "object"},
 	)
 

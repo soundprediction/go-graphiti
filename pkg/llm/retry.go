@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // RetryConfig holds configuration for retry behavior
@@ -65,7 +67,7 @@ func NewRetryClient(client Client, config *RetryConfig) *RetryClient {
 }
 
 // Chat implements the Client interface with retry logic
-func (r *RetryClient) Chat(ctx context.Context, messages []Message) (*Response, error) {
+func (r *RetryClient) Chat(ctx context.Context, messages []types.Message) (*types.Response, error) {
 	var lastErr error
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
@@ -104,7 +106,7 @@ func (r *RetryClient) Chat(ctx context.Context, messages []Message) (*Response, 
 }
 
 // ChatWithStructuredOutput implements the Client interface with retry logic
-func (r *RetryClient) ChatWithStructuredOutput(ctx context.Context, messages []Message, schema any) (json.RawMessage, error) {
+func (r *RetryClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
 	var lastErr error
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {

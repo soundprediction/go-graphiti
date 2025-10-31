@@ -3,52 +3,30 @@ package llm
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // Client defines the interface for language model operations.
 type Client interface {
 	// Chat sends a chat completion request and returns the response.
-	Chat(ctx context.Context, messages []Message) (*Response, error)
+	Chat(ctx context.Context, messages []types.Message) (*types.Response, error)
 
 	// ChatWithStructuredOutput sends a chat completion request with structured output.
-	ChatWithStructuredOutput(ctx context.Context, messages []Message, schema any) (json.RawMessage, error)
+	ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error)
 
 	// Close cleans up any resources.
 	Close() error
 }
 
-// Message represents a chat message.
-type Message struct {
-	Role    Role   `json:"role"`
-	Content string `json:"content"`
-}
-
-// Role represents the role of a message sender.
-type Role string
-
 const (
 	// RoleSystem represents a system message.
-	RoleSystem Role = "system"
+	RoleSystem types.Role = "system"
 	// RoleUser represents a user message.
-	RoleUser Role = "user"
+	RoleUser types.Role = "user"
 	// RoleAssistant represents an assistant message.
-	RoleAssistant Role = "assistant"
+	RoleAssistant types.Role = "assistant"
 )
-
-// Response represents a chat completion response.
-type Response struct {
-	Content      string                 `json:"content"`
-	TokensUsed   *TokenUsage            `json:"tokens_used,omitempty"`
-	FinishReason string                 `json:"finish_reason,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
-}
-
-// TokenUsage represents token usage statistics.
-type TokenUsage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
-}
 
 // Config holds legacy configuration for LLM clients (deprecated, use LLMConfig)
 // Kept for backward compatibility
@@ -64,24 +42,24 @@ type Config struct {
 }
 
 // NewMessage creates a new message with the specified role and content.
-func NewMessage(role Role, content string) Message {
-	return Message{
+func NewMessage(role types.Role, content string) types.Message {
+	return types.Message{
 		Role:    role,
 		Content: content,
 	}
 }
 
 // NewSystemMessage creates a new system message.
-func NewSystemMessage(content string) Message {
+func NewSystemMessage(content string) types.Message {
 	return NewMessage(RoleSystem, content)
 }
 
 // NewUserMessage creates a new user message.
-func NewUserMessage(content string) Message {
+func NewUserMessage(content string) types.Message {
 	return NewMessage(RoleUser, content)
 }
 
 // NewAssistantMessage creates a new assistant message.
-func NewAssistantMessage(content string) Message {
+func NewAssistantMessage(content string) types.Message {
 	return NewMessage(RoleAssistant, content)
 }

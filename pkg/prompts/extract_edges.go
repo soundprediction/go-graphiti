@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // ExtractEdgesPrompt defines the interface for extract edges prompts.
@@ -47,7 +48,7 @@ func filterEdgeTypes(edgeTypes interface{}) interface{} {
 
 // edgePrompt extracts fact triples from text.
 // Uses TSV format for episodes and edge types to reduce token usage and improve LLM parsing.
-func edgePrompt(context map[string]interface{}) ([]llm.Message, error) {
+func edgePrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an expert fact extractor that extracts fact triples from text.
 1. Extracted fact triples should also be extracted with relevant date information.
 2. Treat the CURRENT TIME as the time the CURRENT MESSAGE was sent. All temporal information should be extracted relative to this time.`
@@ -161,7 +162,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 </EXAMPLE>
 `, edgeTypesTSV, previousEpisodesTSV, episodeContent, nodesTSV, referenceTime, customPrompt)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
@@ -169,7 +170,7 @@ source_id\trelation_type\ttarget_id\tfact\tsummary\tvalid_at\tinvalid_at
 
 // extractEdgesReflexionPrompt determines which facts have not been extracted.
 // Uses TSV format for episodes to reduce token usage and improve LLM parsing.
-func extractEdgesReflexionPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractEdgesReflexionPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are an AI assistant that determines which facts have not been extracted from the given context`
 
 	previousEpisodes := context["previous_episodes"]
@@ -216,14 +217,14 @@ Given the above MESSAGES, list of EXTRACTED ENTITIES entities, and list of EXTRA
 determine if any facts haven't been extracted.
 `, previousEpisodesTSV, episodeContent, nodesTSV, extractedFacts)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
 }
 
 // extractEdgesAttributesPrompt extracts fact properties from text.
-func extractEdgesAttributesPrompt(context map[string]interface{}) ([]llm.Message, error) {
+func extractEdgesAttributesPrompt(context map[string]interface{}) ([]types.Message, error) {
 	sysPrompt := `You are a helpful assistant that extracts fact properties from the provided text.`
 
 	episodeContent := context["episode_content"]
@@ -250,7 +251,7 @@ Guidelines:
 </FACT>
 `, episodeContent, referenceTime, fact)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
-	return []llm.Message{
+	return []types.Message{
 		llm.NewSystemMessage(sysPrompt),
 		llm.NewUserMessage(userPrompt),
 	}, nil
