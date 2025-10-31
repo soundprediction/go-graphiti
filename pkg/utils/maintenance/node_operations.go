@@ -2,14 +2,12 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
 	"strings"
 	"time"
 
-	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -257,26 +255,33 @@ func (no *NodeOperations) extractNodesReflexion(ctx context.Context, episode *ty
 		return nil, fmt.Errorf("failed to create reflexion prompt: %w", err)
 	}
 
-	response, err := no.llm.ChatWithStructuredOutput(ctx, messages, &prompts.MissedEntities{})
+	// Create CSV parser function for MissedEntitiesTSV
+	csvParser := func(csvContent string) ([]*prompts.MissedEntitiesTSV, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.MissedEntitiesTSV](csvContent, '\t')
+	}
+
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	missedEntitiesSlice, badResp, err := llm.GenerateCSVResponse[prompts.MissedEntitiesTSV](
+		ctx, no.llm, no.logger, messages, csvParser, 3,
+	)
 	if err != nil {
+		if badResp != nil {
+			no.logger.Error("Failed to parse reflexion response",
+				"error", err,
+				"last_response", badResp.Response,
+				"conversation", badResp.Messages,
+			)
+		}
 		return nil, fmt.Errorf("failed to run reflexion: %w", err)
 	}
 
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
-
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	// Convert slice of MissedEntitiesTSV to slice of entity names
+	missedEntityNames := make([]string, 0, len(missedEntitiesSlice))
+	for _, entity := range missedEntitiesSlice {
+		missedEntityNames = append(missedEntityNames, entity.EntityName)
 	}
 
-	var missedEntities prompts.MissedEntities
-	if err := json.Unmarshal(rawJSON, &missedEntities); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal reflexion response: %w", err)
-	}
-
-	return missedEntities.MissedEntities, nil
+	return missedEntityNames, nil
 }
 
 // ResolveExtractedNodes resolves newly extracted nodes against existing ones in the graph
@@ -379,48 +384,39 @@ func (no *NodeOperations) ResolveExtractedNodes(ctx context.Context, extractedNo
 		return nil, nil, nil, fmt.Errorf("failed to create dedupe prompt: %w", err)
 	}
 
-	response, err := no.llm.Chat(ctx, messages)
-	prompts.LogResponses(no.logger, *response)
-	if err != nil {
-		if response == nil {
-			no.logger.Warn("Skipping node deduplication due to error", "error", err)
-			return bypassResolveExtractedNodes(ctx, extractedNodes)
-		}
-		no.logger.Debug("failed to call llm to dedupe nodes", "prompt", messages[1].Content, "response", response.Content)
-		no.logger.Debug("Skipping node deduplication due to error", "error", err)
-		return bypassResolveExtractedNodes(ctx, extractedNodes)
+	// Create CSV parser function for NodeDuplicate
+	csvParser := func(csvContent string) ([]*prompts.NodeDuplicate, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.NodeDuplicate](csvContent, '\t')
 	}
-	if !utils.IsLastLineEmpty(response.Content) {
-		originalResponse := response
-		messages[len(messages)-1].Content += fmt.Sprintf(`\n
-Continue the following \n
-# INCOMPLETE RESPONSE
 
-%s
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	nodeDuplicateSlice, badResp, err := llm.GenerateCSVResponse[prompts.NodeDuplicate](
+		ctx,
+		no.llm,
+		no.logger,
+		messages,
+		csvParser,
+		3, // maxRetries
+	)
 
-			`, utils.RemoveLastLine(response.Content))
-		response, err = no.llm.Chat(ctx, messages)
-		if err != nil {
-			log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
-			response = originalResponse
-		}
-	}
-	r := utils.RemoveLastLine(llm.StripHtmlTags(response.Content))
-
-	nodeDuplicatePtrs, err := utils.DuckDbUnmarshalCSV[prompts.NodeDuplicate](r, '\t')
 	if err != nil {
+		// Log detailed error information
+		if badResp != nil {
+			no.logger.Error("Failed to deduplicate nodes from CSV",
+				"error", badResp.Error,
+				"response_length", len(badResp.Response),
+				"num_messages", len(badResp.Messages))
+			if badResp.Response != "" {
+				no.logger.Debug("Failed LLM deduplication response", "response", badResp.Response)
+			}
+		}
 		no.logger.Warn("Skipping node deduplication due to error", "error", err)
 		return bypassResolveExtractedNodes(ctx, extractedNodes)
 	}
 
-	// Convert pointer slice to value slice
+	// Convert to NodeResolutions struct
 	var nodeResolutions prompts.NodeResolutions
-	nodeResolutions.EntityResolutions = make([]prompts.NodeDuplicate, len(nodeDuplicatePtrs))
-	for i, ptr := range nodeDuplicatePtrs {
-		if ptr != nil {
-			nodeResolutions.EntityResolutions[i] = *ptr
-		}
-	}
+	nodeResolutions.EntityResolutions = nodeDuplicateSlice
 
 	// Process the resolutions
 	var resolvedNodes []*types.Node
@@ -529,43 +525,39 @@ func (no *NodeOperations) ExtractAttributesFromNodes(ctx context.Context, nodes 
 			return nil, fmt.Errorf("failed to create batch extraction prompt: %w", err)
 		}
 
-		response, err := no.llm.Chat(ctx, messages)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract attributes in batch: %w", err)
+		// Create CSV parser function for ExtractedNodeAttributes
+		csvParser := func(csvContent string) ([]*prompts.ExtractedNodeAttributes, error) {
+			return utils.DuckDbUnmarshalCSV[prompts.ExtractedNodeAttributes](csvContent, '\t')
 		}
 
-		// Handle incomplete responses
-		if !utils.IsLastLineEmpty(response.Content) {
-			originalResponse := response
-			messages[len(messages)-1].Content += fmt.Sprintf(`\n
-Continue the INCOMPLETE RESPONSE\n
-<INCOMPLETE RESPONSE>
-%s
-</INCOMPLETE RESPONSE>
-			`, utils.RemoveLastLine(response.Content))
-			response, err = no.llm.Chat(ctx, messages)
-			if err != nil {
-				log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
-				response = originalResponse
+		// Use GenerateCSVResponse for robust CSV parsing with retries
+		extractedAttributesSlice, badResp, err := llm.GenerateCSVResponse[prompts.ExtractedNodeAttributes](
+			ctx,
+			no.llm,
+			no.logger,
+			messages,
+			csvParser,
+			3, // maxRetries
+		)
+
+		if err != nil {
+			// Log detailed error information
+			if badResp != nil {
+				no.logger.Error("Failed to extract batch attributes from CSV",
+					"error", badResp.Error,
+					"response_length", len(badResp.Response),
+					"num_messages", len(badResp.Messages))
+				if badResp.Response != "" {
+					fmt.Printf("\nFailed LLM response:\n%v\n\n", badResp.Response)
+				}
 			}
-		}
-
-		// Parse TSV response
-		r := utils.RemoveLastLine(response.Content)
-		r = llm.RemoveThinkTags(r)
-
-		extractedAttributesPtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedNodeAttributes](r, '\t')
-		if err != nil {
-			fmt.Printf("\nresponse:\n %v\n\n", r)
 			return nil, fmt.Errorf("failed to parse batch extraction TSV: %w", err)
 		}
 
 		// Store extracted attributes with global node index
-		for _, ptr := range extractedAttributesPtrs {
-			if ptr != nil {
-				globalIndex := batchStart + ptr.NodeID
-				allExtractedMap[globalIndex] = ptr
-			}
+		for _, extracted := range extractedAttributesSlice {
+			globalIndex := batchStart + extracted.NodeID
+			allExtractedMap[globalIndex] = &extracted
 		}
 	}
 

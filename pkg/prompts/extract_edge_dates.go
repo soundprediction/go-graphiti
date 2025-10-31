@@ -69,8 +69,16 @@ Guidelines:
 1. Use ISO 8601 format with Z suffix (UTC)
 2. If the relationship is ongoing, set valid_at to reference time
 3. If the relationship has ended, set invalid_at to the end time
-4. Leave null if no temporal information is available
+4. Leave empty string if no temporal information is available
 5. Use reference time to resolve relative temporal expressions
+
+Return the results in TSV (tab-separated values) format with the following structure:
+
+valid_at	invalid_at
+2024-01-01T00:00:00Z
+	2024-12-31T23:59:59Z
+
+Output ONLY the TSV data with a header row. Include exactly one data row with the dates. Use empty strings (not null) for missing dates.
 `, previousEpisodesTSV, episodeContent, edgesTSV, referenceTime)
 	logPrompts(context["logger"].(*slog.Logger), sysPrompt, userPrompt)
 	return []types.Message{

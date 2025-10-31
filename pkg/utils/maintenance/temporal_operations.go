@@ -2,29 +2,31 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"strings"
 	"time"
 
-	jsonrepair "github.com/kaptinlin/jsonrepair"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/soundprediction/go-graphiti/pkg/prompts"
 	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-graphiti/pkg/utils"
 )
 
 // TemporalOperations provides temporal analysis and edge dating operations
 type TemporalOperations struct {
 	llm     llm.Client
 	prompts prompts.Library
+	logger  *slog.Logger
 }
 
 // NewTemporalOperations creates a new TemporalOperations instance
-func NewTemporalOperations(llm llm.Client, prompts prompts.Library) *TemporalOperations {
+func NewTemporalOperations(llm llm.Client, prompts prompts.Library, logger *slog.Logger) *TemporalOperations {
 	return &TemporalOperations{
 		llm:     llm,
 		prompts: prompts,
+		logger:  logger,
 	}
 }
 
@@ -53,32 +55,39 @@ func (to *TemporalOperations) ExtractEdgeDates(ctx context.Context, edge *types.
 		return nil, nil, fmt.Errorf("failed to create edge dates prompt: %w", err)
 	}
 
-	response, err := to.llm.ChatWithStructuredOutput(ctx, messages, &prompts.EdgeDates{})
+	// Create CSV parser function for EdgeDatesTSV
+	csvParser := func(csvContent string) ([]*prompts.EdgeDatesTSV, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.EdgeDatesTSV](csvContent, '\t')
+	}
+
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	edgeDatesSlice, badResp, err := llm.GenerateCSVResponse[prompts.EdgeDatesTSV](
+		ctx, to.llm, to.logger, messages, csvParser, 3,
+	)
 	if err != nil {
+		if badResp != nil {
+			to.logger.Error("Failed to parse edge dates response",
+				"error", err,
+				"last_response", badResp.Response,
+				"conversation", badResp.Messages,
+			)
+		}
 		return nil, nil, fmt.Errorf("failed to extract edge dates: %w", err)
 	}
 
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
-
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
+	// We expect exactly one row with the dates
+	if len(edgeDatesSlice) == 0 {
+		return nil, nil, nil
 	}
 
-	var edgeDates prompts.EdgeDates
-	if err := json.Unmarshal(rawJSON, &edgeDates); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal edge dates response: %w", err)
-	}
-
+	edgeDates := edgeDatesSlice[0]
 	var validAt *time.Time
 	var invalidAt *time.Time
 
 	// Parse valid_at date
-	if edgeDates.ValidAt != nil && *edgeDates.ValidAt != "" {
+	if edgeDates.ValidAt != "" {
 		// Strip any surrounding quotes (can happen with double JSON encoding)
-		cleanValidAt := strings.Trim(*edgeDates.ValidAt, "\"")
+		cleanValidAt := strings.Trim(edgeDates.ValidAt, "\"")
 		parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(cleanValidAt, "Z", "+00:00"))
 		if err != nil {
 			log.Printf("Warning: failed to parse valid_at date '%s': %v", cleanValidAt, err)
@@ -89,9 +98,9 @@ func (to *TemporalOperations) ExtractEdgeDates(ctx context.Context, edge *types.
 	}
 
 	// Parse invalid_at date
-	if edgeDates.InvalidAt != nil && *edgeDates.InvalidAt != "" {
+	if edgeDates.InvalidAt != "" {
 		// Strip any surrounding quotes (can happen with double JSON encoding)
-		cleanInvalidAt := strings.Trim(*edgeDates.InvalidAt, "\"")
+		cleanInvalidAt := strings.Trim(edgeDates.InvalidAt, "\"")
 		parsed, err := time.Parse(time.RFC3339, strings.ReplaceAll(cleanInvalidAt, "Z", "+00:00"))
 		if err != nil {
 			log.Printf("Warning: failed to parse invalid_at date '%s': %v", cleanInvalidAt, err)
@@ -138,28 +147,30 @@ func (to *TemporalOperations) GetEdgeContradictions(ctx context.Context, newEdge
 		return nil, fmt.Errorf("failed to create invalidation prompt: %w", err)
 	}
 
-	response, err := to.llm.ChatWithStructuredOutput(ctx, messages, &prompts.InvalidatedEdges{})
+	// Create CSV parser function for InvalidatedEdgesTSV
+	csvParser := func(csvContent string) ([]*prompts.InvalidatedEdgesTSV, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.InvalidatedEdgesTSV](csvContent, '\t')
+	}
+
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	invalidatedSlice, badResp, err := llm.GenerateCSVResponse[prompts.InvalidatedEdgesTSV](
+		ctx, to.llm, to.logger, messages, csvParser, 3,
+	)
 	if err != nil {
+		if badResp != nil {
+			to.logger.Error("Failed to parse invalidated edges response",
+				"error", err,
+				"last_response", badResp.Response,
+				"conversation", badResp.Messages,
+			)
+		}
 		return nil, fmt.Errorf("failed to identify contradictions: %w", err)
-	}
-
-	// Repair JSON before unmarshaling
-	repairedResponse, _ := jsonrepair.JSONRepair(string(response))
-
-	// Try to unmarshal - if it's a quoted JSON string, unmarshal twice
-	var rawJSON json.RawMessage
-	if err := json.Unmarshal([]byte(repairedResponse), &rawJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal repaired response: %w", err)
-	}
-
-	var invalidatedEdges prompts.InvalidatedEdges
-	if err := json.Unmarshal(rawJSON, &invalidatedEdges); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal invalidation response: %w", err)
 	}
 
 	// Extract contradicted edges
 	var contradictedEdges []*types.Edge
-	for _, factID := range invalidatedEdges.ContradictedFacts {
+	for _, invalidated := range invalidatedSlice {
+		factID := invalidated.FactID
 		if factID >= 0 && factID < len(existingEdges) {
 			contradictedEdges = append(contradictedEdges, existingEdges[factID])
 		}

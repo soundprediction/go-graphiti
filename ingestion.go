@@ -1057,7 +1057,7 @@ func (e *ExtractedEntities) GetEntitiesList() []ExtractedEntity {
 }
 
 // ParseEntitiesFromResponse parses the LLM response and converts it to Node structures
-func (c *Client) ParseEntitiesFromResponse(responseContent, groupID string) ([]*types.Node, error) {
+func (c *Client) ParseEntitiesFromJsonResponse(responseContent, groupID string) ([]*types.Node, error) {
 	// 1. Parse the structured JSON response from the LLM
 	responseContent, _ = jsonrepair.JSONRepair(responseContent)
 
