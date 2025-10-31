@@ -337,7 +337,7 @@ func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error
 		query := `
 			MATCH (s {uuid: $source_id, group_id: $group_id})
 			MATCH (t {uuid: $target_id, group_id: $group_id})
-			MERGE (s)-[r:RELATES {uuid: $uuid, group_id: $group_id}]->(t)
+			MERGE (s)-[r:RELATES_TO {uuid: $uuid, group_id: $group_id}]->(t)
 			SET r += $properties
 			SET r.updated_at = $updated_at
 		`
@@ -356,120 +356,6 @@ func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error
 		return nil, err
 	})
 
-	return err
-}
-
-func (m *MemgraphDriver) executeEdgeCreateQuery(edge *types.Edge) error {
-	var metadataJSON string
-	if edge.Metadata != nil {
-		if data, err := json.Marshal(edge.Metadata); err == nil {
-			metadataJSON = string(data)
-		}
-	}
-
-	params := make(map[string]interface{})
-
-	// Handle fact_embedding
-	if len(edge.FactEmbedding) > 0 {
-		// Memgraph supports list parameters directly, no need for CAST
-		embedding := make([]float64, len(edge.FactEmbedding))
-		for i, v := range edge.FactEmbedding {
-			embedding[i] = float64(v)
-		}
-		params["fact_embedding"] = embedding
-	} else {
-		// Provide an empty list directly
-		params["fact_embedding"] = []float64{}
-	}
-
-	// Handle episodes
-	if len(edge.Episodes) > 0 {
-		params["episodes"] = edge.Episodes
-	} else {
-		params["episodes"] = []string{}
-	}
-
-	query := `
-		MATCH (a:Entity {uuid: $source_uuid, group_id: $group_id})
-		MATCH (b:Entity {uuid: $target_uuid, group_id: $group_id})
-		CREATE (rel:RelatesToNode_ {
-			uuid: $uuid,
-			group_id: $group_id,
-			created_at: $created_at,
-			name: $name,
-			fact: $fact,
-			fact_embedding: $fact_embedding,
-			episodes: $episodes,
-			expired_at: $expired_at,
-			valid_at: $valid_at,
-			invalid_at: $invalid_at,
-			attributes: $attributes
-		})
-		CREATE (a)-[:RELATES_TO]->(rel)
-		CREATE (rel)-[:RELATES_TO]->(b)
-		RETURN rel
-	`
-
-	params["source_uuid"] = edge.SourceID
-	params["target_uuid"] = edge.TargetID
-	params["group_id"] = edge.GroupID
-	params["uuid"] = edge.Uuid
-	params["created_at"] = edge.CreatedAt
-	params["name"] = edge.Name
-	params["fact"] = edge.Fact
-	params["attributes"] = metadataJSON
-	params["valid_at"] = edge.ValidFrom
-
-	if edge.ValidTo != nil {
-		params["expired_at"] = edge.ValidTo
-		params["invalid_at"] = edge.ValidTo
-	} else {
-		params["expired_at"] = nil
-		params["invalid_at"] = nil
-	}
-
-	_, _, _, err := m.ExecuteQuery(query, params)
-	return err
-}
-
-func (m *MemgraphDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
-	var metadataJSON string
-	if edge.Metadata != nil {
-		if data, err := json.Marshal(edge.Metadata); err == nil {
-			metadataJSON = string(data)
-		}
-	}
-
-	query := `
-		MATCH (rel:RelatesToNode_)
-		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
-		SET rel.name = $name,
-			rel.fact = $fact,
-			rel.expired_at = $expired_at,
-			rel.valid_at = $valid_at,
-			rel.invalid_at = $invalid_at,
-			rel.attributes = $attributes
-		RETURN rel
-	`
-
-	params := map[string]interface{}{
-		"uuid":       edge.Uuid,
-		"group_id":   edge.GroupID,
-		"name":       edge.Name,
-		"fact":       edge.Fact,
-		"attributes": metadataJSON,
-		"valid_at":   edge.ValidFrom,
-	}
-
-	if edge.ValidTo != nil {
-		params["expired_at"] = edge.ValidTo
-		params["invalid_at"] = edge.ValidTo
-	} else {
-		params["expired_at"] = nil
-		params["invalid_at"] = nil
-	}
-
-	_, _, _, err := m.ExecuteQuery(query, params)
 	return err
 }
 
@@ -852,7 +738,7 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 			query := `
 				MATCH (s {uuid: $source_id, group_id: $group_id})
 				MATCH (t {uuid: $target_id, group_id: $group_id})
-				MERGE (s)-[r:RELATES {uuid: $uuid, group_id: $group_id}]->(t)
+				MERGE (s)-[r:RELATES_TO {uuid: $uuid, group_id: $group_id}]->(t)
 				SET r += $properties
 				SET r.updated_at = $updated_at
 			`
@@ -1048,7 +934,7 @@ func (m *MemgraphDriver) GetCommunities(ctx context.Context, groupID string, lev
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MATCH (n {group_id: $groupID})
+			MATCH (n:Community {group_id: $groupID})
 			WHERE n.community_level = $level
 			RETURN n
 		`
@@ -1090,7 +976,7 @@ func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) e
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		// Reset existing community assignments
 		resetQuery := `
-			MATCH (n {group_id: $groupID})
+			MATCH (n:Community {group_id: $groupID})
 			REMOVE n.community_id, n.community_level
 		`
 		_, err := tx.Run(ctx, resetQuery, map[string]any{"groupID": groupID})
@@ -1100,7 +986,7 @@ func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) e
 
 		// Simple community detection using connected components
 		communityQuery := `
-			MATCH (n {group_id: $groupID})
+			MATCH (n:Community {group_id: $groupID})
 			OPTIONAL MATCH (n)-[*]-(connected {group_id: $groupID})
 			WITH n, collect(DISTINCT connected.id) + [n.uuid] as component
 			SET n.community_id = component[0]
@@ -2278,20 +2164,46 @@ func (m *MemgraphDriver) ParseNodesFromRecords(result interface{}) ([]*types.Nod
 
 // getEntityNodesByGroupNeo4j gets entity nodes for Neo4j/Memgraph
 func (m *MemgraphDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
-	query := `
-		MATCH (n:Entity {group_id: $group_id})
-		RETURN n.uuid AS uuid, n.name AS name, n.type AS type, n.entity_type AS entity_type, n.group_id AS group_id, n.summary AS summary, n.created_at AS created_at
-	`
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
 
-	params := map[string]interface{}{
-		"group_id": groupID,
-	}
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MATCH (n:Entity {group_id: $group_id})
+			RETURN n
+		`
+		res, err := tx.Run(ctx, query, map[string]any{
+			"group_id": groupID,
+		})
+		if err != nil {
+			return nil, err
+		}
 
-	result, _, _, err := m.ExecuteQuery(query, params)
+		records, err := res.Collect(ctx)
+		return records, err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute entity nodes query: %w", err)
 	}
-	nodes, _ := m.ParseNodesFromRecords(result)
+
+	records := result.([]*db.Record)
+	nodes := make([]*types.Node, 0, len(records))
+
+	for _, record := range records {
+		nodeValue, found := record.Get("n")
+		if !found {
+			continue
+		}
+
+		// Check if nodeValue is nil
+		if nodeValue == nil {
+			continue
+		}
+
+		node := nodeValue.(dbtype.Node)
+		nodes = append(nodes, m.nodeFromDBNode(node))
+	}
+
 	return nodes, nil
 }
 
@@ -2356,10 +2268,20 @@ func (m *MemgraphDriver) parseGroupIDsFromRecords(result interface{}) ([]string,
 }
 
 func convertNodeToMap(nodeInterface interface{}) (map[string]interface{}, error) {
+	// Check for nil input
+	if nodeInterface == nil {
+		return nil, fmt.Errorf("node interface is nil")
+	}
+
 	result := make(map[string]interface{})
 
 	// Use reflection to access the node's properties
 	nodeValue := reflect.ValueOf(nodeInterface)
+
+	// Check if the reflect.Value is valid (not zero)
+	if !nodeValue.IsValid() {
+		return nil, fmt.Errorf("invalid node value")
+	}
 
 	// Handle pointer types
 	if nodeValue.Kind() == reflect.Ptr {
