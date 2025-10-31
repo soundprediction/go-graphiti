@@ -9,7 +9,7 @@ type Node struct {
 	Uuid      string    `json:"uuid" mapstructure:"uuid"`
 	Name      string    `json:"name" mapstructure:"name"`
 	Type      NodeType  `json:"type" mapstructure:"type"`
-	GroupID   string    `json:"group_id mapstructure:"group_id""`
+	GroupID   string    `json:"group_id" mapstructure:"group_id"`
 	CreatedAt time.Time `json:"created_at" mapstructure:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" mapstructure:"updated_at"`
 

@@ -1826,6 +1826,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 				source: $source,
 				source_description: $source_description,
 				content: $content,
+				metadata: $metadata,
 				valid_at: $valid_at,
 				entity_edges: %s
 			})
@@ -1835,6 +1836,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		params["name"] = node.Name
 		params["group_id"] = node.GroupID
 		params["created_at"] = node.CreatedAt
+		params["metadata"] = metadataJSON
 		params["source"] = string(node.EpisodeType)
 		params["source_description"] = ""
 		params["content"] = node.Content

@@ -152,7 +152,7 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
-			MERGE (n:$label {id: $uuid, group_id: $group_id})
+			MERGE (n:$label {uuid: $uuid, group_id: $group_id})
 			SET n += $properties
 			SET n.updated_at = $updated_at
 		`
