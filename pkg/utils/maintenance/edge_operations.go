@@ -152,46 +152,38 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 		return nil, fmt.Errorf("failed to create prompt: %w", err)
 	}
 
-	response, err := eo.llm.Chat(ctx, messages)
-	if err != nil {
-		if response == nil {
-			return nil, fmt.Errorf("failed to call llm to dedupe nodes: %w\nprompt:\n%s\nresponse:\n%s", err, messages[1].Content, "NO RESPONSE")
-
-		}
-		return nil, fmt.Errorf("failed to extract edges: %w \nprompt: %s \nresponse: \n %s", err, messages[1].Content, response.Content)
+	// Create CSV parser function for ExtractedEdge
+	csvParser := func(csvContent string) ([]*prompts.ExtractedEdge, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.ExtractedEdge](csvContent, '\t')
 	}
-	if !utils.IsLastLineEmpty(response.Content) {
-		originalResponse := response
-		messages[len(messages)-1].Content += fmt.Sprintf(`\n
-Continue the INCOMPLETE RESPONSE\n
-<INCOMPLETE RESPONSE>
-%s
-</INCOMPLETE RESPONSE>
-			`, utils.RemoveLastLine(response.Content))
-		response, err = eo.llm.Chat(ctx, messages)
-		if err != nil {
-			log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
-			response = originalResponse
-		}
-	}
-	r := utils.RemoveLastLine(response.Content)
-	r = llm.RemoveThinkTags(r)
 
-	extractedEdgePtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedEdge](r, '\t')
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	extractedEdgeSlice, badResp, err := llm.GenerateCSVResponse[prompts.ExtractedEdge](
+		ctx,
+		eo.llm,
+		eo.logger,
+		messages,
+		csvParser,
+		3, // maxRetries
+	)
+
 	if err != nil {
-		fmt.Printf("r: \n %v\n", r)
-		fmt.Printf("err: %v\n", err)
+		// Log detailed error information
+		if badResp != nil {
+			eo.logger.Error("Failed to extract edges from CSV",
+				"error", badResp.Error,
+				"response_length", len(badResp.Response),
+				"num_messages", len(badResp.Messages))
+			if badResp.Response != "" {
+				fmt.Printf("\nFailed LLM edge extraction response:\n%v\n\n", badResp.Response)
+			}
+		}
 		return []*types.Edge{}, fmt.Errorf("failed to unmarshal extracted edges: %w", err)
 	}
 
-	// Convert pointer slice to value slice
+	// Convert to ExtractedEdges struct
 	var extractedEdges prompts.ExtractedEdges
-	extractedEdges.Edges = make([]prompts.ExtractedEdge, len(extractedEdgePtrs))
-	for i, ptr := range extractedEdgePtrs {
-		if ptr != nil {
-			extractedEdges.Edges[i] = *ptr
-		}
-	}
+	extractedEdges.Edges = extractedEdgeSlice
 
 	log.Printf("Extracted %d edges in %v", len(extractedEdges.Edges), time.Since(start))
 
@@ -583,52 +575,48 @@ func (eo *EdgeOperations) resolveExtractedEdge(ctx context.Context, extractedEdg
 
 	// Use LLM to resolve duplicates and contradictions
 	messages, err := eo.prompts.DedupeEdges().ResolveEdge().Call(promptContext)
-	// fmt.Printf("messages[1]:\n %v\n", messages[1])
 	if err != nil {
 		log.Printf("Warning: failed to create dedupe prompt: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
-	response, err := eo.llm.Chat(ctx, messages)
-	if err != nil {
-		log.Printf("Warning: LLM edge resolution failed: %v", err)
-		return extractedEdge, []*types.Edge{}, nil
+	// Create CSV parser function for EdgeDuplicateTSV
+	csvParser := func(csvContent string) ([]*prompts.EdgeDuplicateTSV, error) {
+		return utils.DuckDbUnmarshalCSV[prompts.EdgeDuplicateTSV](csvContent, '\t')
 	}
 
-	// Handle incomplete responses
-	if !utils.IsLastLineEmpty(response.Content) {
-		originalResponse := response
-		messages[len(messages)-1].Content += fmt.Sprintf(`\n
-Continue the INCOMPLETE RESPONSE\n
-<INCOMPLETE RESPONSE>
-%s
-</INCOMPLETE RESPONSE>
-		`, utils.RemoveLastLine(response.Content))
-		response, err = eo.llm.Chat(ctx, messages)
-		if err != nil {
-			log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
-			response = originalResponse
+	// Use GenerateCSVResponse for robust CSV parsing with retries
+	edgeDuplicateTSVSlice, badResp, err := llm.GenerateCSVResponse[prompts.EdgeDuplicateTSV](
+		ctx,
+		eo.llm,
+		eo.logger,
+		messages,
+		csvParser,
+		3, // maxRetries
+	)
+
+	if err != nil {
+		// Log detailed error information
+		if badResp != nil {
+			eo.logger.Warn("Failed to resolve edge duplicates from CSV",
+				"error", badResp.Error,
+				"response_length", len(badResp.Response),
+				"num_messages", len(badResp.Messages))
+			if badResp.Response != "" {
+				fmt.Printf("\nFailed LLM edge resolution response:\n%v\n\n", badResp.Response)
+			}
 		}
-	}
-
-	// Parse TSV response
-	r := utils.RemoveLastLine(response.Content)
-	r = llm.RemoveThinkTags(r)
-
-	edgeDuplicateTSVPtrs, err := utils.DuckDbUnmarshalCSV[prompts.EdgeDuplicateTSV](r, '\t')
-	if err != nil {
-		fmt.Printf("\nresponse:\n %v\n\n", r)
 		log.Printf("Warning: failed to parse edge deduplication TSV: %v", err)
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
-	if len(edgeDuplicateTSVPtrs) == 0 || edgeDuplicateTSVPtrs[0] == nil {
+	if len(edgeDuplicateTSVSlice) == 0 {
 		log.Printf("Warning: empty edge deduplication response")
 		return extractedEdge, []*types.Edge{}, nil
 	}
 
 	// Convert TSV result to EdgeDuplicate
-	edgeDuplicateTSV := edgeDuplicateTSVPtrs[0]
+	edgeDuplicateTSV := &edgeDuplicateTSVSlice[0]
 	var edgeDuplicate prompts.EdgeDuplicate
 	edgeDuplicate.FactType = edgeDuplicateTSV.FactType
 	edgeDuplicate.DuplicateFacts = edgeDuplicateTSV.DuplicateFacts
