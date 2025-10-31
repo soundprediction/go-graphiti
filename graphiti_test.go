@@ -7,7 +7,6 @@ import (
 
 	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -145,8 +144,8 @@ func (m *MockGraphDriver) GetAossClient() interface{} {
 // MockLLMClient is a mock LLM implementation for testing
 type MockLLMClient struct{}
 
-func (m *MockLLMClient) Chat(ctx context.Context, messages []types.Message) (*llm.Response, error) {
-	return &llm.Response{
+func (m *MockLLMClient) Chat(ctx context.Context, messages []types.Message) (*types.Response, error) {
+	return &types.Response{
 		Content: "Mock response",
 	}, nil
 }

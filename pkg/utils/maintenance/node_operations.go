@@ -119,58 +119,37 @@ func (no *NodeOperations) ExtractNodes(ctx context.Context, episode *types.Node,
 			return nil, fmt.Errorf("failed to create extraction prompt: %w", err)
 		}
 
-		response, err := no.llm.Chat(ctx, messages) // this is a CSV []prompts.extractedEntities
-		prompts.LogResponses(promptContext["logger"].(*slog.Logger), *response)
-		if err != nil {
-			return nil, fmt.Errorf("The llm call failed to extract entities: %w", err)
+		// Create CSV parser function for ExtractedEntity
+		csvParser := func(csvContent string) ([]*prompts.ExtractedEntity, error) {
+			return utils.DuckDbUnmarshalCSV[prompts.ExtractedEntity](csvContent, '\t')
 		}
 
-		if !utils.IsLastLineEmpty(response.Content) {
-			originalResponse := response
-			messages[len(messages)-1].Content += fmt.Sprintf(`\n
+		// Use GenerateCSVResponse for robust CSV parsing with retries
+		extractedEntitySlice, badResp, err := llm.GenerateCSVResponse[prompts.ExtractedEntity](
+			ctx,
+			no.llm,
+			no.logger,
+			messages,
+			csvParser,
+			3, // maxRetries
+		)
 
-Continue the following
-
-# INCOMPLETE RESPONSE
-
-%s
-
-			`, utils.RemoveLastLine(response.Content))
-			response, err = no.llm.Chat(ctx, messages)
-			if err != nil {
-				log.Printf("Warning: failed to continue incomplete response, using original: %v", err)
-				response = originalResponse
-			}
-		}
-
-		r := utils.RemoveLastLine(llm.StripHtmlTags(response.Content))
-
-		/*
-			reader := csv.NewReader(strings.NewReader(r))
-			reader.Comma = '\t' // Set delimiter to tab
-			reader.LazyQuotes = true
-
-			err = gocsv.UnmarshalCSV(reader, &extractedEntities.ExtractedEntities)
-			if err != nil {
-				fmt.Printf("\nresponse:\n %v\n\n", r)
-				return nil, fmt.Errorf("ailed to extract entities from csv: %w", err)
-			}
-		*/
-		prompts.LogResponses(promptContext["logger"].(*slog.Logger), *response)
-
-		extractedEntityPtrs, err := utils.DuckDbUnmarshalCSV[prompts.ExtractedEntity](r, '\t')
 		if err != nil {
-			fmt.Printf("\nresponse:\n %v\n\n", r)
+			// Log detailed error information
+			if badResp != nil {
+				no.logger.Error("Failed to extract entities from CSV",
+					"error", badResp.Error,
+					"response_length", len(badResp.Response),
+					"num_messages", len(badResp.Messages))
+				if badResp.Response != "" {
+					fmt.Printf("\nFailed LLM response:\n%v\n\n", badResp.Response)
+				}
+			}
 			return nil, fmt.Errorf("failed to extract entities from csv: %w", err)
 		}
 
-		// Convert pointer slice to value slice
-		extractedEntities.ExtractedEntities = make([]prompts.ExtractedEntity, len(extractedEntityPtrs))
-		for i, ptr := range extractedEntityPtrs {
-			if ptr != nil {
-				extractedEntities.ExtractedEntities[i] = *ptr
-			}
-		}
+		// Convert to ExtractedEntities struct
+		extractedEntities.ExtractedEntities = extractedEntitySlice
 
 		reflexionIterations++
 		if reflexionIterations < maxReflexionIterations {
