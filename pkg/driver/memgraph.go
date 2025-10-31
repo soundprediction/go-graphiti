@@ -980,8 +980,9 @@ func (m *MemgraphDriver) RetrieveEpisodes(
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		// Build query parameters
 		queryParams := make(map[string]any)
-		// For Memgraph, we pass the time as a string and use LocalDateTime() to convert it
-		queryParams["reference_time"] = referenceTime.Format(time.RFC3339)
+		// Use neo4j.LocalDateTime type which Memgraph understands natively
+		// Convert Go time.Time to neo4j LocalDateTime
+		queryParams["reference_time"] = neo4j.LocalDateTimeOf(referenceTime)
 		queryParams["num_episodes"] = limit
 
 		// Build conditional filters
@@ -999,11 +1000,11 @@ func (m *MemgraphDriver) RetrieveEpisodes(
 			queryParams["source"] = string(*episodeType)
 		}
 
-		// For Memgraph, use LocalDateTime() to convert the string to a temporal type
-		// that can be compared with the zoned_date_time field
+		// For Memgraph, pass the LocalDateTime directly without conversion function
+		// The neo4j driver handles the type conversion automatically
 		query := fmt.Sprintf(`
 			MATCH (e:Episodic)
-			WHERE e.valid_at <= LocalDateTime($reference_time)
+			WHERE e.valid_at <= $reference_time
 			%s
 			RETURN e
 			ORDER BY e.valid_at DESC
