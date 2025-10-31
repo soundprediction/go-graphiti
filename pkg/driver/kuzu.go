@@ -1935,7 +1935,7 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 
 	var metadataJSON string
 	var err error
-	if node.Metadata != nil && len(node.Metadata) > 0 {
+	if len(node.Metadata) > 0 {
 		data, marshalErr := json.Marshal(node.Metadata)
 		if marshalErr != nil {
 			return fmt.Errorf("failed to marshal node metadata: %w", marshalErr)
