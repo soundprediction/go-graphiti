@@ -2032,9 +2032,8 @@ func (k *MemgraphDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targ
 
 func (m *MemgraphDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
 	query := `
-      MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]->(e:RelatesToNode_)<-[:RELATES_TO]-
-      (m:Entity {group_id: $group_id})
-	  WITH m.uuid AS uuid, count(e) AS count
+      MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[e:RELATES_TO]-(m:Entity {group_id: $group_id})
+	  WITH count(e) AS count, m.uuid AS uuid
 	  RETURN uuid, count
 	`
 
