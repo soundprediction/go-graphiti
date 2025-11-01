@@ -85,6 +85,21 @@ const KuzuSchemaQueries = `
     );
 `
 
+// writeOperation represents a queued write operation
+type writeOperation struct {
+	query    string
+	params   map[string]interface{}
+	resultCh chan writeResult
+}
+
+// writeResult holds the result of a write operation
+type writeResult struct {
+	result interface{}
+	cols   interface{}
+	meta   interface{}
+	err    error
+}
+
 // KuzuDriver implements the GraphDriver interface for Kuzu databases exactly like Python implementation
 type KuzuDriver struct {
 	provider     GraphProvider
@@ -94,6 +109,13 @@ type KuzuDriver struct {
 	tempDbPath   string     // If non-empty, this is a temp copy that should be cleaned up
 	originalPath string     // Original path before copying to temp
 	mu           sync.Mutex // Mutex to protect database operations from concurrent access
+
+	// Write queue for transparent concurrency handling
+	writeQueue chan writeOperation
+	writeWg    sync.WaitGroup
+	closeCh    chan struct{}
+	closed     bool
+	closeMu    sync.RWMutex
 }
 
 // copyDir recursively copies a directory from src to dst
@@ -174,6 +196,76 @@ func isLockError(err error) bool {
 		strings.Contains(errStr, "busy")
 }
 
+// KuzuDriverConfig holds configuration options for KuzuDriver
+type KuzuDriverConfig struct {
+	// Database path (defaults to ":memory:")
+	DBPath string
+
+	// Maximum concurrent queries (defaults to 1)
+	MaxConcurrentQueries int
+
+	// Write queue buffer size (defaults to 1000)
+	// Higher values allow more write operations to be queued before blocking
+	WriteQueueSize int
+
+	// Buffer pool size in bytes (defaults to 1GB)
+	BufferPoolSize uint64
+
+	// Enable compression (defaults to true)
+	EnableCompression bool
+
+	// Maximum database size in bytes (defaults to 8TB)
+	MaxDbSize uint64
+}
+
+// DefaultKuzuDriverConfig returns a KuzuDriverConfig with sensible defaults
+func DefaultKuzuDriverConfig() *KuzuDriverConfig {
+	return &KuzuDriverConfig{
+		DBPath:               ":memory:",
+		MaxConcurrentQueries: 1,
+		WriteQueueSize:       1000,
+		BufferPoolSize:       1024 * 1024 * 1024, // 1GB
+		EnableCompression:    true,
+		MaxDbSize:            1 << 43, // 8TB
+	}
+}
+
+// WithDBPath sets the database path
+func (c *KuzuDriverConfig) WithDBPath(path string) *KuzuDriverConfig {
+	c.DBPath = path
+	return c
+}
+
+// WithMaxConcurrentQueries sets the maximum concurrent queries
+func (c *KuzuDriverConfig) WithMaxConcurrentQueries(max int) *KuzuDriverConfig {
+	c.MaxConcurrentQueries = max
+	return c
+}
+
+// WithWriteQueueSize sets the write queue buffer size
+func (c *KuzuDriverConfig) WithWriteQueueSize(size int) *KuzuDriverConfig {
+	c.WriteQueueSize = size
+	return c
+}
+
+// WithBufferPoolSize sets the buffer pool size in bytes
+func (c *KuzuDriverConfig) WithBufferPoolSize(size uint64) *KuzuDriverConfig {
+	c.BufferPoolSize = size
+	return c
+}
+
+// WithCompression enables or disables compression
+func (c *KuzuDriverConfig) WithCompression(enable bool) *KuzuDriverConfig {
+	c.EnableCompression = enable
+	return c
+}
+
+// WithMaxDbSize sets the maximum database size in bytes
+func (c *KuzuDriverConfig) WithMaxDbSize(size uint64) *KuzuDriverConfig {
+	c.MaxDbSize = size
+	return c
+}
+
 // NewKuzuDriver creates a new Kuzu driver instance with exact same signature as Python
 // Parameters:
 //   - db: Database path (defaults to ":memory:" like Python)
@@ -183,24 +275,56 @@ func isLockError(err error) bool {
 // the database to a temporary location and open the copy instead, allowing read-only
 // access even while another process is writing to the original.
 func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
-	if db == "" {
-		db = ":memory:"
+	config := DefaultKuzuDriverConfig()
+	if db != "" {
+		config.DBPath = db
 	}
-	if maxConcurrentQueries <= 0 {
-		maxConcurrentQueries = 1
+	if maxConcurrentQueries > 0 {
+		config.MaxConcurrentQueries = maxConcurrentQueries
+	}
+	return NewKuzuDriverWithConfig(config)
+}
+
+// NewKuzuDriverWithConfig creates a new Kuzu driver instance with the given configuration.
+// This provides more control over driver behavior including write queue size and buffer pool settings.
+//
+// If the database is locked by another process, this function will automatically copy
+// the database to a temporary location and open the copy instead, allowing read-only
+// access even while another process is writing to the original.
+func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
+	if config == nil {
+		config = DefaultKuzuDriverConfig()
 	}
 
-	originalPath := db
+	// Apply defaults for zero values
+	if config.DBPath == "" {
+		config.DBPath = ":memory:"
+	}
+	if config.MaxConcurrentQueries <= 0 {
+		config.MaxConcurrentQueries = 1
+	}
+	if config.WriteQueueSize <= 0 {
+		config.WriteQueueSize = 1000
+	}
+	if config.BufferPoolSize == 0 {
+		config.BufferPoolSize = 1024 * 1024 * 1024 // 1GB
+	}
+	if config.MaxDbSize == 0 {
+		config.MaxDbSize = 1 << 43 // 8TB
+	}
+
+	originalPath := config.DBPath
 	tempDbPath := ""
+	db := config.DBPath
 
 	// Create a SystemConfig manually to avoid version mismatch issues with DefaultSystemConfig()
 	// These are safe, conservative defaults that work with kuzu v0.11.2
 	systemConfig := kuzu.SystemConfig{
-		BufferPoolSize:    1024 * 1024 * 1024, // 1GB buffer pool
-		MaxNumThreads:     uint64(maxConcurrentQueries),
-		EnableCompression: true,
+		BufferPoolSize:    config.BufferPoolSize,
+		MaxNumThreads:     uint64(config.MaxConcurrentQueries),
+		EnableCompression: config.EnableCompression,
 		ReadOnly:          false,
-		MaxDbSize:         1 << 43, // 8TB max database size
+		MaxDbSize:         config.MaxDbSize,
 	}
 
 	// Try to open the database with our custom config
@@ -242,7 +366,13 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 		dbPath:       db,
 		tempDbPath:   tempDbPath,
 		originalPath: originalPath,
+		writeQueue:   make(chan writeOperation, config.WriteQueueSize),
+		closeCh:      make(chan struct{}),
 	}
+
+	// Start the write worker goroutine
+	driver.writeWg.Add(1)
+	go driver.writeWorker()
 
 	// Setup schema exactly like Python
 	driver.setupSchema()
@@ -265,9 +395,86 @@ func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
 	return driver, nil
 }
 
-// ExecuteQuery executes a query with parameters, exactly matching Python signature
-// Returns (results, summary, keys) tuple like Python, though summary and keys are unused in Kuzu
+// ExecuteQuery executes a query with parameters, exactly matching Python signature.
+// Returns (results, summary, keys) tuple like Python, though summary and keys are unused in Kuzu.
+// Write operations are automatically queued and executed sequentially for thread safety.
+// Read operations execute directly with mutex protection for better performance.
 func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	// Check if driver is closed
+	k.closeMu.RLock()
+	if k.closed {
+		k.closeMu.RUnlock()
+		return nil, nil, nil, fmt.Errorf("driver is closed")
+	}
+	k.closeMu.RUnlock()
+
+	// Route write operations to the queue for sequential execution
+	if k.isWriteQuery(cypherQuery) {
+		resultCh := make(chan writeResult, 1)
+		op := writeOperation{
+			query:    cypherQuery,
+			params:   kwargs,
+			resultCh: resultCh,
+		}
+
+		// Send to write queue (non-blocking with timeout for safety)
+		select {
+		case k.writeQueue <- op:
+			// Wait for result
+			result := <-resultCh
+			return result.result, result.cols, result.meta, result.err
+		case <-time.After(30 * time.Second):
+			return nil, nil, nil, fmt.Errorf("write queue timeout after 30s")
+		}
+	}
+
+	// Read operations execute directly with mutex protection
+	return k.executeQueryInternal(cypherQuery, kwargs)
+}
+
+// isWriteQuery checks if a query is a write operation (CREATE, MERGE, SET, DELETE, etc.)
+func (k *KuzuDriver) isWriteQuery(query string) bool {
+	upperQuery := strings.ToUpper(strings.TrimSpace(query))
+	writeKeywords := []string{
+		"CREATE ", "MERGE ", "SET ", "DELETE ", "DETACH DELETE",
+		"REMOVE ", "DROP ", "INSERT ", "UPDATE ",
+	}
+	for _, keyword := range writeKeywords {
+		if strings.HasPrefix(upperQuery, keyword) || strings.Contains(upperQuery, " "+keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// writeWorker processes write operations sequentially from the queue
+func (k *KuzuDriver) writeWorker() {
+	defer k.writeWg.Done()
+
+	for {
+		select {
+		case <-k.closeCh:
+			// Process remaining operations before closing
+			for {
+				select {
+				case op := <-k.writeQueue:
+					result, cols, meta, err := k.executeQueryInternal(op.query, op.params)
+					op.resultCh <- writeResult{result, cols, meta, err}
+					close(op.resultCh)
+				default:
+					return
+				}
+			}
+		case op := <-k.writeQueue:
+			result, cols, meta, err := k.executeQueryInternal(op.query, op.params)
+			op.resultCh <- writeResult{result, cols, meta, err}
+			close(op.resultCh)
+		}
+	}
+}
+
+// executeQueryInternal performs the actual query execution with mutex protection
+func (k *KuzuDriver) executeQueryInternal(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
 	// Lock to prevent concurrent database access (Kuzu C++ library is not thread-safe)
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -371,6 +578,19 @@ func (k *KuzuDriver) Session(database *string) GraphDriverSession {
 
 // Close closes the driver exactly like Python implementation
 func (k *KuzuDriver) Close() error {
+	// Mark driver as closed
+	k.closeMu.Lock()
+	if k.closed {
+		k.closeMu.Unlock()
+		return nil // Already closed
+	}
+	k.closed = true
+	k.closeMu.Unlock()
+
+	// Signal write worker to finish and wait for it
+	close(k.closeCh)
+	k.writeWg.Wait()
+
 	// Clean up temporary database copy if it was created
 	if k.tempDbPath != "" {
 		tempDir := filepath.Dir(k.tempDbPath)
