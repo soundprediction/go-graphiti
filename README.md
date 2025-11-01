@@ -18,7 +18,7 @@ Compared to the original Python package, these are the main differences:
 
 - **Temporal Knowledge Graphs**: Bi-temporal data model with explicit tracking of event occurrence times
 - **Hybrid Search**: Combines semantic embeddings, keyword search (BM25), and graph traversal
-- **Multiple Graph Backends**: Primary support for embedded Kuzu database, also supports Neo4j and FalkorDB
+- **Multiple Graph Backends**: Primary support for embedded Kuzu database, also supports Memgraph and Neo4j
 - **Flexible LLM Integration**: Works with any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
 - **No Vendor Lock-in**: No required dependencies on specific services - use local or cloud providers
 - **CLI Tool**: Command-line interface for running servers and managing the knowledge graph
@@ -50,12 +50,12 @@ go get github.com/soundprediction/go-graphiti
 ### Prerequisites
 
 - Go 1.24+
-- **Optional**: Graph database (Kuzu embedded by default, or external Neo4j/FalkorDB)
+- **Optional**: Graph database (Kuzu embedded by default, or external Memgraph/Neo4j)
 - **Optional**: LLM API access (OpenAI, Ollama, vLLM, or any OpenAI-compatible service)
 
 ### Environment Variables
 
-**Minimal Setup (Local/Embedded):**
+**Basic Setup (Local/Embedded):**
 ```bash
 # No environment variables required for basic usage with Kuzu embedded database
 # and without LLM features
@@ -69,6 +69,11 @@ export LLM_BASE_URL="http://localhost:11434"   # For local LLMs like Ollama
 
 **With External Graph Database (optional):**
 ```bash
+# For Memgraph
+export MEMGRAPH_URI="bolt://localhost:7687"
+export MEMGRAPH_USER="memgraph"
+export MEMGRAPH_PASSWORD="your-password"
+
 # For Neo4j
 export NEO4J_URI="bolt://localhost:7687"
 export NEO4J_USER="neo4j"
@@ -80,7 +85,7 @@ export KUZU_DB_PATH="./kuzu_db"  # Optional: defaults to "./kuzu_db"
 
 ### Basic Usage
 
-**Minimal Example (Kuzu + No LLM):**
+**Basic Example (Kuzu + No LLM):**
 
 ```go
 package main
@@ -287,14 +292,16 @@ See [cmd/README.md](cmd/README.md) for detailed CLI documentation.
 The library is structured into several key packages:
 
 - **`graphiti.go`**: Main client interface and configuration
-- **`pkg/driver/`**: Graph database drivers (Neo4j, etc.)
-- **`pkg/llm/`**: Language model clients (OpenAI, etc.)
-- **`pkg/embedder/`**: Embedding model clients (OpenAI, etc.)
+- **`pkg/driver/`**: Graph database drivers (Kuzu, Memgraph, Neo4j)
+- **`pkg/llm/`**: Language model clients (OpenAI-compatible APIs)
+- **`pkg/embedder/`**: Embedding model clients (OpenAI, Gemini, Voyage)
 - **`pkg/search/`**: Hybrid search functionality
-- **`pkg/nodes/`**: Node types and operations
-- **`pkg/edges/`**: Edge types and operations
+- **`pkg/types/`**: Core types for nodes, edges, and data structures
+- **`pkg/models/`**: Database models and query operations for nodes and edges
 - **`pkg/prompts/`**: LLM prompts for extraction and processing
 - **`pkg/crossencoder/`**: Cross-encoder reranking for improved relevance
+- **`pkg/community/`**: Community detection and management
+- **`pkg/utils/`**: Utility functions for maintenance and operations
 
 ## Node Types
 
@@ -323,23 +330,22 @@ The library is structured into several key packages:
 
 ## Documentation
 
-📚 **Complete Documentation**:
+📚 **Documentation**:
 - **[Getting Started](docs/GETTING_STARTED.md)**: Setup guide and first steps
-- **[API Reference](docs/API_REFERENCE.md)**: Complete API documentation
-- **[Architecture](docs/ARCHITECTURE.md)**: Design principles and components
 - **[Examples](docs/EXAMPLES.md)**: Practical usage examples
-- **[OpenAI-Compatible Services](docs/OPENAI_COMPATIBLE.md)**: Using local LLMs and alternative providers
 - **[Kuzu Setup Guide](docs/KUZU_SETUP.md)**: Using the embedded Kuzu graph database
 - **[FAQ](docs/FAQ.md)**: Common questions and troubleshooting
+- **[Python to Go Mapping](docs/PYTHON_TO_GO_MAPPING.md)**: Port status tracking
 
 ## Examples
 
 See the `examples/` directory for complete usage examples:
 
-- `examples/minimal/`: Minimal setup with Kuzu embedded database
+- `examples/basic/`: Minimal setup with Kuzu embedded database
 - `examples/kuzu_ollama/`: Local setup with Kuzu + Ollama (maximum privacy)
 - `examples/openai_compatible/`: Using various OpenAI-compatible services
-- `examples/neo4j/`: Advanced setup with external Neo4j database
+- `examples/chat/`: Chat interface example
+- `examples/prompts/`: Prompt engineering examples
 - More examples in [docs/EXAMPLES.md](docs/EXAMPLES.md)
 
 ## Development
@@ -359,12 +365,16 @@ go build ./...
 ### Running Examples
 
 ```bash
-# Minimal example (no external dependencies)
-cd examples/minimal
+# Basic example (no external dependencies)
+cd examples/basic
 go run main.go
 
 # Or with local LLM
 cd examples/kuzu_ollama
+go run main.go
+
+# Chat interface example
+cd examples/chat
 go run main.go
 ```
 
