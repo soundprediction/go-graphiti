@@ -26,4 +26,5 @@ type Config struct {
 	Dimensions int               `json:"dimensions"`
 	BaseURL    string            `json:"base_url,omitempty"` // Custom base URL for OpenAI-compatible services
 	Headers    map[string]string `json:"headers,omitempty"`  // Additional headers for requests
+	MaxRetries int               `json:"max_retries"`        // Maximum number of retry attempts
 }
