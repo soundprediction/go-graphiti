@@ -14,6 +14,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -340,7 +341,7 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 
 // NewMCPServer creates a new MCP server instance
 func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 

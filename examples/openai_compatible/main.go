@@ -12,6 +12,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -275,7 +276,7 @@ func runGraphitiIntegrationExample() error {
 		TimeZone: time.UTC,
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 	graphitiClient := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config, logger)

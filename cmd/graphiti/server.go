@@ -14,6 +14,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
+	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
 	"github.com/soundprediction/go-graphiti/pkg/server"
 	"github.com/spf13/cobra"
 )
@@ -211,7 +212,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 	// Initialize database driver
 	var graphDriver driver.GraphDriver
 	var err error
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 	switch cfg.Database.Driver {
