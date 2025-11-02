@@ -32,6 +32,7 @@ const KuzuSchemaQueries = `
         source STRING,
         source_description STRING,
         content STRING,
+        metadata STRING,
         valid_at TIMESTAMP,
         entity_edges STRING[]
     );
@@ -2044,6 +2045,23 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 		node.Content = fmt.Sprintf("%v", content)
 	}
 
+	// Parse metadata field for Episodic nodes
+	if metadata, ok := data["node.metadata"]; ok && metadata != nil {
+		if metadataStr, ok := metadata.(string); ok && metadataStr != "" {
+			var metadataMap map[string]interface{}
+			if err := json.Unmarshal([]byte(metadataStr), &metadataMap); err == nil {
+				node.Metadata = metadataMap
+			}
+		}
+	} else if metadata, ok := data["n.metadata"]; ok && metadata != nil {
+		if metadataStr, ok := metadata.(string); ok && metadataStr != "" {
+			var metadataMap map[string]interface{}
+			if err := json.Unmarshal([]byte(metadataStr), &metadataMap); err == nil {
+				node.Metadata = metadataMap
+			}
+		}
+	}
+
 	if embedding, ok := data["node.name_embedding"]; ok {
 		node.NameEmbedding = convertToFloat32Slice(embedding)
 	} else if embedding, ok := data["n.name_embedding"]; ok {
@@ -2304,6 +2322,12 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 
 		setClauses = append(setClauses, "n.valid_at = $valid_at")
 		params["valid_at"] = node.ValidFrom
+
+		// Update metadata if provided
+		if metadataJSON != "" {
+			setClauses = append(setClauses, "n.metadata = $metadata")
+			params["metadata"] = metadataJSON
+		}
 
 		// Update entity_edges if not empty
 		if len(node.EntityEdges) > 0 {

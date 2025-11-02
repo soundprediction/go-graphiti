@@ -13,10 +13,9 @@ require (
 	github.com/duckdb/duckdb-go/v2 v2.5.0
 	github.com/firebase/genkit/go v1.1.0
 	github.com/gin-gonic/gin v1.11.0
-	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/kaptinlin/jsonrepair v0.2.4
-	github.com/kuzudb/go-kuzu v0.11.3
+	github.com/kuzudb/go-kuzu v0.11.2
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 )
@@ -46,6 +45,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.28.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/dotprompt/go v0.0.0-20251024044225-3f7ffb43be55 // indirect
