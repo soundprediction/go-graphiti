@@ -970,7 +970,7 @@ func (c *Client) UpdateCommunities(ctx context.Context, episodeID string, groupI
 		"group_id", groupID)
 
 	communityResult, err := c.community.BuildCommunities(ctx, []string{groupID}, c.logger)
-	if err != nil {
+	if err != nil && len(communityResult.CommunityNodes) == 0 {
 		return nil, nil, fmt.Errorf("failed to build communities: %w", err)
 	}
 
