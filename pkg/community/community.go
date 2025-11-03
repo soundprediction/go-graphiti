@@ -131,9 +131,11 @@ func (b *Builder) BuildCommunities(ctx context.Context, groupIDs []string, logge
 	wg.Wait()
 
 	if len(buildErrors) > 0 {
-		return nil, fmt.Errorf("failed to build communities: %v", buildErrors[0])
+		return &BuildCommunitiesResult{
+			CommunityNodes: allCommunityNodes,
+			CommunityEdges: allCommunityEdges,
+		}, fmt.Errorf("some errors arose during community building: %v", buildErrors)
 	}
-
 	return &BuildCommunitiesResult{
 		CommunityNodes: allCommunityNodes,
 		CommunityEdges: allCommunityEdges,
