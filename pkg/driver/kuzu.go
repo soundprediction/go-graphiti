@@ -996,18 +996,46 @@ func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 		}
 	}
 
-	query := `
+	// Build query dynamically to handle empty arrays with explicit CASTs
+	var factEmbeddingClause string
+	var episodesClause string
+
+	params := make(map[string]interface{})
+
+	// Handle fact_embedding
+	if len(edge.FactEmbedding) > 0 {
+		factEmbeddingClause = "rel.fact_embedding = $fact_embedding"
+		// Convert float32 to float64 for Kuzu
+		embedding := make([]float64, len(edge.FactEmbedding))
+		for i, v := range edge.FactEmbedding {
+			embedding[i] = float64(v)
+		}
+		params["fact_embedding"] = embedding
+	} else {
+		factEmbeddingClause = "rel.fact_embedding = CAST([] AS FLOAT[])"
+	}
+
+	// Handle episodes
+	if len(edge.Episodes) > 0 {
+		episodesClause = "rel.episodes = $episodes"
+		params["episodes"] = edge.Episodes
+	} else {
+		episodesClause = "rel.episodes = CAST([] AS STRING[])"
+	}
+
+	query := fmt.Sprintf(`
 		MATCH (rel:RelatesToNode_)
 		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
 		SET rel.name = $name,
 			rel.fact = $fact,
+			%s,
+			%s,
 			rel.expired_at = $expired_at,
 			rel.valid_at = $valid_at,
 			rel.invalid_at = $invalid_at,
 			rel.attributes = $attributes
-	`
+	`, factEmbeddingClause, episodesClause)
 
-	params := make(map[string]interface{})
 	params["uuid"] = edge.Uuid
 	params["group_id"] = edge.GroupID
 	params["name"] = edge.Name
@@ -1025,6 +1053,76 @@ func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 
 	_, _, _, err := k.ExecuteQuery(query, params)
 	return err
+}
+
+// UpsertEpisodicEdge creates or updates a MENTIONS relationship between an Episodic node and an Entity node.
+// This matches Python's EpisodicEdge.save() method.
+func (k *KuzuDriver) UpsertEpisodicEdge(ctx context.Context, episodeUUID, entityUUID, groupID string) error {
+	// Python EPISODIC_EDGE_SAVE uses MERGE for idempotent upserts
+	// The MENTIONS relationship only has group_id and created_at fields (no uuid in Python)
+	query := `
+		MATCH (episode:Episodic {uuid: $episode_uuid, group_id: $group_id})
+		MATCH (entity:Entity {uuid: $entity_uuid, group_id: $group_id})
+		MERGE (episode)-[e:MENTIONS {group_id: $group_id}]->(entity)
+		ON CREATE SET e.created_at = $created_at,
+		              e.uuid = $uuid
+		RETURN e
+	`
+
+	params := map[string]interface{}{
+		"episode_uuid": episodeUUID,
+		"entity_uuid":  entityUUID,
+		"group_id":     groupID,
+		"created_at":   time.Now(),
+		"uuid":         fmt.Sprintf("%s-%s", episodeUUID, entityUUID), // Generate consistent uuid
+	}
+
+	_, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		return fmt.Errorf("failed to upsert episodic edge: %w", err)
+	}
+	return nil
+}
+
+// UpsertCommunityEdge creates or updates a HAS_MEMBER relationship between a Community node and an Entity or Community node.
+// This matches Python's CommunityEdge.save() method.
+func (k *KuzuDriver) UpsertCommunityEdge(ctx context.Context, communityUUID, nodeUUID, uuid, groupID string) error {
+	// Python uses UNION to handle both Entity and Community targets
+	// For Kuzu, we try Entity first, then Community
+	query := `
+		MATCH (community:Community {uuid: $community_uuid, group_id: $group_id})
+		MATCH (node:Entity {uuid: $node_uuid, group_id: $group_id})
+		MERGE (community)-[e:HAS_MEMBER {uuid: $uuid, group_id: $group_id}]->(node)
+		ON CREATE SET e.created_at = $created_at
+		RETURN e
+	`
+
+	params := map[string]interface{}{
+		"community_uuid": communityUUID,
+		"node_uuid":      nodeUUID,
+		"uuid":           uuid,
+		"group_id":       groupID,
+		"created_at":     time.Now(),
+	}
+
+	_, _, _, err := k.ExecuteQuery(query, params)
+	if err != nil {
+		// Try Community target if Entity didn't work
+		query = `
+			MATCH (community:Community {uuid: $community_uuid, group_id: $group_id})
+			MATCH (node:Community {uuid: $node_uuid, group_id: $group_id})
+			MERGE (community)-[e:HAS_MEMBER {uuid: $uuid, group_id: $group_id}]->(node)
+			ON CREATE SET e.created_at = $created_at
+			RETURN e
+		`
+
+		_, _, _, err = k.ExecuteQuery(query, params)
+		if err != nil {
+			return fmt.Errorf("failed to upsert community edge: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // DeleteEdge removes an edge.
@@ -1829,7 +1927,7 @@ func (k *KuzuDriver) BuildCommunities(ctx context.Context, groupID string) error
 // GetExistingCommunity checks if an entity is already part of a community
 func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
 		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary, c.created_at AS created_at
 		LIMIT 1
 	`
@@ -1859,8 +1957,7 @@ func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string
 // FindModalCommunity finds the most common community among connected entities
 func (k *KuzuDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
-		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(m:Entity)-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(n:Entity {uuid: $entity_uuid})
 		WITH c, count(*) AS count
 		ORDER BY count DESC
 		LIMIT 1
@@ -2075,6 +2172,17 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 	} else if labels, ok := data["n.labels"].([]interface{}); ok && len(labels) > 0 {
 		if label, ok := labels[0].(string); ok {
 			node.EntityType = label
+		}
+	}
+
+	// Map source field to EpisodeType for Episodic nodes
+	if source, ok := data["node.source"]; ok {
+		if sourceStr, ok := source.(string); ok && sourceStr != "" {
+			node.EpisodeType = types.EpisodeType(sourceStr)
+		}
+	} else if source, ok := data["n.source"]; ok {
+		if sourceStr, ok := source.(string); ok && sourceStr != "" {
+			node.EpisodeType = types.EpisodeType(sourceStr)
 		}
 	}
 
@@ -2322,6 +2430,13 @@ func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) 
 
 		setClauses = append(setClauses, "n.valid_at = $valid_at")
 		params["valid_at"] = node.ValidFrom
+
+		// Update source and source_description (to match Python implementation)
+		setClauses = append(setClauses, "n.source = $source")
+		params["source"] = string(node.EpisodeType)
+
+		setClauses = append(setClauses, "n.source_description = $source_description")
+		params["source_description"] = ""
 
 		// Update metadata if provided
 		if metadataJSON != "" {

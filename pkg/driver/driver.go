@@ -54,6 +54,8 @@ type GraphDriver interface {
 	// Edge operations
 	GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error)
 	UpsertEdge(ctx context.Context, edge *types.Edge) error
+	UpsertEpisodicEdge(ctx context.Context, episodeUUID, entityUUID, groupID string) error
+	UpsertCommunityEdge(ctx context.Context, communityUUID, nodeUUID, uuid, groupID string) error
 	DeleteEdge(ctx context.Context, edgeID, groupID string) error
 	GetEdges(ctx context.Context, edgeIDs []string, groupID string) ([]*types.Edge, error)
 

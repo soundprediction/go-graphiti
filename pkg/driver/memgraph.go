@@ -151,11 +151,27 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := `
-			MERGE (n:$label {uuid: $uuid, group_id: $group_id})
-			SET n += $properties
-			SET n.updated_at = $updated_at
-		`
+		// Get base label for node type
+		baseLabel := m.getLabelForNodeType(node.Type)
+
+		// Build query with dynamic label support for Entity nodes
+		var query string
+		if node.Type == types.EntityNodeType && node.EntityType != "" {
+			// For Entity nodes with an EntityType, set both Entity label and specific type label
+			query = fmt.Sprintf(`
+				MERGE (n:%s {uuid: $uuid, group_id: $group_id})
+				SET n:%s
+				SET n += $properties
+				SET n.updated_at = $updated_at
+			`, baseLabel, node.EntityType)
+		} else {
+			// For other node types or entities without type, use base label only
+			query = fmt.Sprintf(`
+				MERGE (n:%s {uuid: $uuid, group_id: $group_id})
+				SET n += $properties
+				SET n.updated_at = $updated_at
+			`, baseLabel)
+		}
 
 		properties := m.nodeToProperties(node)
 		_, err := tx.Run(ctx, query, map[string]any{
@@ -163,7 +179,6 @@ func (m *MemgraphDriver) UpsertNode(ctx context.Context, node *types.Node) error
 			"group_id":   node.GroupID,
 			"properties": properties,
 			"updated_at": time.Now().Format(time.RFC3339),
-			"label":      m.getLabelForNodeType(node.Type),
 		})
 		return nil, err
 	})
@@ -357,6 +372,69 @@ func (m *MemgraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error
 	})
 
 	return err
+}
+
+// UpsertEpisodicEdge creates or updates a MENTIONS relationship between an Episodic node and an Entity node.
+// This matches Python's EpisodicEdge.save() method.
+func (m *MemgraphDriver) UpsertEpisodicEdge(ctx context.Context, episodeUUID, entityUUID, groupID string) error {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		// Python EPISODIC_EDGE_SAVE uses MERGE for idempotent upserts
+		query := `
+			MATCH (episode:Episodic {uuid: $episode_uuid, group_id: $group_id})
+			MATCH (entity:Entity {uuid: $entity_uuid, group_id: $group_id})
+			MERGE (episode)-[e:MENTIONS {group_id: $group_id}]->(entity)
+			ON CREATE SET e.created_at = $created_at
+		`
+
+		_, err := tx.Run(ctx, query, map[string]any{
+			"episode_uuid": episodeUUID,
+			"entity_uuid":  entityUUID,
+			"group_id":     groupID,
+			"created_at":   time.Now().Format(time.RFC3339),
+		})
+		return nil, err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to upsert episodic edge: %w", err)
+	}
+	return nil
+}
+
+// UpsertCommunityEdge creates or updates a HAS_MEMBER relationship between a Community node and an Entity or Community node.
+// This matches Python's CommunityEdge.save() method.
+func (m *MemgraphDriver) UpsertCommunityEdge(ctx context.Context, communityUUID, nodeUUID, uuid, groupID string) error {
+	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		// Python uses (node:Entity | Community) syntax to match either type
+		// Neo4j/Memgraph support this label alternative syntax
+		query := `
+			MATCH (community:Community {uuid: $community_uuid, group_id: $group_id})
+			MATCH (node {uuid: $node_uuid, group_id: $group_id})
+			WHERE node:Entity OR node:Community
+			MERGE (community)-[e:HAS_MEMBER {uuid: $uuid, group_id: $group_id}]->(node)
+			ON CREATE SET e.created_at = $created_at
+		`
+
+		_, err := tx.Run(ctx, query, map[string]any{
+			"community_uuid": communityUUID,
+			"node_uuid":      nodeUUID,
+			"uuid":           uuid,
+			"group_id":       groupID,
+			"created_at":     time.Now().Format(time.RFC3339),
+		})
+		return nil, err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to upsert community edge: %w", err)
+	}
+	return nil
 }
 
 // DeleteEdge removes an edge.
@@ -698,26 +776,57 @@ func (m *MemgraphDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) e
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
-	// Use a transaction to batch the operations
+	// Use UNWIND for efficient bulk operations matching Python's approach
+	// Note: Dynamic labels for Entity nodes need to be handled in individual upserts
+	// because Cypher doesn't support parameterized labels in UNWIND context without APOC
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		// Build node data array
+		nodeDataList := make([]map[string]any, 0, len(nodes))
 		for _, node := range nodes {
-			query := `
-				MERGE (n {uuid: $uuid, group_id: $group_id})
-				SET n += $properties
-				SET n.updated_at = $updated_at
-			`
-
 			properties := m.nodeToProperties(node)
-			_, err := tx.Run(ctx, query, map[string]any{
+			nodeData := map[string]any{
 				"uuid":       node.Uuid,
 				"group_id":   node.GroupID,
 				"properties": properties,
-				"updated_at": time.Now().Format(time.RFC3339),
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to upsert node %s: %w", node.Uuid, err)
+			}
+			nodeDataList = append(nodeDataList, nodeData)
+		}
+
+		// Single UNWIND query for all nodes
+		query := `
+			UNWIND $nodes AS node_data
+			MERGE (n {uuid: node_data.uuid, group_id: node_data.group_id})
+			SET n += node_data.properties
+			SET n.updated_at = $updated_at
+		`
+
+		_, err := tx.Run(ctx, query, map[string]any{
+			"nodes":      nodeDataList,
+			"updated_at": time.Now().Format(time.RFC3339),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to bulk upsert nodes: %w", err)
+		}
+
+		// Handle dynamic labels for Entity nodes separately
+		// This is a tradeoff: bulk insert is fast, but labels need individual updates
+		for _, node := range nodes {
+			if node.Type == types.EntityNodeType && node.EntityType != "" {
+				labelQuery := fmt.Sprintf(`
+					MATCH (n {uuid: $uuid, group_id: $group_id})
+					SET n:%s
+				`, node.EntityType)
+
+				_, err := tx.Run(ctx, labelQuery, map[string]any{
+					"uuid":     node.Uuid,
+					"group_id": node.GroupID,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to set label for node %s: %w", node.Uuid, err)
+				}
 			}
 		}
+
 		return nil, nil
 	})
 
@@ -732,30 +841,40 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 	session := m.client.NewSession(ctx, neo4j.SessionConfig{DatabaseName: m.database})
 	defer session.Close(ctx)
 
-	// Use a transaction to batch the operations
+	// Use UNWIND for efficient bulk operations matching Python's approach
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		// Build edge data array
+		edgeDataList := make([]map[string]any, 0, len(edges))
 		for _, edge := range edges {
-			query := `
-				MATCH (s {uuid: $source_id, group_id: $group_id})
-				MATCH (t {uuid: $target_id, group_id: $group_id})
-				MERGE (s)-[r:RELATES_TO {uuid: $uuid, group_id: $group_id}]->(t)
-				SET r += $properties
-				SET r.updated_at = $updated_at
-			`
-
 			properties := m.edgeToProperties(edge)
-			_, err := tx.Run(ctx, query, map[string]any{
+			edgeData := map[string]any{
 				"uuid":       edge.Uuid,
 				"source_id":  edge.SourceID,
 				"target_id":  edge.TargetID,
 				"group_id":   edge.GroupID,
 				"properties": properties,
-				"updated_at": time.Now().Format(time.RFC3339),
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to upsert edge %s: %w", edge.Uuid, err)
 			}
+			edgeDataList = append(edgeDataList, edgeData)
 		}
+
+		// Single UNWIND query for all edges
+		query := `
+			UNWIND $edges AS edge_data
+			MATCH (s {uuid: edge_data.source_id, group_id: edge_data.group_id})
+			MATCH (t {uuid: edge_data.target_id, group_id: edge_data.group_id})
+			MERGE (s)-[r:RELATES_TO {uuid: edge_data.uuid, group_id: edge_data.group_id}]->(t)
+			SET r += edge_data.properties
+			SET r.updated_at = $updated_at
+		`
+
+		_, err := tx.Run(ctx, query, map[string]any{
+			"edges":      edgeDataList,
+			"updated_at": time.Now().Format(time.RFC3339),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to bulk upsert edges: %w", err)
+		}
+
 		return nil, nil
 	})
 
@@ -1001,7 +1120,7 @@ func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) e
 
 func (m *MemgraphDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
 		RETURN c
 		LIMIT 1
 	`
@@ -1030,8 +1149,7 @@ func (m *MemgraphDriver) GetExistingCommunity(ctx context.Context, entityUUID st
 
 func (m *MemgraphDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
-		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(m:Entity)-[:RELATES_TO]-(n:Entity {uuid: $entity_uuid})
 		WITH c, count(*) AS count
 		ORDER BY count DESC
 		LIMIT 1

@@ -235,3 +235,213 @@ func TestKuzuDriver_UpsertEdge(t *testing.T) {
 	assert.Equal(t, testEdge.Uuid, updatedEdge.Uuid, "Edge ID should remain the same")
 	assert.Equal(t, testEdge.Name, updatedEdge.Name, "Edge name should remain the same")
 }
+
+func TestKuzuDriver_UpsertEpisodicNode(t *testing.T) {
+	dbPath := createTempKuzuDB(t)
+	d, err := driver.NewKuzuDriver(dbPath, 1)
+	require.NoError(t, err)
+	defer d.Close()
+
+	ctx := context.Background()
+
+	// Create indices for the database
+	err = d.CreateIndices(ctx)
+	require.NoError(t, err)
+
+	// Create a test episodic node
+	now := time.Now()
+	testNode := &types.Node{
+		Uuid:        "test-episode-123",
+		Name:        "Test Episode",
+		Type:        types.EpisodicNodeType,
+		GroupID:     "test-group",
+		EpisodeType: types.ConversationEpisodeType,
+		Content:     "This is the content of the test episode",
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		ValidFrom:   now,
+	}
+
+	// Upsert the node (CREATE)
+	err = d.UpsertNode(ctx, testNode)
+	require.NoError(t, err, "UpsertNode should succeed on create")
+
+	// Read the node back from the database to verify source field was set
+	retrievedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
+	require.NoError(t, err, "GetNode should succeed")
+	require.NotNil(t, retrievedNode, "Retrieved node should not be nil")
+
+	// Verify the node data matches
+	assert.Equal(t, testNode.Uuid, retrievedNode.Uuid, "Node UUID should match")
+	assert.Equal(t, testNode.Name, retrievedNode.Name, "Node name should match")
+	assert.Equal(t, testNode.Type, retrievedNode.Type, "Node type should match")
+	assert.Equal(t, testNode.GroupID, retrievedNode.GroupID, "Node GroupID should match")
+	assert.Equal(t, testNode.Content, retrievedNode.Content, "Node content should match")
+	assert.Equal(t, testNode.EpisodeType, retrievedNode.EpisodeType, "Node EpisodeType should match")
+
+	// Update the node's content and name (to test UPDATE path)
+	testNode.Name = "Updated Test Episode"
+	testNode.Content = "This is the updated content"
+	testNode.UpdatedAt = time.Now()
+
+	// Upsert the node again (UPDATE)
+	err = d.UpsertNode(ctx, testNode)
+	require.NoError(t, err, "Second UpsertNode (update) should succeed")
+
+	// Read the updated node back
+	updatedNode, err := d.GetNode(ctx, testNode.Uuid, testNode.GroupID)
+	require.NoError(t, err, "GetNode after update should succeed")
+	require.NotNil(t, updatedNode, "Updated node should not be nil")
+
+	// Verify the update was applied
+	assert.Equal(t, "Updated Test Episode", updatedNode.Name, "Node name should be updated")
+	assert.Equal(t, "This is the updated content", updatedNode.Content, "Node content should be updated")
+	assert.Equal(t, testNode.Uuid, updatedNode.Uuid, "Node UUID should remain the same")
+	assert.Equal(t, testNode.GroupID, updatedNode.GroupID, "Node GroupID should remain the same")
+	assert.Equal(t, testNode.EpisodeType, updatedNode.EpisodeType, "Node EpisodeType should remain the same")
+
+	// Verify that source is preserved (it's derived from EpisodeType)
+	// The source field should be set to the string value of EpisodeType
+	assert.Equal(t, testNode.EpisodeType, updatedNode.EpisodeType, "EpisodeType should be preserved after update")
+}
+
+func TestKuzuDriver_UpsertEpisodicEdge(t *testing.T) {
+	dbPath := createTempKuzuDB(t)
+	d, err := driver.NewKuzuDriver(dbPath, 1)
+	require.NoError(t, err)
+	defer d.Close()
+
+	ctx := context.Background()
+
+	// Create indices for the database
+	err = d.CreateIndices(ctx)
+	require.NoError(t, err)
+
+	// Create an episodic node
+	now := time.Now()
+	episodeNode := &types.Node{
+		Uuid:        "episode-test-123",
+		Name:        "Test Episode",
+		Type:        types.EpisodicNodeType,
+		GroupID:     "test-group",
+		EpisodeType: types.ConversationEpisodeType,
+		Content:     "Episode content",
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		ValidFrom:   now,
+	}
+
+	err = d.UpsertNode(ctx, episodeNode)
+	require.NoError(t, err, "Creating episode node should succeed")
+
+	// Create an entity node
+	entityNode := &types.Node{
+		Uuid:       "entity-test-123",
+		Name:       "Test Entity",
+		Type:       types.EntityNodeType,
+		GroupID:    "test-group",
+		EntityType: "Person",
+		Summary:    "An entity for testing",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	err = d.UpsertNode(ctx, entityNode)
+	require.NoError(t, err, "Creating entity node should succeed")
+
+	// Create episodic edge (MENTIONS relationship)
+	err = d.UpsertEpisodicEdge(ctx, episodeNode.Uuid, entityNode.Uuid, "test-group")
+	require.NoError(t, err, "UpsertEpisodicEdge should succeed")
+
+	// Verify the edge was created by querying it
+	query := `
+		MATCH (e:Episodic {uuid: $episode_uuid})-[m:MENTIONS]->(n:Entity {uuid: $entity_uuid})
+		RETURN m.group_id AS group_id, m.created_at AS created_at
+	`
+	result, _, _, err := d.ExecuteQuery(query, map[string]interface{}{
+		"episode_uuid": episodeNode.Uuid,
+		"entity_uuid":  entityNode.Uuid,
+	})
+	require.NoError(t, err, "Querying MENTIONS edge should succeed")
+
+	resultList, ok := result.([]map[string]interface{})
+	require.True(t, ok, "Result should be a list of maps")
+	require.Len(t, resultList, 1, "Should find exactly one MENTIONS edge")
+
+	assert.Equal(t, "test-group", resultList[0]["group_id"], "Group ID should match")
+
+	// Test idempotency - upserting again should not fail
+	err = d.UpsertEpisodicEdge(ctx, episodeNode.Uuid, entityNode.Uuid, "test-group")
+	require.NoError(t, err, "Second UpsertEpisodicEdge should succeed (idempotent)")
+}
+
+func TestKuzuDriver_UpsertCommunityEdge(t *testing.T) {
+	dbPath := createTempKuzuDB(t)
+	d, err := driver.NewKuzuDriver(dbPath, 1)
+	require.NoError(t, err)
+	defer d.Close()
+
+	ctx := context.Background()
+
+	// Create indices for the database
+	err = d.CreateIndices(ctx)
+	require.NoError(t, err)
+
+	// Create a community node
+	now := time.Now()
+	communityNode := &types.Node{
+		Uuid:      "community-test-123",
+		Name:      "Test Community",
+		Type:      types.CommunityNodeType,
+		GroupID:   "test-group",
+		Summary:   "A test community",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	err = d.UpsertNode(ctx, communityNode)
+	require.NoError(t, err, "Creating community node should succeed")
+
+	// Create an entity node
+	entityNode := &types.Node{
+		Uuid:       "entity-test-456",
+		Name:       "Test Entity",
+		Type:       types.EntityNodeType,
+		GroupID:    "test-group",
+		EntityType: "Person",
+		Summary:    "An entity for testing",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	err = d.UpsertNode(ctx, entityNode)
+	require.NoError(t, err, "Creating entity node should succeed")
+
+	// Create community edge (HAS_MEMBER relationship)
+	edgeUUID := "community-edge-123"
+	err = d.UpsertCommunityEdge(ctx, communityNode.Uuid, entityNode.Uuid, edgeUUID, "test-group")
+	require.NoError(t, err, "UpsertCommunityEdge should succeed")
+
+	// Verify the edge was created by querying it
+	query := `
+		MATCH (c:Community {uuid: $community_uuid})-[h:HAS_MEMBER {uuid: $edge_uuid}]->(n:Entity {uuid: $entity_uuid})
+		RETURN h.group_id AS group_id, h.created_at AS created_at, h.uuid AS uuid
+	`
+	result, _, _, err := d.ExecuteQuery(query, map[string]interface{}{
+		"community_uuid": communityNode.Uuid,
+		"entity_uuid":    entityNode.Uuid,
+		"edge_uuid":      edgeUUID,
+	})
+	require.NoError(t, err, "Querying HAS_MEMBER edge should succeed")
+
+	resultList, ok := result.([]map[string]interface{})
+	require.True(t, ok, "Result should be a list of maps")
+	require.Len(t, resultList, 1, "Should find exactly one HAS_MEMBER edge")
+
+	assert.Equal(t, "test-group", resultList[0]["group_id"], "Group ID should match")
+	assert.Equal(t, edgeUUID, resultList[0]["uuid"], "Edge UUID should match")
+
+	// Test idempotency - upserting again should not fail
+	err = d.UpsertCommunityEdge(ctx, communityNode.Uuid, entityNode.Uuid, edgeUUID, "test-group")
+	require.NoError(t, err, "Second UpsertCommunityEdge should succeed (idempotent)")
+}
