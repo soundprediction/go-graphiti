@@ -2,9 +2,11 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"strings"
+	"sync"
 )
 
 // ANSI color codes
@@ -21,63 +23,117 @@ const (
 // - Info messages containing "persist": Green (for database operations)
 // - Other messages: Standard output
 type ColorHandler struct {
-	handler slog.Handler
+	w      io.Writer
+	level  slog.Level
+	attrs  []slog.Attr
+	groups []string
+	mu     sync.Mutex
 }
 
-// NewColorHandler creates a new colored handler that wraps the given handler
+// NewColorHandler creates a new colored handler that writes directly to w
 func NewColorHandler(w io.Writer, opts *slog.HandlerOptions) *ColorHandler {
+	level := slog.LevelInfo
+	if opts != nil && opts.Level != nil {
+		level = opts.Level.Level()
+	}
 	return &ColorHandler{
-		handler: slog.NewTextHandler(w, opts),
+		w:     w,
+		level: level,
 	}
 }
 
 // Enabled implements slog.Handler
 func (h *ColorHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return h.handler.Enabled(ctx, level)
+	return level >= h.level
 }
 
 // Handle implements slog.Handler and adds color based on log level
 func (h *ColorHandler) Handle(ctx context.Context, r slog.Record) error {
-	// Clone the record so we can modify it
-	newRecord := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
-	// Add color prefix based on level and message content
+	// Determine color based on level and message content
+	var color string
 	switch r.Level {
 	case slog.LevelError:
-		newRecord.Message = colorRed + r.Message + colorReset
+		color = colorRed
 	case slog.LevelWarn:
-		newRecord.Message = colorYellow + r.Message + colorReset
+		color = colorYellow
 	case slog.LevelInfo:
 		// Color persist messages green
 		msgLower := strings.ToLower(r.Message)
 		if strings.Contains(msgLower, "persist") {
-			newRecord.Message = colorGreen + r.Message + colorReset
-		} else {
-			newRecord.Message = r.Message
+			color = colorGreen
 		}
-	default:
-		newRecord.Message = r.Message
 	}
 
-	// Copy all attributes from original record
+	// Build output string
+	var buf strings.Builder
+
+	// Write timestamp
+	buf.WriteString(r.Time.Format("2006-01-02 15:04:05"))
+	buf.WriteString(" ")
+
+	// Write level
+	buf.WriteString(r.Level.String())
+	buf.WriteString(" ")
+
+	// Write colored message
+	if color != "" {
+		buf.WriteString(color)
+	}
+	buf.WriteString(r.Message)
+	if color != "" {
+		buf.WriteString(colorReset)
+	}
+
+	// Write attributes
 	r.Attrs(func(a slog.Attr) bool {
-		newRecord.AddAttrs(a)
+		buf.WriteString(" ")
+		buf.WriteString(a.Key)
+		buf.WriteString("=")
+		buf.WriteString(a.Value.String())
 		return true
 	})
 
-	return h.handler.Handle(ctx, newRecord)
+	// Write handler-level attributes
+	for _, attr := range h.attrs {
+		buf.WriteString(" ")
+		buf.WriteString(attr.Key)
+		buf.WriteString("=")
+		buf.WriteString(attr.Value.String())
+	}
+
+	buf.WriteString("\n")
+
+	_, err := fmt.Fprint(h.w, buf.String())
+	return err
 }
 
 // WithAttrs implements slog.Handler
 func (h *ColorHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	newAttrs := make([]slog.Attr, len(h.attrs)+len(attrs))
+	copy(newAttrs, h.attrs)
+	copy(newAttrs[len(h.attrs):], attrs)
+
 	return &ColorHandler{
-		handler: h.handler.WithAttrs(attrs),
+		w:      h.w,
+		level:  h.level,
+		attrs:  newAttrs,
+		groups: h.groups,
 	}
 }
 
 // WithGroup implements slog.Handler
 func (h *ColorHandler) WithGroup(name string) slog.Handler {
+	newGroups := make([]string, len(h.groups)+1)
+	copy(newGroups, h.groups)
+	newGroups[len(h.groups)] = name
+
 	return &ColorHandler{
-		handler: h.handler.WithGroup(name),
+		w:      h.w,
+		level:  h.level,
+		attrs:  h.attrs,
+		groups: newGroups,
 	}
 }

@@ -1927,7 +1927,7 @@ func (k *KuzuDriver) BuildCommunities(ctx context.Context, groupID string) error
 // GetExistingCommunity checks if an entity is already part of a community
 func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
 		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary, c.created_at AS created_at
 		LIMIT 1
 	`
@@ -1957,8 +1957,7 @@ func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string
 // FindModalCommunity finds the most common community among connected entities
 func (k *KuzuDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
-		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(m:Entity)-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(n:Entity {uuid: $entity_uuid})
 		WITH c, count(*) AS count
 		ORDER BY count DESC
 		LIMIT 1

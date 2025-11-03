@@ -75,24 +75,18 @@ func TestColorHandler(t *testing.T) {
 				t.Errorf("output does not contain message %q, got: %s", tt.message, output)
 			}
 
-			// Check color code (escape codes may be quoted in the text handler output)
+			// Check color code (should be raw ANSI codes, not escaped)
 			if tt.wantCode != "" {
-				hasColorCode := strings.Contains(output, tt.wantCode) ||
-					strings.Contains(output, "\\x1b[31m") || // Red color code escaped
-					strings.Contains(output, "\\x1b[33m") || // Yellow color code escaped
-					strings.Contains(output, "\\x1b[32m")    // Green color code escaped
-				if !hasColorCode {
+				if !strings.Contains(output, tt.wantCode) {
 					t.Errorf("output does not contain color code %q, got: %s", tt.wantCode, output)
+				}
+				// Should also contain reset code
+				if !strings.Contains(output, colorReset) {
+					t.Errorf("output does not contain reset code, got: %s", output)
 				}
 			} else {
 				// Info and Debug should not have any color codes (except persist messages)
-				hasColorCode := strings.Contains(output, colorRed) ||
-					strings.Contains(output, colorYellow) ||
-					strings.Contains(output, colorGreen) ||
-					strings.Contains(output, "\\x1b[31m") ||
-					strings.Contains(output, "\\x1b[33m") ||
-					strings.Contains(output, "\\x1b[32m")
-				if hasColorCode {
+				if strings.Contains(output, colorRed) || strings.Contains(output, colorYellow) || strings.Contains(output, colorGreen) {
 					t.Errorf("output should not contain color codes, got: %s", output)
 				}
 			}
@@ -115,9 +109,8 @@ func TestColorHandlerWithAttrs(t *testing.T) {
 	if !strings.Contains(output, "key") || !strings.Contains(output, "value") {
 		t.Errorf("output does not contain attributes, got: %s", output)
 	}
-	// Check for color code (may be escaped in text handler output)
-	hasColorCode := strings.Contains(output, colorRed) || strings.Contains(output, "\\x1b[31m")
-	if !hasColorCode {
+	// Check for raw color code (not escaped)
+	if !strings.Contains(output, colorRed) {
 		t.Errorf("output does not contain red color code, got: %s", output)
 	}
 }

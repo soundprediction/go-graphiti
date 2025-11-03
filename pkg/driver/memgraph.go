@@ -1120,7 +1120,7 @@ func (m *MemgraphDriver) BuildCommunities(ctx context.Context, groupID string) e
 
 func (m *MemgraphDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
 		RETURN c
 		LIMIT 1
 	`
@@ -1149,8 +1149,7 @@ func (m *MemgraphDriver) GetExistingCommunity(ctx context.Context, entityUUID st
 
 func (m *MemgraphDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
-		MATCH (e:Entity {uuid: $entity_uuid})-[:RELATES_TO]-(rel)-[:RELATES_TO]-(neighbor:Entity)
-		MATCH (neighbor)-[:MEMBER_OF]->(c:Community)
+		MATCH (c:Community)-[:HAS_MEMBER]->(m:Entity)-[:RELATES_TO]-(n:Entity {uuid: $entity_uuid})
 		WITH c, count(*) AS count
 		ORDER BY count DESC
 		LIMIT 1
