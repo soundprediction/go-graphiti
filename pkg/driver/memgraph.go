@@ -1297,12 +1297,15 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 	defer session.Close(ctx)
 
 	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		// Get node count and types
+		// Get node count by label (Entity, Episodic, Community)
+		// Note: In Neo4j/Memgraph, node types are labels, not properties
 		nodeQuery := `
 			MATCH (n {group_id: $groupID})
-			WITH n.type as node_type, count(*) as node_count
-			RETURN node_type, node_count
-			ORDER BY node_type
+			UNWIND labels(n) AS label
+			WITH label, count(DISTINCT n) as node_count
+			WHERE label IN ['Entity', 'Episodic', 'Community']
+			RETURN label as node_type, node_count
+			ORDER BY label
 		`
 		nodeRes, err := tx.Run(ctx, nodeQuery, map[string]any{"groupID": groupID})
 		if err != nil {
@@ -1313,11 +1316,24 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 			return nil, err
 		}
 
-		// Get edge count and types
+		// Get total node count
+		totalNodeQuery := `
+			MATCH (n {group_id: $groupID})
+			RETURN count(n) as total_nodes
+		`
+		totalNodeRes, err := tx.Run(ctx, totalNodeQuery, map[string]any{"groupID": groupID})
+		if err != nil {
+			return nil, err
+		}
+		totalNodeRecord, err := totalNodeRes.Single(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get edge count by type
 		edgeQuery := `
 			MATCH ()-[r {group_id: $groupID}]-()
-			WITH r.type as edge_type, count(*) as edge_count
-			RETURN edge_type, edge_count
+			RETURN type(r) as edge_type, count(r) as edge_count
 			ORDER BY edge_type
 		`
 		edgeRes, err := tx.Run(ctx, edgeQuery, map[string]any{"groupID": groupID})
@@ -1330,8 +1346,9 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 		}
 
 		return map[string]interface{}{
-			"nodes": nodeRecords,
-			"edges": edgeRecords,
+			"nodes":       nodeRecords,
+			"edges":       edgeRecords,
+			"total_nodes": totalNodeRecord,
 		}, nil
 	})
 	if err != nil {
@@ -1341,6 +1358,7 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 	data := result.(map[string]interface{})
 	nodeRecords := data["nodes"].([]*db.Record)
 	edgeRecords := data["edges"].([]*db.Record)
+	totalNodeRecord := data["total_nodes"].(*db.Record)
 
 	stats := &GraphStats{
 		NodesByType: make(map[string]int64),
@@ -1348,14 +1366,22 @@ func (m *MemgraphDriver) GetStats(ctx context.Context, groupID string) (*GraphSt
 		LastUpdated: time.Now(),
 	}
 
-	// Process node stats
+	// Get total node count
+	if totalNodes, found := totalNodeRecord.Get("total_nodes"); found {
+		stats.NodeCount = totalNodes.(int64)
+	}
+
+	// Process node stats by type
 	for _, record := range nodeRecords {
-		if nodeCount, found := record.Get("node_count"); found {
-			stats.NodeCount += nodeCount.(int64)
-		}
 		if nodeType, found := record.Get("node_type"); found && nodeType != nil {
 			if nodeCount, found := record.Get("node_count"); found {
-				stats.NodesByType[nodeType.(string)] = nodeCount.(int64)
+				nodeTypeStr := nodeType.(string)
+				stats.NodesByType[nodeTypeStr] = nodeCount.(int64)
+
+				// Track community count
+				if nodeTypeStr == "Community" {
+					stats.CommunityCount = nodeCount.(int64)
+				}
 			}
 		}
 	}

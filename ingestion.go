@@ -363,27 +363,24 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	result.Communities = communities
 	result.CommunityEdges = communityEdges
 
-	// Persist community nodes
-	for _, communityNode := range communities {
-		if err := c.driver.UpsertNode(ctx, communityNode); err != nil {
-			c.logger.Warn("Failed to persist community node",
+	// STEP 14: Persist community nodes and edges using bulk operation
+	if len(communities) > 0 || len(communityEdges) > 0 {
+		_, err = utils.AddNodesAndEdgesBulk(ctx, c.driver, communities, communityEdges, []*types.Node{}, []*types.Edge{}, c.embedder)
+		if err != nil {
+			c.logger.Warn("Failed to persist community nodes and edges in bulk",
 				"episode_id", episode.ID,
-				"community_id", communityNode.Uuid,
+				"community_count", len(communities),
+				"community_edge_count", len(communityEdges),
 				"error", err)
+		} else {
+			c.logger.Info("Persisted community nodes and edges",
+				"episode_id", episode.ID,
+				"community_count", len(communities),
+				"community_edge_count", len(communityEdges))
 		}
 	}
 
-	// Persist community edges
-	for _, communityEdge := range communityEdges {
-		if err := c.driver.UpsertEdge(ctx, communityEdge); err != nil {
-			c.logger.Warn("Failed to persist community edge",
-				"episode_id", episode.ID,
-				"edge_id", communityEdge.Uuid,
-				"error", err)
-		}
-	}
-
-	// STEP 14: Log final results
+	// STEP 15: Log final results
 	c.logger.Info("Chunked episode processing completed with bulk deduplication",
 		"episode_id", episode.ID,
 		"total_chunks", len(chunks),
@@ -391,6 +388,24 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		"total_relationships", len(result.Edges),
 		"total_episodic_edges", len(result.EpisodicEdges),
 		"total_communities", len(result.Communities))
+
+	// STEP 16: Report overall graph database statistics
+	stats, err := c.driver.GetStats(ctx, episode.GroupID)
+	if err == nil {
+		c.logger.Info("Graph database statistics after episode processing",
+			"episode_id", episode.ID,
+			"group_id", episode.GroupID,
+			"total_nodes", stats.NodeCount,
+			"total_edges", stats.EdgeCount,
+			"total_communities", stats.CommunityCount,
+			"entity_nodes", stats.NodesByType["Entity"],
+			"episodic_nodes", stats.NodesByType["Episodic"],
+			"community_nodes", stats.NodesByType["Community"])
+	} else {
+		c.logger.Warn("Failed to retrieve graph database statistics",
+			"episode_id", episode.ID,
+			"error", err)
+	}
 
 	return result, nil
 }
