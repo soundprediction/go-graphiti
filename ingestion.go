@@ -460,7 +460,7 @@ func (c *Client) AddToEpisode(ctx context.Context, episodeID string, additionalC
 	tempEpisode := c.createTempEpisodeForAdditionalContent(existingEpisode, episodeID, additionalContent, groupID)
 
 	// 3. Process the additional content through entity and edge extraction
-	maxCharacters := 8192
+	maxCharacters := 4096
 	if options.MaxCharacters > 0 {
 		maxCharacters = options.MaxCharacters
 	}
