@@ -172,7 +172,7 @@ func (c *Client) Add(ctx context.Context, episodes []types.Episode, options *Add
 	if stats, err := c.GetStats(ctx); err == nil {
 		episodesInDB := int64(0)
 		if stats.NodesByType != nil {
-			episodesInDB = stats.NodesByType[string(types.EpisodicNodeType)]
+			episodesInDB = stats.NodesByType["Episodic"]
 		}
 		c.logger.Info("Initial database state",
 			"node_count", stats.NodeCount,
@@ -963,7 +963,7 @@ func (c *Client) performFinalGraphUpdates(ctx context.Context, episodeID string,
 	if stats, err := c.GetStats(ctx); err == nil {
 		episodesInDB := int64(0)
 		if stats.NodesByType != nil {
-			episodesInDB = stats.NodesByType[string(types.EpisodicNodeType)]
+			episodesInDB = stats.NodesByType["Episodic"]
 		}
 		c.logger.Info("Final database state after bulk operations",
 			"node_count", stats.NodeCount,
