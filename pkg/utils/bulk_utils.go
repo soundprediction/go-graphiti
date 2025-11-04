@@ -225,17 +225,19 @@ func AddNodesAndEdgesBulk(
 		// Extract counts by type
 		episodicNodeCount := int64(0)
 		entityNodeCount := int64(0)
-		episodicEdgeCount := int64(0)
-		entityEdgeCount := int64(0)
+		relatesToEdgeCount := int64(0)
+		mentionsEdgeCount := int64(0)
+		hasMemberEdgeCount := int64(0)
 
 		if stats.NodesByType != nil {
-			episodicNodeCount = stats.NodesByType[string(types.EpisodicNodeType)]
-			entityNodeCount = stats.NodesByType[string(types.EntityNodeType)]
+			episodicNodeCount = stats.NodesByType["Episodic"]
+			entityNodeCount = stats.NodesByType["Entity"]
 		}
 
 		if stats.EdgesByType != nil {
-			episodicEdgeCount = stats.EdgesByType[string(types.EpisodicEdgeType)]
-			entityEdgeCount = stats.EdgesByType[string(types.EntityEdgeType)]
+			relatesToEdgeCount = stats.EdgesByType["RELATES_TO"]
+			mentionsEdgeCount = stats.EdgesByType["MENTIONS"]
+			hasMemberEdgeCount = stats.EdgesByType["HAS_MEMBER"]
 		}
 
 		logger.Info("Graph database statistics after bulk operation",
@@ -244,8 +246,9 @@ func AddNodesAndEdgesBulk(
 			"total_edges", stats.EdgeCount,
 			"episodic_nodes", episodicNodeCount,
 			"entity_nodes", entityNodeCount,
-			"episodic_edges", episodicEdgeCount,
-			"entity_edges", entityEdgeCount,
+			"relates_to_edges", relatesToEdgeCount,
+			"mentions_edges", mentionsEdgeCount,
+			"has_member_edges", hasMemberEdgeCount,
 			"communities", stats.CommunityCount,
 		)
 	}

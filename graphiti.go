@@ -135,13 +135,9 @@ type AddEpisodeOptions struct {
 	EdgeTypeMap map[string]map[string][]interface{}
 	// OverwriteExisting whether to overwrite an existing episode with the same UUID
 	// Default behavior is false (skip if exists)
-	OverwriteExisting   bool
-	GenerateEmbeddings  bool
-	MaxCharacters       int
-	DeferGraphIngestion bool
-	// DuckDBPath is the path to the DuckDB file for deferred ingestion
-	// If empty and DeferGraphIngestion is true, defaults to "./graphiti_deferred.duckdb"
-	DuckDBPath string
+	OverwriteExisting  bool
+	GenerateEmbeddings bool
+	MaxCharacters      int
 }
 
 // NewClient creates a new Graphiti client with the provided configuration.
