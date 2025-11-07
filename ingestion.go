@@ -227,7 +227,7 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
-	maxCharacters := 4096
+	maxCharacters := 2048
 	if options.MaxCharacters > 0 {
 		maxCharacters = options.MaxCharacters
 	}
