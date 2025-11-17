@@ -53,6 +53,8 @@ const (
 	EpisodicNodeType NodeType = "episodic"
 	// CommunityNodeType represents communities of related entities.
 	CommunityNodeType NodeType = "community"
+	// SourceNodeType represents source nodes where content originates.
+	SourceNodeType NodeType = "source"
 )
 
 // EdgeType and related constants are now defined in edge.go
@@ -74,6 +76,7 @@ type Episode struct {
 	ID               string
 	Name             string
 	Content          string
+	Source           string // Source where the content originates (e.g., URL, file path, or identifier)
 	Reference        time.Time
 	CreatedAt        time.Time
 	GroupID          string

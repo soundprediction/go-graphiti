@@ -9,6 +9,7 @@ import (
 	"time"
 
 	jsonrepair "github.com/kaptinlin/jsonrepair"
+	"github.com/soundprediction/go-graphiti/pkg/driver"
 	"github.com/soundprediction/go-graphiti/pkg/prompts"
 	"github.com/soundprediction/go-graphiti/pkg/search"
 	"github.com/soundprediction/go-graphiti/pkg/types"
@@ -633,6 +634,28 @@ func (c *Client) createChunkEpisodeStructures(ctx context.Context, episode types
 	fullContent := strings.Join(chunks, "\n")
 	data.mainEpisodeNode.Content = fullContent
 	data.mainEpisodeNode.UpdatedAt = time.Now()
+
+	// STEP: Create source node and edge if episode has a source
+	if episode.Source != "" {
+		sourceNode, isNew, err := c.getOrCreateSourceNode(ctx, episode.Source, episode.GroupID)
+		if err != nil {
+			c.logger.Warn("Failed to create source node", "source", episode.Source, "error", err)
+		} else if sourceNode != nil {
+			if isNew {
+				c.logger.Info("Created new source node for episode", "source", episode.Source, "episode_id", episode.ID)
+			} else {
+				c.logger.Debug("Using existing source node for episode", "source", episode.Source, "episode_id", episode.ID)
+			}
+
+			// Create edge from source to episode
+			sourceEdge, err := c.createSourceEdge(ctx, sourceNode, data.mainEpisodeNode)
+			if err != nil {
+				c.logger.Warn("Failed to create source edge", "source", episode.Source, "episode_id", episode.ID, "error", err)
+			} else if sourceEdge != nil {
+				c.logger.Debug("Created source edge", "source", episode.Source, "episode_id", episode.ID, "edge_id", sourceEdge.Uuid)
+			}
+		}
+	}
 
 	return data, nil
 }
@@ -1423,4 +1446,94 @@ func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.
 
 func GenerateViaCsv[T any](ctx context.Context, client Graphiti, messages []types.Message) ([]T, error) {
 	return nil, nil
+}
+
+// getOrCreateSourceNode retrieves an existing source node or creates a new one if it doesn't exist.
+// Returns the source node and a boolean indicating whether a new node was created.
+func (c *Client) getOrCreateSourceNode(ctx context.Context, sourceName string, groupID string) (*types.Node, bool, error) {
+	if sourceName == "" {
+		return nil, false, nil
+	}
+
+	// Try to find an existing source node with this name
+	// Search for source nodes by name in the group
+	searchResults, err := c.driver.SearchNodes(ctx, sourceName, groupID, &driver.SearchOptions{
+		Limit:       1,
+		NodeTypes:   []types.NodeType{types.SourceNodeType},
+		UseFullText: false,
+	})
+	if err != nil {
+		c.logger.Warn("Failed to search for existing source node", "source", sourceName, "error", err)
+	}
+
+	// If we found an existing source node with exact name match, return it
+	if searchResults != nil && len(searchResults) > 0 {
+		for _, node := range searchResults {
+			if node.Name == sourceName && node.Type == types.SourceNodeType {
+				c.logger.Debug("Found existing source node", "source", sourceName, "node_id", node.Uuid)
+				return node, false, nil
+			}
+		}
+	}
+
+	// Create a new source node
+	now := time.Now()
+	sourceNode := &types.Node{
+		Uuid:      generateID(),
+		Name:      sourceName,
+		Type:      types.SourceNodeType,
+		GroupID:   groupID,
+		CreatedAt: now,
+		UpdatedAt: now,
+		ValidFrom: now,
+		Metadata:  make(map[string]interface{}),
+		Summary:   fmt.Sprintf("Content source: %s", sourceName),
+	}
+
+	// Persist the source node
+	if err := c.driver.UpsertNode(ctx, sourceNode); err != nil {
+		return nil, false, fmt.Errorf("failed to create source node: %w", err)
+	}
+
+	c.logger.Info("Created new source node", "source", sourceName, "node_id", sourceNode.Uuid)
+	return sourceNode, true, nil
+}
+
+// createSourceEdge creates an edge connecting a source node to an episode node.
+func (c *Client) createSourceEdge(ctx context.Context, sourceNode *types.Node, episodeNode *types.Node) (*types.Edge, error) {
+	if sourceNode == nil || episodeNode == nil {
+		return nil, nil
+	}
+
+	now := time.Now()
+	edge := &types.Edge{
+		BaseEdge: types.BaseEdge{
+			Uuid:         generateID(),
+			GroupID:      episodeNode.GroupID,
+			SourceNodeID: sourceNode.Uuid,
+			TargetNodeID: episodeNode.Uuid,
+			CreatedAt:    now,
+			Metadata:     make(map[string]interface{}),
+		},
+		Name:      "SOURCED_FROM",
+		Fact:      fmt.Sprintf("Episode '%s' is sourced from '%s'", episodeNode.Name, sourceNode.Name),
+		UpdatedAt: now,
+		ValidFrom: now,
+		Episodes:  []string{episodeNode.Uuid},
+	}
+
+	// Set the type
+	edge.Type = types.SourceEdgeType
+
+	// Sync backward compatibility fields
+	edge.SourceID = edge.SourceNodeID
+	edge.TargetID = edge.TargetNodeID
+
+	// Persist the edge
+	if err := c.driver.UpsertEdge(ctx, edge); err != nil {
+		return nil, fmt.Errorf("failed to create source edge: %w", err)
+	}
+
+	c.logger.Debug("Created source edge", "source", sourceNode.Name, "episode", episodeNode.Uuid, "edge_id", edge.Uuid)
+	return edge, nil
 }
