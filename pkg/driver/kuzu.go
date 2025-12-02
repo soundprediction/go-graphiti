@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kuzudb/go-kuzu"
+	ladybug "github.com/LadybugDB/go-ladybug"
 
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
@@ -104,8 +104,8 @@ type writeResult struct {
 // KuzuDriver implements the GraphDriver interface for Kuzu databases exactly like Python implementation
 type KuzuDriver struct {
 	provider     GraphProvider
-	db           *kuzu.Database
-	client       *kuzu.Connection // Note: Python uses AsyncConnection, but Go kuzu doesn't have async
+	db           *ladybug.Database
+	client       *ladybug.Connection // Note: Python uses AsyncConnection, but Go kuzu doesn't have async
 	dbPath       string
 	tempDbPath   string     // If non-empty, this is a temp copy that should be cleaned up
 	originalPath string     // Original path before copying to temp
@@ -319,8 +319,8 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 	db := config.DBPath
 
 	// Create a SystemConfig manually to avoid version mismatch issues with DefaultSystemConfig()
-	// These are safe, conservative defaults that work with kuzu v0.11.2
-	systemConfig := kuzu.SystemConfig{
+	// These are safe, conservative defaults that work with ladybug
+	systemConfig := ladybug.SystemConfig{
 		BufferPoolSize:    config.BufferPoolSize,
 		MaxNumThreads:     uint64(config.MaxConcurrentQueries),
 		EnableCompression: config.EnableCompression,
@@ -329,7 +329,7 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 	}
 
 	// Try to open the database with our custom config
-	database, err := kuzu.OpenDatabase(db, systemConfig)
+	database, err := ladybug.OpenDatabase(db, systemConfig)
 	if err != nil && isLockError(err) && db != ":memory:" {
 		// Database is locked, try to copy it to a temp location
 		log.Printf("Database at %s is locked, attempting to create temporary copy...", db)
@@ -350,7 +350,7 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 		log.Printf("Successfully copied database to temporary location: %s", tempDbPath)
 
 		// Try to open the temp copy with the same config
-		database, err = kuzu.OpenDatabase(tempDbPath, systemConfig)
+		database, err = ladybug.OpenDatabase(tempDbPath, systemConfig)
 		if err != nil {
 			os.RemoveAll(tempDir)
 			return nil, fmt.Errorf("failed to open temporary database copy: %w", err)
@@ -378,8 +378,8 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 	// Setup schema exactly like Python
 	driver.setupSchema()
 
-	// Create connection - Go kuzu doesn't have AsyncConnection but we simulate the interface
-	client, err := kuzu.OpenConnection(database)
+	// Create connection - Go ladybug doesn't have AsyncConnection but we simulate the interface
+	client, err := ladybug.OpenConnection(database)
 	if err != nil {
 		database.Close()
 		return nil, fmt.Errorf("failed to open kuzu connection: %w", err)
@@ -492,7 +492,7 @@ func (k *KuzuDriver) executeQueryInternal(cypherQuery string, kwargs map[string]
 	delete(params, "database_")
 	delete(params, "routing_")
 
-	var results *kuzu.QueryResult
+	var results *ladybug.QueryResult
 	var err error
 
 	// Check if we have parameters to use prepared statement
@@ -613,7 +613,7 @@ func (k *KuzuDriver) DeleteAllIndexes(database string) {
 
 // setupSchema initializes the database schema exactly like Python implementation
 func (k *KuzuDriver) setupSchema() {
-	conn, err := kuzu.OpenConnection(k.db)
+	conn, err := ladybug.OpenConnection(k.db)
 	if err != nil {
 		log.Printf("Failed to create connection for schema setup: %v", err)
 		return
@@ -669,8 +669,8 @@ func (k *KuzuDriver) GetAossClient() interface{} {
 	return nil // aoss_client: None = None
 }
 
-// flatTupleToDict converts a Kuzu FlatTuple to a map to simulate Python's rows_as_dict()
-func (k *KuzuDriver) flatTupleToDict(tuple *kuzu.FlatTuple) (map[string]interface{}, error) {
+// flatTupleToDict converts a Ladybug FlatTuple to a map to simulate Python's rows_as_dict()
+func (k *KuzuDriver) flatTupleToDict(tuple *ladybug.FlatTuple) (map[string]interface{}, error) {
 	values, err := tuple.GetAsSlice()
 	if err != nil {
 		return nil, err
