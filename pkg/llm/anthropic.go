@@ -143,11 +143,11 @@ func (a *AnthropicClient) Chat(ctx context.Context, messages []types.Message) (s
 // ChatWithStructuredOutput implements structured output for Anthropic.
 // Note: Anthropic doesn't natively support structured output like OpenAI,
 // so this implementation uses prompt engineering to request JSON format.
-func (a *AnthropicClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (string, error) {
+func (a *AnthropicClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (*types.Response, error) {
 	// Add a message requesting JSON format
 	schemaBytes, err := json.Marshal(schema)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal schema: %w", err)
+		return nil, fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
 	modifiedMessages := append(messages, types.Message{
@@ -155,5 +155,14 @@ func (a *AnthropicClient) ChatWithStructuredOutput(ctx context.Context, messages
 		Content: fmt.Sprintf("Please respond with valid JSON that matches this schema: %s", string(schemaBytes)),
 	})
 
-	return a.Chat(ctx, modifiedMessages)
+	content, err := a.Chat(ctx, modifiedMessages)
+	if err != nil {
+		return nil, err
+	}
+
+	// AnthropicClient.Chat currently only returns string, so we construct a minimal Response object
+	// TODO: Update AnthropicClient.Chat to return *types.Response to capture token usage
+	return &types.Response{
+		Content: content,
+	}, nil
 }

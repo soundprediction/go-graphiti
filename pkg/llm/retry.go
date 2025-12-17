@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -106,7 +105,7 @@ func (r *RetryClient) Chat(ctx context.Context, messages []types.Message) (*type
 }
 
 // ChatWithStructuredOutput implements the Client interface with retry logic
-func (r *RetryClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
+func (r *RetryClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (*types.Response, error) {
 	var lastErr error
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {

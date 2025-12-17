@@ -228,6 +228,14 @@ func (c *Client) AddEpisode(ctx context.Context, episode types.Episode, options 
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
+
+	// Inject ingestion source into context for token tracking
+	ingestionSource := episode.Source
+	if ingestionSource == "" {
+		ingestionSource = fmt.Sprintf("episode:%s", episode.ID)
+	}
+	ctx = context.WithValue(ctx, types.ContextKeyIngestionSource, ingestionSource)
+
 	maxCharacters := 2048
 	if options.MaxCharacters > 0 {
 		maxCharacters = options.MaxCharacters
@@ -462,6 +470,10 @@ func (c *Client) AddToEpisode(ctx context.Context, episodeID string, additionalC
 	if options == nil {
 		options = &AddEpisodeOptions{}
 	}
+
+	// Inject ingestion source into context for token tracking
+	// For AddToEpisode, we use the episode ID as primary source ref
+	ctx = context.WithValue(ctx, types.ContextKeyIngestionSource, fmt.Sprintf("episode_update:%s", episodeID))
 
 	// Use the client's configured group ID
 	groupID := c.config.GroupID

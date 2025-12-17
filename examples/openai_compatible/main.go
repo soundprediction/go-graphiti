@@ -203,7 +203,8 @@ func runCustomServiceExample() error {
 		}
 		fmt.Printf("Custom Service Response: %s\n", response.Content)
 	} else {
-		fmt.Printf("Custom Service Structured Response: %s\n", string(structuredResponse))
+		// structuredResponse is now *types.Response, access .Content
+		fmt.Printf("Custom Service Structured Response: %s\n", structuredResponse.Content)
 	}
 
 	return nil

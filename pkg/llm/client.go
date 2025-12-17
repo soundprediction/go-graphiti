@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
@@ -13,7 +12,7 @@ type Client interface {
 	Chat(ctx context.Context, messages []types.Message) (*types.Response, error)
 
 	// ChatWithStructuredOutput sends a chat completion request with structured output.
-	ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error)
+	ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (*types.Response, error)
 
 	// Close cleans up any resources.
 	Close() error

@@ -378,7 +378,23 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 			return nil, fmt.Errorf("failed to create LLM client: %w", err)
 		}
 		// Wrap with retry client for automatic retry on errors
-		llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+		retryClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+
+		// Wrap with token tracking
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		}
+		trackingPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
+
+		tracker, err := llm.NewTokenTracker(trackingPath)
+		if err != nil {
+			logger.Warn("Failed to initialize token tracker", "error", err)
+			llmClient = retryClient
+		} else {
+			llmClient = llm.NewTokenTrackingClient(retryClient, tracker)
+			logger.Info("Token tracking enabled", "path", trackingPath)
+		}
 	} else {
 		logger.Warn("No LLM configuration provided - LLM functionality will be disabled")
 	}

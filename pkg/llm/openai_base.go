@@ -192,7 +192,7 @@ func (b *BaseOpenAIClient) GenerateResponseWithRetry(
 	responseModel interface{},
 	maxTokens int,
 	modelSize ModelSize,
-) (map[string]interface{}, error) {
+) (*types.Response, error) {
 	var lastError error
 	model := b.GetModelForSize(modelSize)
 
@@ -239,8 +239,35 @@ func (b *BaseOpenAIClient) GenerateResponseWithRetry(
 			return nil, fmt.Errorf("openai completion failed: %w", err)
 		}
 
-		// Success, parse and return response
-		return b.HandleJSONResponse(resp)
+		// Validate JSON by parsing it
+		_, err = b.HandleJSONResponse(resp)
+		if err != nil {
+			lastError = err
+
+			// Check for retriable errors
+			if attempt < b.maxRetries {
+				continue
+			}
+
+			return nil, fmt.Errorf("failed to parse JSON response: %w", err)
+		}
+
+		// Success, construct response with metadata
+		response := &types.Response{
+			Content:      resp.Choices[0].Message.Content,
+			Model:        resp.Model,
+			FinishReason: string(resp.Choices[0].FinishReason),
+		}
+
+		if resp.Usage.TotalTokens > 0 {
+			response.TokensUsed = &types.TokenUsage{
+				PromptTokens:     resp.Usage.PromptTokens,
+				CompletionTokens: resp.Usage.CompletionTokens,
+				TotalTokens:      resp.Usage.TotalTokens,
+			}
+		}
+
+		return response, nil
 	}
 
 	// All retries exhausted

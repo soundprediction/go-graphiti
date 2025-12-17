@@ -117,40 +117,41 @@ func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []types.Message
 	// }
 
 	// Use the base client's retry mechanism for regular chat
-	responseMap, err := c.GenerateResponseWithRetry(ctx, c.client, messages, nil, 0, ModelSizeMedium)
+	response, err := c.GenerateResponseWithRetry(ctx, c.client, messages, nil, 0, ModelSizeMedium)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert map response to Response struct
-	response := &types.Response{}
-
-	// Try to extract content from various possible keys
-	if content, ok := responseMap["content"].(string); ok {
-		response.Content = content
-	} else if text, ok := responseMap["text"].(string); ok {
-		response.Content = text
-	} else {
-		// If no standard content field, serialize the entire response
-		contentBytes, err := json.Marshal(responseMap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize response: %w", err)
+	// Try to extract content from various possible keys if the response is JSON
+	// This maintains compatibility with the previous map-based approach
+	var responseMap map[string]interface{}
+	if err := json.Unmarshal([]byte(response.Content), &responseMap); err == nil {
+		if content, ok := responseMap["content"].(string); ok {
+			response.Content = content
+		} else if text, ok := responseMap["text"].(string); ok {
+			response.Content = text
 		}
-		response.Content = string(contentBytes)
 	}
 
 	return response, nil
 }
 
 // ChatWithStructuredOutput implements the Client interface
-func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (json.RawMessage, error) {
+func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (*types.Response, error) {
 	// Use continuation-based JSON generation for more robust handling
 	jsonStr, err := GenerateJSONResponseWithContinuationMessages(ctx, c, messages, schema, c.maxRetries)
 	if err != nil {
 		return nil, err
 	}
 
-	return json.RawMessage(jsonStr), nil
+	// OpenAIGenericClient currently returns raw string from the helper
+	// We extract usage from the underlying calls inside the helper if possible,
+	// but the helper signature only returns string.
+	// For now, we wrap the string result.
+	// TODO: Refactor GenerateJSONResponseWithContinuationMessages to return usage stats
+	return &types.Response{
+		Content: jsonStr,
+	}, nil
 }
 
 // generateResponseWithEnhancedRetry implements the Python-style retry logic with error feedback
