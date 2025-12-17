@@ -1,6 +1,6 @@
 module github.com/soundprediction/go-graphiti
 
-go 1.24.7
+go 1.25.5
 
 require (
 	// github.com/kuzudb/go-kuzu - to be added when available
