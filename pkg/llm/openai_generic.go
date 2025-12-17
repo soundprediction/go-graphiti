@@ -117,26 +117,20 @@ func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []types.Message
 	// }
 
 	// Use the base client's retry mechanism for regular chat
-	responseMap, err := c.GenerateResponseWithRetry(ctx, c.client, messages, nil, 0, ModelSizeMedium)
+	response, err := c.GenerateResponseWithRetry(ctx, c.client, messages, nil, 0, ModelSizeMedium)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert map response to Response struct
-	response := &types.Response{}
-
-	// Try to extract content from various possible keys
-	if content, ok := responseMap["content"].(string); ok {
-		response.Content = content
-	} else if text, ok := responseMap["text"].(string); ok {
-		response.Content = text
-	} else {
-		// If no standard content field, serialize the entire response
-		contentBytes, err := json.Marshal(responseMap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize response: %w", err)
+	// Try to extract content from various possible keys if the response is JSON
+	// This maintains compatibility with the previous map-based approach
+	var responseMap map[string]interface{}
+	if err := json.Unmarshal([]byte(response.Content), &responseMap); err == nil {
+		if content, ok := responseMap["content"].(string); ok {
+			response.Content = content
+		} else if text, ok := responseMap["text"].(string); ok {
+			response.Content = text
 		}
-		response.Content = string(contentBytes)
 	}
 
 	return response, nil

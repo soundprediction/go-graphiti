@@ -9,6 +9,7 @@ import (
 	"github.com/soundprediction/go-graphiti"
 	"github.com/soundprediction/go-graphiti/pkg/config"
 	"github.com/soundprediction/go-graphiti/pkg/server/handlers"
+	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
 // Server represents the HTTP server
@@ -39,6 +40,7 @@ func (s *Server) Setup() {
 	s.router.Use(gin.Logger())
 	s.router.Use(gin.Recovery())
 	s.router.Use(corsMiddleware())
+	s.router.Use(contextMiddleware())
 
 	// Setup routes
 	s.setupRoutes()
@@ -115,6 +117,28 @@ func corsMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		c.Next()
+	}
+}
+
+// contextMiddleware extracts context information from headers
+func contextMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		userID := c.GetHeader("X-User-ID")
+		if userID != "" {
+			ctx = context.WithValue(ctx, types.ContextKeyUserID, userID)
+		}
+
+		sessionID := c.GetHeader("X-Session-ID")
+		if sessionID != "" {
+			ctx = context.WithValue(ctx, types.ContextKeySessionID, sessionID)
+		}
+
+		ctx = context.WithValue(ctx, types.ContextKeyRequestSource, "server")
+
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

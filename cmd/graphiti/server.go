@@ -251,7 +251,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to get user home directory: %w", err)
 			}
-			trackingPath := fmt.Sprintf("%s/.graphiti/token_usage.json", homeDir)
+			trackingPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
 
 			tracker, err := llm.NewTokenTracker(trackingPath)
 			if err != nil {

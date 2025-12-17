@@ -85,6 +85,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, messages []types.Message) (*typ
 	response := &types.Response{
 		Content:      choice.Message.Content,
 		FinishReason: string(choice.FinishReason),
+		Model:        resp.Model,
 	}
 
 	// Include token usage if available (some OpenAI-compatible services might not provide this)
@@ -116,6 +117,7 @@ func (c *OpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []
 	response := &types.Response{
 		Content:      choice.Message.Content,
 		FinishReason: string(choice.FinishReason),
+		Model:        resp.Model,
 	}
 
 	// Include token usage if available
