@@ -2,7 +2,6 @@ package llm_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/soundprediction/go-graphiti/pkg/llm"
@@ -128,7 +127,7 @@ func (m *mockLLMClient) Chat(ctx context.Context, messages []types.Message) (*ty
 	return &types.Response{Content: response}, nil
 }
 
-func (m *mockLLMClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
+func (m *mockLLMClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (*types.Response, error) {
 	// Not used in these tests
 	return nil, nil
 }

@@ -244,7 +244,23 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 				return nil, fmt.Errorf("failed to create LLM client: %w", err)
 			}
 			// Wrap with retry client for automatic retry on errors
-			llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+			retryClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+
+			// Wrap with token tracking
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get user home directory: %w", err)
+			}
+			trackingPath := fmt.Sprintf("%s/.graphiti/token_usage.json", homeDir)
+
+			tracker, err := llm.NewTokenTracker(trackingPath)
+			if err != nil {
+				fmt.Printf("Warning: Failed to initialize token tracker: %v\n", err)
+				llmClient = retryClient
+			} else {
+				llmClient = llm.NewTokenTrackingClient(retryClient, tracker)
+				fmt.Printf("Token tracking enabled at: %s\n", trackingPath)
+			}
 		default:
 			return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.LLM.Provider)
 		}

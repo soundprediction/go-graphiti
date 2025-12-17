@@ -143,14 +143,21 @@ func (c *OpenAIGenericClient) Chat(ctx context.Context, messages []types.Message
 }
 
 // ChatWithStructuredOutput implements the Client interface
-func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (json.RawMessage, error) {
+func (c *OpenAIGenericClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (*types.Response, error) {
 	// Use continuation-based JSON generation for more robust handling
 	jsonStr, err := GenerateJSONResponseWithContinuationMessages(ctx, c, messages, schema, c.maxRetries)
 	if err != nil {
 		return nil, err
 	}
 
-	return json.RawMessage(jsonStr), nil
+	// OpenAIGenericClient currently returns raw string from the helper
+	// We extract usage from the underlying calls inside the helper if possible,
+	// but the helper signature only returns string.
+	// For now, we wrap the string result.
+	// TODO: Refactor GenerateJSONResponseWithContinuationMessages to return usage stats
+	return &types.Response{
+		Content: jsonStr,
+	}, nil
 }
 
 // generateResponseWithEnhancedRetry implements the Python-style retry logic with error feedback
