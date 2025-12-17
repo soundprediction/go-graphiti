@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -30,37 +29,16 @@ type TokenUsageRecord struct {
 // TokenTracker handles persistence of token usage stats
 type TokenTracker struct {
 	db    *sql.DB
-	path  string
 	Model string // Default model fallback
 }
 
-// NewTokenTracker creates a new token tracker using DuckDB
-func NewTokenTracker(path string) (*TokenTracker, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve path: %w", err)
-	}
-
-	// Ensure directory exists - DuckDB usually handles file creation but directory must exist
-	// dir := filepath.Dir(absPath)
-	// if err := os.MkdirAll(dir, 0755); err != nil {
-	// 	return nil, fmt.Errorf("failed to create directory: %w", err)
-	// }
-
-	// Connect to DuckDB
-	dsn := absPath
-	db, err := sql.Open("duckdb", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
+// NewTokenTracker creates a new token tracker using an existing DuckDB connection
+func NewTokenTracker(db *sql.DB) (*TokenTracker, error) {
 	tracker := &TokenTracker{
-		db:   db,
-		path: absPath,
+		db: db,
 	}
 
 	if err := tracker.initSchema(); err != nil {
-		db.Close()
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -144,11 +122,6 @@ func (t *TokenTracker) AddUsage(ctx context.Context, usage *types.TokenUsage, mo
 	return err
 }
 
-// Close closes the database connection
-func (t *TokenTracker) Close() error {
-	return t.db.Close()
-}
-
 // TokenTrackingClient wraps a Client to track usage
 type TokenTrackingClient struct {
 	client  Client
@@ -204,6 +177,5 @@ func (c *TokenTrackingClient) ChatWithStructuredOutput(ctx context.Context, mess
 
 // Close implements Client
 func (c *TokenTrackingClient) Close() error {
-	c.tracker.Close() // Best effort close tracker
 	return c.client.Close()
 }

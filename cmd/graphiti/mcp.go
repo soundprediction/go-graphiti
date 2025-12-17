@@ -1,12 +1,15 @@
+```
 package graphiti
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -15,6 +18,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
+	"github.com/soundprediction/go-graphiti/pkg/telemetry"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -380,20 +384,45 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		// Wrap with retry client for automatic retry on errors
 		retryClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 
-		// Wrap with token tracking
+		// Open DuckDB connection for telemetry (shared between token tracking and error logging)
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user home directory: %w", err)
 		}
 		trackingPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
 
-		tracker, err := llm.NewTokenTracker(trackingPath)
+		// Ensure directory exists
+		dir := filepath.Dir(trackingPath)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory: %w", err)
+		}
+
+		telemetryDB, err := sql.Open("duckdb", trackingPath)
 		if err != nil {
-			logger.Warn("Failed to initialize token tracker", "error", err)
+			logger.Warn("Failed to open telemetry DB", "error", err)
 			llmClient = retryClient
 		} else {
-			llmClient = llm.NewTokenTrackingClient(retryClient, tracker)
-			logger.Info("Token tracking enabled", "path", trackingPath)
+			// Initialize Token Tracker
+			tracker, err := llm.NewTokenTracker(telemetryDB)
+			if err != nil {
+				logger.Warn("Failed to initialize token tracker", "error", err)
+				llmClient = retryClient
+			} else {
+				llmClient = llm.NewTokenTrackingClient(retryClient, tracker)
+				logger.Info("Token tracking enabled", "path", trackingPath)
+			}
+
+			// Initialize Error Tracking Logger
+			// We wrap the existing logger's handler with our DuckDB handler
+			// Note: Logger was already initialized with color handler at start of func
+			duckHandler, err := telemetry.NewDuckDBHandler(logger.Handler(), telemetryDB)
+			if err != nil {
+				logger.Warn("Failed to initialize error tracking", "error", err)
+			} else {
+				// Update the logger to use our new handler
+				logger = slog.New(duckHandler)
+				logger.Info("Error tracking enabled")
+			}
 		}
 	} else {
 		logger.Warn("No LLM configuration provided - LLM functionality will be disabled")
