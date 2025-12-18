@@ -23,6 +23,14 @@ type Config struct {
 
 	// Embedding configuration
 	Embedding EmbeddingConfig `mapstructure:"embedding"`
+
+	// Telemetry configuration
+	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+}
+
+// TelemetryConfig holds telemetry configuration
+type TelemetryConfig struct {
+	DuckDBPath string `mapstructure:"duckdb_path"`
 }
 
 // LogConfig holds logging configuration
@@ -105,9 +113,15 @@ func setDefaults() {
 	viper.SetDefault("llm.temperature", 0.1)
 	viper.SetDefault("llm.max_tokens", 2048)
 
-	// Embedding defaults
 	viper.SetDefault("embedding.provider", "openai")
 	viper.SetDefault("embedding.model", "text-embedding-3-small")
+
+	// Telemetry defaults
+	home, err := os.UserHomeDir()
+	if err == nil {
+		defaultPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", home)
+		viper.SetDefault("telemetry.duckdb_path", defaultPath)
+	}
 }
 
 // overrideWithEnv overrides config with environment variables
@@ -151,5 +165,10 @@ func overrideWithEnv(config *Config) {
 	}
 	if port := os.Getenv("SERVER_PORT"); port != "" {
 		viper.Set("server.port", port)
+	}
+
+	// Telemetry settings
+	if path := os.Getenv("TELEMETRY_DUCKDB_PATH"); path != "" {
+		config.Telemetry.DuckDBPath = path
 	}
 }

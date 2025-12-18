@@ -116,6 +116,9 @@ func init() {
 	mcpCmd.Flags().String("embedding-api-key", "", "Embedding API key")
 	mcpCmd.Flags().String("embedding-base-url", "", "Embedding base URL")
 
+	// Telemetry flags
+	mcpCmd.Flags().String("telemetry-duckdb-path", "", "Path to DuckDB file for telemetry (errors and token usage)")
+
 	// Bind flags to viper for configuration
 	viper.BindPFlag("mcp.group_id", mcpCmd.Flags().Lookup("group-id"))
 	viper.BindPFlag("mcp.transport", mcpCmd.Flags().Lookup("transport"))
@@ -142,6 +145,9 @@ func init() {
 	viper.BindPFlag("embedder.model", mcpCmd.Flags().Lookup("embedder-model"))
 	viper.BindPFlag("embedder.api_key", mcpCmd.Flags().Lookup("embedding-api-key"))
 	viper.BindPFlag("embedder.base_url", mcpCmd.Flags().Lookup("embedding-base-url"))
+
+	// Telemetry configuration
+	viper.BindPFlag("telemetry.duckdb_path", mcpCmd.Flags().Lookup("telemetry-duckdb-path"))
 }
 
 // MCPConfig holds all configuration for the MCP server
@@ -175,6 +181,9 @@ type MCPConfig struct {
 
 	// Concurrency limits
 	SemaphoreLimit int
+
+	// Telemetry Configuration
+	TelemetryDuckDBPath string
 }
 
 // MCPServer wraps the Graphiti client for MCP operations
@@ -284,6 +293,9 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 		EmbedderModel:    getViperStringWithFallback("embedder.model", DefaultMCPEmbedderModel),
 		EmbeddingAPIKey:  viper.GetString("embedder.api_key"), // No fallback - truly optional
 		EmbeddingBaseURL: viper.GetString("embedder.base_url"),
+
+		// Telemetry configuration
+		TelemetryDuckDBPath: viper.GetString("telemetry.duckdb_path"),
 	}
 
 	// Use LLM API key for embeddings if embedding API key not provided
@@ -384,11 +396,14 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		retryClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
 
 		// Open DuckDB connection for telemetry (shared between token tracking and error logging)
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		trackingPath := config.TelemetryDuckDBPath
+		if trackingPath == "" {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get user home directory: %w", err)
+			}
+			trackingPath = fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
 		}
-		trackingPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
 
 		// Ensure directory exists
 		dir := filepath.Dir(trackingPath)
