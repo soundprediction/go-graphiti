@@ -258,7 +258,7 @@ func (eo *EdgeOperations) ExtractEdges(ctx context.Context, episode *types.Node,
 	return edges, nil
 }
 
-// GetBetweenNodes retrieves edges between two specific nodes using the proper Kuzu query pattern
+// GetBetweenNodes retrieves edges between two specific nodes using the proper Ladybug query pattern
 func (eo *EdgeOperations) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error) {
 	query := `
 		MATCH (a:Entity {uuid: $source_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $target_uuid})
@@ -699,7 +699,7 @@ func (eo *EdgeOperations) resolveEdgeContradictions(resolvedEdge *types.Edge, in
 	return invalidatedEdges
 }
 
-// FilterExistingDuplicateOfEdges filters out duplicate node pairs that already have IS_DUPLICATE_OF edges using proper Kuzu query
+// FilterExistingDuplicateOfEdges filters out duplicate node pairs that already have IS_DUPLICATE_OF edges using proper Ladybug query
 func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, duplicateNodePairs []NodePair) ([]NodePair, error) {
 	if len(duplicateNodePairs) == 0 {
 		return []NodePair{}, nil
@@ -736,7 +736,7 @@ func (eo *EdgeOperations) FilterExistingDuplicateOfEdges(ctx context.Context, du
 	if result != nil {
 		switch records := result.(type) {
 		case []map[string]interface{}:
-			// Kuzu format
+			// Ladybug format
 			for _, record := range records {
 				if sourceUUID, ok := record["source_uuid"].(string); ok {
 					if targetUUID, ok := record["target_uuid"].(string); ok {

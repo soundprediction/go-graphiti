@@ -17,7 +17,7 @@ func GetEpisodeNodeSaveQuery(provider driver.GraphProvider) string {
                 entity_edges: join([x IN coalesce($entity_edges, []) | toString(x) ], '|'), created_at: $created_at, valid_at: $valid_at}
                 RETURN n.uuid AS uuid
             `
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MERGE (n:Episodic {uuid: $uuid})
                 SET
@@ -60,7 +60,7 @@ func GetEpisodeNodeSaveBulkQuery(provider driver.GraphProvider) string {
                 entity_edges: join([x IN coalesce(episode.entity_edges, []) | toString(x) ], '|'), created_at: episode.created_at, valid_at: episode.valid_at}
                 RETURN n.uuid AS uuid
             `
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MERGE (n:Episodic {uuid: $uuid})
                 SET
@@ -129,7 +129,7 @@ func GetEntityNodeSaveQuery(provider driver.GraphProvider, labels string, hasAOS
                 SET n = $entity_data
                 RETURN n.uuid AS uuid
             `, labels)
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MERGE (n:Entity {uuid: $uuid})
                 SET
@@ -236,7 +236,7 @@ func GetEntityNodeSaveBulkQuery(provider driver.GraphProvider, nodes []map[strin
 			queries = append(queries, query)
 		}
 		return queries
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MERGE (n:Entity {uuid: $uuid})
                 SET
@@ -269,7 +269,7 @@ func GetEntityNodeSaveBulkQuery(provider driver.GraphProvider, nodes []map[strin
 // GetEntityNodeReturnQuery returns the entity node return query based on provider
 // Note: name_embedding is not returned by default and must be loaded manually using load_name_embedding().
 func GetEntityNodeReturnQuery(provider driver.GraphProvider) string {
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		return `
             n.uuid AS uuid,
             n.name AS name,
@@ -308,7 +308,7 @@ func GetCommunityNodeSaveQuery(provider driver.GraphProvider) string {
                 SET n.name_embedding = join([x IN coalesce($name_embedding, []) | toString(x) ], ",")
                 RETURN n.uuid AS uuid
             `
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MERGE (n:Community {uuid: $uuid})
                 SET

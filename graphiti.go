@@ -23,8 +23,8 @@ type driverWrapper struct {
 // Provider converts driver.GraphProvider to types.GraphProvider
 func (w *driverWrapper) Provider() types.GraphProvider {
 	switch w.GraphDriver.Provider() {
-	case driver.GraphProviderKuzu:
-		return types.GraphProviderKuzu
+	case driver.GraphProviderLadybug:
+		return types.GraphProviderLadybug
 	case driver.GraphProviderNeo4j:
 		return types.GraphProviderNeo4j
 	case driver.GraphProviderFalkorDB:
@@ -32,7 +32,7 @@ func (w *driverWrapper) Provider() types.GraphProvider {
 	case driver.GraphProviderNeptune:
 		return types.GraphProviderNeptune
 	default:
-		return types.GraphProviderKuzu // default fallback
+		return types.GraphProviderLadybug // default fallback
 	}
 }
 

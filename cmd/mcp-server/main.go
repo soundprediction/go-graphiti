@@ -85,8 +85,8 @@ func NewConfig() *Config {
 		LLMTemperature:    getEnvFloat("LLM_TEMPERATURE", 0.0),
 		OpenAIAPIKey:      getEnv("OPENAI_API_KEY", ""),
 		EmbedderModel:     getEnv("EMBEDDER_MODEL_NAME", DefaultEmbedderModel),
-		DatabaseDriver:    getEnv("DB_DRIVER", "kuzu"),
-		DatabaseURI:       getEnv("DB_URI", getEnv("KUZU_DB_PATH", "./kuzu_db")),
+		DatabaseDriver:    getEnv("DB_DRIVER", "ladybug"),
+		DatabaseURI:       getEnv("DB_URI", getEnv("ladybug_DB_PATH", "./ladybug_db")),
 		DatabaseUser:      getEnv("NEO4J_USER", ""),
 		DatabasePassword:  getEnv("NEO4J_PASSWORD", ""),
 		GroupID:           getEnv("GROUP_ID", "default"),
@@ -147,10 +147,10 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 	var err error
 
 	switch config.DatabaseDriver {
-	case "kuzu":
-		graphDriver, err = driver.NewKuzuDriver(config.DatabaseURI, 16)
+	case "ladybug":
+		graphDriver, err = driver.NewLadybugDriver(config.DatabaseURI, 16)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
+			return nil, fmt.Errorf("failed to create ladybug driver: %w", err)
 		}
 
 	default:

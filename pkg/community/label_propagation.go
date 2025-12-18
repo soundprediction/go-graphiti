@@ -122,7 +122,7 @@ func (b *Builder) buildProjection(ctx context.Context, nodes []*types.Node, grou
 
 // getNodeNeighbors gets the neighbors of a node with edge counts
 func (b *Builder) getNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
-	// Check if this is a Kuzu driver to use the appropriate query
+	// Check if this is a Ladybug driver to use the appropriate query
 	return b.driver.GetNodeNeighbors(ctx, nodeUUID, groupID)
 }
 

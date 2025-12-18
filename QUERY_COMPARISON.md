@@ -9,7 +9,7 @@ The Go implementation uses a **CREATE-then-UPDATE** approach instead of Python's
 - **Python**: Uses `MERGE` for idempotent upserts in a single query
 - **Go**: Checks existence first, then either CREATE or UPDATE (two queries)
 
-## Kuzu Driver Comparison
+## ladybug Driver Comparison
 
 ### Python Episodic Node (MERGE approach)
 ```cypher
@@ -28,7 +28,7 @@ RETURN n.uuid AS uuid
 
 ### Go Episodic Node (CREATE + UPDATE approach)
 
-**Create Query** (kuzu.go:2187-2210):
+**Create Query** (ladybug.go:2187-2210):
 ```cypher
 CREATE (n:Episodic {
     uuid: $uuid,
@@ -44,7 +44,7 @@ CREATE (n:Episodic {
 })
 ```
 
-**Update Query** (kuzu.go:2321-2345):
+**Update Query** (ladybug.go:2321-2345):
 ```cypher
 MATCH (n:Episodic)
 WHERE n.uuid = $uuid AND n.group_id = $group_id
@@ -79,7 +79,7 @@ RETURN n.uuid AS uuid
 
 ### Go Entity Node (CREATE + UPDATE approach)
 
-**Create Query** (kuzu.go:2237-2255):
+**Create Query** (ladybug.go:2237-2255):
 ```cypher
 CREATE (n:Entity {
     uuid: $uuid,
@@ -93,7 +93,7 @@ CREATE (n:Entity {
 })
 ```
 
-**Update Query** (kuzu.go:2348-2380):
+**Update Query** (ladybug.go:2348-2380):
 ```cypher
 MATCH (n:Entity)
 WHERE n.uuid = $uuid AND n.group_id = $group_id
@@ -108,7 +108,7 @@ SET n.name_embedding = $name_embedding  // Or CAST([] AS FLOAT[])
 ✅ **Matching**: Field names and types match
 ✅ **Go improvement**: Conditional updates (only update non-empty fields)
 ✅ **Go improvement**: Explicit CAST for empty arrays
-✅ **Go improvement**: Float32 to Float64 conversion for Kuzu compatibility
+✅ **Go improvement**: Float32 to Float64 conversion for ladybug compatibility
 ✅ **FIXED**: source field now properly mapped to EpisodeType when reading from database
 
 ---
@@ -127,7 +127,7 @@ RETURN n.uuid AS uuid
 
 ### Go Community Node (CREATE + UPDATE approach)
 
-**Create Query** (kuzu.go:2273-2288):
+**Create Query** (ladybug.go:2273-2288):
 ```cypher
 CREATE (n:Community {
     uuid: $uuid,
@@ -139,7 +139,7 @@ CREATE (n:Community {
 })
 ```
 
-**Update Query** (kuzu.go:2383-2402):
+**Update Query** (ladybug.go:2383-2402):
 ```cypher
 MATCH (n:Community)
 WHERE n.uuid = $uuid AND n.group_id = $group_id
@@ -222,7 +222,7 @@ if len(node.NameEmbedding) > 0 {
 }
 ```
 
-This solves Kuzu type inference issues that Python may not encounter.
+This solves ladybug type inference issues that Python may not encounter.
 
 ### 3. Metadata Field
 
@@ -268,7 +268,7 @@ SET n.valid_at = $valid_at
 // Missing: source, source_description
 ```
 
-**Fix Applied** (kuzu.go:2332-2337): Added source and source_description to the UPDATE query SET clauses. Also added mapping in mapToNode function (kuzu.go:2087-2096) to properly retrieve the source field as EpisodeType when reading nodes from the database.
+**Fix Applied** (ladybug.go:2332-2337): Added source and source_description to the UPDATE query SET clauses. Also added mapping in mapToNode function (ladybug.go:2087-2096) to properly retrieve the source field as EpisodeType when reading nodes from the database.
 
 ---
 
@@ -317,14 +317,14 @@ MERGE (n:Entity {uuid: $uuid, group_id: $group_id})
 
 ### Low Priority
 
-7. **Performance testing**: Compare MERGE vs CREATE+UPDATE performance in Kuzu
+7. **Performance testing**: Compare MERGE vs CREATE+UPDATE performance in ladybug
 8. **Bulk operation optimization**: Review bulk insert/update patterns
 
 ---
 
 ## Test Coverage Recommendations
 
-1. ✅ **COMPLETED**: Test episodic node updates preserve `source` and `source_description` (TestKuzuDriver_UpsertEpisodicNode)
+1. ✅ **COMPLETED**: Test episodic node updates preserve `source` and `source_description` (TestLadybugDriver_UpsertEpisodicNode)
 2. **TODO**: Test entity nodes get correct labels in Memgraph (requires live Memgraph instance)
 3. Test empty array handling across all node types
 4. Test metadata field serialization/deserialization

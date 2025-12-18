@@ -16,7 +16,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 - ⚠️ **Partial:** 4 methods (1.6%)
 
 **Recently Completed (2025-10-03):**
-- Kuzu driver embedding search methods (SearchNodesByEmbedding, SearchEdgesByEmbedding)
+- ladybug driver embedding search methods (SearchNodesByEmbedding, SearchEdgesByEmbedding)
 
 **Recently Completed (2025-09-20):**
 - All missing LLM clients (Anthropic, Gemini, Groq, Azure OpenAI)
@@ -25,7 +25,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 - Comprehensive Python method linking and date tracking
 
 ### Implementation Date Legend
-- **2025-10-03:** Kuzu driver embedding search - implemented SearchNodesByEmbedding and SearchEdgesByEmbedding based on Python's node_similarity_search and edge_similarity_search functions
+- **2025-10-03:** ladybug driver embedding search - implemented SearchNodesByEmbedding and SearchEdgesByEmbedding based on Python's node_similarity_search and edge_similarity_search functions
 - **2025-09-20:** Major implementation push - added missing LLM clients (Anthropic, Gemini, Groq, Azure), embedder clients (Azure, Gemini, Voyage), cross encoder functionality (BGE, Gemini rerankers), and get_token_count utility
 - Methods marked as "implemented" without specific dates were completed prior to version tracking implementation
 
@@ -92,7 +92,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`get_vector_cosine_func_query(vec1, vec2, provider)`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L119) | [`GetVectorCosineFuncQuery(vec1, vec2 string, provider GraphProvider)`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L168) | ✅ Implemented (2025-09-20) |
 | `GraphProvider` enum | `GraphProvider` type | ✅ Implemented (2025-09-20) |
 | [`NEO4J_TO_FALKORDB_MAPPING`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L10) | [`neo4jToFalkorDBMapping`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L21) | ✅ Implemented (2025-09-20) |
-| [`INDEX_TO_LABEL_KUZU_MAPPING`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L17) | [`indexToLabelKuzuMapping`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L29) | ✅ Implemented (2025-09-20) |
+| [`INDEX_TO_LABEL_ladybug_MAPPING`](https://github.com/getzep/graphiti/blob/main/graphiti_core/graph_queries.py#L17) | [`indexToLabelladybugMapping`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/graph_queries.go#L29) | ✅ Implemented (2025-09-20) |
 
 ### Additional Go Utilities (not in Python)
 
@@ -180,7 +180,7 @@ This document tracks the mapping between the original Python Graphiti methods an
 | [`edge_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L371) | [`EdgeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L162) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-10-04) | Full Cypher implementation with provider-specific handling |
 | [`node_fulltext_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L460) | [`NodeFulltextSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L119) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
 | [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L548) | [`NodeSimilaritySearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L150) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
-| [`node_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L623) | [`NodeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L23) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-10-04) | Full Cypher implementation matching Python, handles Kuzu/Neptune/Neo4j/FalkorDB |
+| [`node_bfs_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L623) | [`NodeBFSSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/graph_traversal.go#L23) | `pkg/search/graph_traversal.go` | ✅ Implemented (2025-10-04) | Full Cypher implementation matching Python, handles ladybug/Neptune/Neo4j/FalkorDB |
 | [`hybrid_node_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L670) | [`HybridNodeSearch()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/search_utils.go#L236) | `pkg/search/search_utils.go` | ✅ Implemented (2025-09-20) | |
 | [`get_relevant_nodes()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L722) | [`GetRelevantNodes()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L126) | `pkg/search/specialized_search.go` | ✅ Implemented (2025-09-20) | Different signature than Python |
 | [`get_relevant_edges()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L784) | [`GetRelevantEdges()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/search/specialized_search.go#L188) | `pkg/search/specialized_search.go` | ✅ Implemented (2025-09-20) | Different signature than Python |
@@ -216,25 +216,25 @@ This document tracks the mapping between the original Python Graphiti methods an
 |--------------|-------------------|---------------|--------|
 | `NeptuneDriver` | N/A | N/A | ❌ Missing |
 
-### driver/kuzu_driver.py
+### driver/ladybug_driver.py
 
 | Python Method | Go Method | File Location | Status | Notes |
 |---------------|-----------|---------------|--------|-------|
-| [`KuzuDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/kuzu_driver.py#L93) class | [`KuzuDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L84) struct | `pkg/driver/kuzu.go` | ✅ Implemented | |
-| All GraphDriver interface methods | Same method names | `pkg/driver/kuzu.go` | ✅ Implemented | |
+| [`LadybugDriver`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/ladybug_driver.py#L93) class | [`LadybugDriver`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L84) struct | `pkg/driver/ladybug.go` | ✅ Implemented | |
+| All GraphDriver interface methods | Same method names | `pkg/driver/ladybug.go` | ✅ Implemented | |
 
-### Additional Kuzu Driver Methods (Go-specific)
+### Additional ladybug Driver Methods (Go-specific)
 
-These methods implement vector similarity search based on Python's `search_utils.py` functions but are exposed directly on the Kuzu driver for efficiency:
+These methods implement vector similarity search based on Python's `search_utils.py` functions but are exposed directly on the ladybug driver for efficiency:
 
-| Python Function (search_utils.py) | Go Method (KuzuDriver) | File Location | Status | Implementation Date | Notes |
+| Python Function (search_utils.py) | Go Method (LadybugDriver) | File Location | Status | Implementation Date | Notes |
 |---------------|-----------|---------------|--------|---------------------|-------|
-| [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L728-869) (Kuzu provider) | [`SearchNodesByEmbedding()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L495-601) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Performs cosine similarity search on Entity.name_embedding using Kuzu's array_cosine_similarity function |
-| [`edge_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L312-477) (Kuzu provider) | [`SearchEdgesByEmbedding()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L603-725) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Performs cosine similarity search on RelatesToNode_.fact_embedding using Kuzu's array_cosine_similarity function |
-| N/A (driver interface method) | [`SearchNodesByVector()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L807-834) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Wrapper around SearchNodesByEmbedding with VectorSearchOptions support for limit and minScore |
-| N/A (driver interface method) | [`SearchEdgesByVector()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L836-863) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Wrapper around SearchEdgesByEmbedding with VectorSearchOptions support for limit and minScore |
-| [`get_nodes_in_time_range()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L395-424) (Neo4j reference) | [`GetNodesInTimeRange()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L837-902) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Retrieves Entity nodes filtered by created_at within time range and group_id |
-| [`get_edges_in_time_range()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L426-459) (Neo4j reference) | [`GetEdgesInTimeRange()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/kuzu.go#L904-997) | `pkg/driver/kuzu.go` | ✅ Implemented | 2025-10-03 | Retrieves RelatesToNode_ edges filtered by created_at within time range and group_id |
+| [`node_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L728-869) (ladybug provider) | [`SearchNodesByEmbedding()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L495-601) | `pkg/driver/ladybug.go` | ✅ Implemented | 2025-10-03 | Performs cosine similarity search on Entity.name_embedding using ladybug's array_cosine_similarity function |
+| [`edge_similarity_search()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/search/search_utils.py#L312-477) (ladybug provider) | [`SearchEdgesByEmbedding()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L603-725) | `pkg/driver/ladybug.go` | ✅ Implemented | 2025-10-03 | Performs cosine similarity search on RelatesToNode_.fact_embedding using ladybug's array_cosine_similarity function |
+| N/A (driver interface method) | [`SearchNodesByVector()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L807-834) | `pkg/driver/ladybug.go` | ✅ Implemented | 2025-10-03 | Wrapper around SearchNodesByEmbedding with VectorSearchOptions support for limit and minScore |
+| N/A (driver interface method) | [`SearchEdgesByVector()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L836-863) | `pkg/driver/ladybug.go` | ✅ Implemented | 2025-10-03 | Wrapper around SearchEdgesByEmbedding with VectorSearchOptions support for limit and minScore |
+| [`get_nodes_in_time_range()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L395-424) (Neo4j reference) | [`GetNodesInTimeRange()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L837-902) | `pkg/driver/ladybug.go` | ✅ Implemented | 2025-10-03 | Retrieves Entity nodes filtered by created_at within time range and group_id |
+| [`get_edges_in_time_range()`](https://github.com/getzep/graphiti/blob/main/graphiti_core/driver/neo4j_driver.py#L426-459) (Neo4j reference) | [`GetEdgesInTimeRange()`](https://github.com/soundprediction/go-graphiti/blob/main/pkg/driver/ladybug.go#L904-997) | `pkg/driver/ladybug.go` | ✅ Implemented | 2025-10-03 | Retrieves RelatesToNode_ edges filtered by created_at within time range and group_id |
 
 
 ## Node and Edge Types
@@ -643,7 +643,7 @@ These methods implement vector similarity search based on Python's `search_utils
 
 The following edge operations have been significantly improved to match the exact Python implementation:
 
-1. **GetBetweenNodes** - Now uses proper Kuzu query pattern:
+1. **GetBetweenNodes** - Now uses proper ladybug query pattern:
    - Uses `RelatesToNode_` intermediate nodes pattern from Python
    - Implements bidirectional search with `UNION` clause
    - Direct database query with `ExecuteQuery` instead of generic search
@@ -652,7 +652,7 @@ The following edge operations have been significantly improved to match the exac
 2. **FilterExistingDuplicateOfEdges** - Exact Python implementation:
    - Uses `UNWIND` for batch parameter processing
    - Matches Python's parameter structure with `src`/`dst` mapping
-   - Proper Kuzu query: `MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_ {name: 'IS_DUPLICATE_OF'})-[:RELATES_TO]->(m:Entity)`
+   - Proper ladybug query: `MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_ {name: 'IS_DUPLICATE_OF'})-[:RELATES_TO]->(m:Entity)`
 
 3. **searchRelatedEdges** - Enhanced with hybrid search:
    - Implements UUID filtering equivalent to Python's `SearchFilters(edge_uuids=...)`
@@ -720,12 +720,12 @@ The complete edge database queries module has been ported to provide exact funct
    - `GetEntityEdgeSaveQuery` - Single entity edge save with AOSS and provider support
    - `GetEntityEdgeSaveBulkQuery` - Bulk entity edge operations for all supported providers
    - `GetEntityEdgeReturnQuery` - Provider-specific return field mapping
-   - `GetCommunityEdgeSaveQuery` - Community membership edge creation with UNION support for Kuzu
+   - `GetCommunityEdgeSaveQuery` - Community membership edge creation with UNION support for ladybug
 
 2. **Provider-Specific Implementation** - Exact match to Python logic:
    - **Neo4j**: Standard RELATES_TO relationships with vector property support
    - **FalkorDB**: Vector embeddings with vecf32() function calls
-   - **Kuzu**: RelatesToNode_ intermediate pattern with bidirectional RELATES_TO
+   - **ladybug**: RelatesToNode_ intermediate pattern with bidirectional RELATES_TO
    - **Neptune**: String-based embedding storage with join() operations
 
 3. **Query Constants** - All constants preserved:
@@ -759,13 +759,13 @@ The complete node database queries module has been ported to provide exact funct
 2. **Provider-Specific Implementation** - Exact match to Python logic:
    - **Neo4j**: Standard node labels with vector property support via `db.create.setNodeVectorProperty`
    - **FalkorDB**: Vector embeddings with `vecf32()` function calls and explicit property mapping
-   - **Kuzu**: Structured property assignment with array-based labels and attributes
+   - **ladybug**: Structured property assignment with array-based labels and attributes
    - **Neptune**: String-based embedding storage with `join()` and `removeKeyFromMap()` operations
 
 3. **Complex Return Types** - Handling Python's mixed return scenarios:
    - `GetEntityNodeSaveBulkQuery` returns `interface{}` to handle different provider needs
    - FalkorDB/Neptune: Returns `[]QueryWithParams` or `[]string` for multiple query execution
-   - Kuzu/Neo4j: Returns single query string for standard bulk processing
+   - ladybug/Neo4j: Returns single query string for standard bulk processing
    - Added `QueryWithParams` struct to match Python's tuple structure
 
 4. **Query Constants** - All provider-specific constants preserved:
@@ -918,7 +918,7 @@ When adding new Python-to-Go mappings:
 ### Well-Implemented Areas
 
 1. **Core Search** - Hybrid search with multiple methods working
-2. **Database Drivers** - Neo4j and Kuzu drivers fully functional
+2. **Database Drivers** - Neo4j and ladybug drivers fully functional
 3. **Basic Graph Operations** - Node/edge CRUD operations complete
 4. **Query Building** - Database-agnostic query construction implemented
 5. **Search Configuration** - Comprehensive search configs and recipes
@@ -952,7 +952,7 @@ The following classes and functions have been added to the Go implementation but
 | `TemporalTraversal.GetTemporalNeighbors()` | Get neighbors at a point in time | ✅ Implemented | Uses expired_at for temporal validity |
 | `convertRecordsToNodes()` | Helper to parse node records | ✅ Implemented | Handles deduplication and type conversion |
 | `convertRecordsToEdges()` | Helper to parse edge records | ✅ Implemented | Creates EntityEdge instances from records |
-| `getRelatedNodes()` | Get nodes directly related to a node | ✅ Implemented | Used internally by BFS, handles Kuzu intermediate nodes |
+| `getRelatedNodes()` | Get nodes directly related to a node | ✅ Implemented | Used internally by BFS, handles ladybug intermediate nodes |
 | `getEdgesForNode()` | Get edges connected to a node | ✅ Implemented | Used internally by BFS, provider-specific queries |
 | `stringValue()` | Safe string extraction helper | ✅ Implemented | Type-safe conversion from interface{} |
 
@@ -967,7 +967,7 @@ The following classes and functions have been added to the Go implementation but
 **Driver Requirements:**
 - No additional driver methods required - all functions use existing `ExecuteQuery()` interface
 - All provider-specific query differences are handled within the traversal functions themselves
-- Kuzu requires special handling for RelatesToNode_ intermediate nodes (depth * 2)
+- ladybug requires special handling for RelatesToNode_ intermediate nodes (depth * 2)
 
 ### Embedding Generation (`graphiti.go`)
 
@@ -993,7 +993,7 @@ The following classes and functions have been added to the Go implementation but
 |-------------|-------------|--------|
 | BFS with auto-origin collection | BFS automatically uses BM25/cosine results as origins | ✅ Implemented |
 | Comprehensive search config | All search methods configurable via SearchConfig | ✅ Implemented |
-| Provider-aware BFS | BFS queries adapt to Kuzu/Neo4j/Neptune/FalkorDB | ✅ Implemented |
+| Provider-aware BFS | BFS queries adapt to ladybug/Neo4j/Neptune/FalkorDB | ✅ Implemented |
 
 ## Python Functions Not Yet Ported
 

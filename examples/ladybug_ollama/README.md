@@ -1,15 +1,15 @@
-# Kuzu + Ollama Example
+# Ladybug + Ollama Example
 
 This example demonstrates using go-graphiti with a fully local setup combining:
 
-- **Kuzu**: Embedded graph database (no server required)
+- **Ladybug**: Embedded graph database (no server required)
 - **Ollama**: Local LLM inference (no cloud API required)
 - **OpenAI Embeddings**: Could be replaced with local embeddings for complete locality
 
 ## Benefits of This Setup
 
 ### 🔒 **Maximum Privacy**
-- All graph data stays local in embedded Kuzu database
+- All graph data stays local in embedded Ladybug database
 - All LLM processing happens locally with Ollama
 - Only embeddings use external API (replaceable with local service)
 
@@ -78,21 +78,21 @@ export OPENAI_API_KEY="your-openai-api-key"
 ### 4. Run the Example
 
 ```bash
-cd examples/kuzu_ollama
+cd examples/ladybug_ollama
 go run main.go
 ```
 
 ## Expected Output
 
 ```
-🚀 Starting go-graphiti example with Kuzu + Ollama
+🚀 Starting go-graphiti example with Ladybug + Ollama
    This example demonstrates a fully local setup:
-   - Kuzu: embedded graph database
+   - Ladybug: embedded graph database
    - Ollama: local LLM inference
    - OpenAI: embeddings (could be replaced with local)
 
-📊 Setting up Kuzu embedded graph database...
-   ✅ Kuzu driver created (embedded database at ./example_graph.db)
+📊 Setting up Ladybug embedded graph database...
+   ✅ Ladybug driver created (embedded database at ./example_graph.db)
 
 🧠 Setting up Ollama local LLM client...
    ✅ Ollama client created (using llama2:7b model)
@@ -104,24 +104,24 @@ go run main.go
    💡 For fully local setup, replace with local embedding service
 
 🌐 Setting up Graphiti client with local components...
-   ✅ Graphiti client created with local Kuzu + Ollama setup
+   ✅ Graphiti client created with local Ladybug + Ollama setup
 
 📝 Adding example episodes to the knowledge graph...
-   ⚠️  Expected error with stub implementation: KuzuDriver not implemented
-   This will work once the Kuzu Go library is available
+   ⚠️  Expected error with stub implementation: LadybugDriver not implemented
+   This will work once the Ladybug Go library is available
 
 🔍 Searching the knowledge graph...
    ⚠️  Expected errors with stub implementation
-   This will work once the Kuzu Go library is available
+   This will work once the Ladybug Go library is available
 
 💭 Testing Ollama LLM integration...
    Sending query to Ollama...
    ✅ Ollama response received:
-     Embedded graph databases like Kuzu offer several advantages over server-based solutions...
+     Embedded graph databases like Ladybug offer several advantages over server-based solutions...
      Used 245 tokens
 
 📋 Example Summary:
-   ✅ Kuzu driver: Created (stub implementation)
+   ✅ Ladybug driver: Created (stub implementation)
    ✅ Ollama client: Created and tested
    ✅ Graphiti integration: Demonstrated
 
@@ -131,13 +131,13 @@ go run main.go
 ## Current Status
 
 ### What Works Now ✅
-- Kuzu driver creation (stub implementation)
+- Ladybug driver creation (stub implementation)
 - Ollama LLM client integration
 - OpenAI embeddings
 - Complete API demonstration
 
 ### What Will Work Later 🔮
-- Actual graph database operations (when Kuzu Go library is available)
+- Actual graph database operations (when Ladybug Go library is available)
 - Full knowledge graph storage and retrieval
 - Hybrid search with local graph traversal
 
@@ -161,11 +161,11 @@ llmConfig := llm.Config{
 ollama, err := llm.NewOllamaClient("http://192.168.1.100:11434", "llama2:7b", llmConfig)
 ```
 
-### Different Kuzu Database Path
+### Different Ladybug Database Path
 
 ```go
 // Custom database location
-kuzuDriver, err := driver.NewKuzuDriver("/path/to/my/graph.db")
+ladybugDriver, err := driver.NewLadybugDriver("/path/to/my/graph.db")
 ```
 
 ## Troubleshooting
@@ -195,9 +195,9 @@ ollama pull llama2:7b
 - Reduce `MaxTokens` in config
 - Ensure sufficient RAM (8GB+ recommended)
 
-### Kuzu Issues
+### Ladybug Issues
 
-**Current**: All Kuzu operations return "not implemented" errors - this is expected until the Kuzu Go library is available.
+**Current**: All Ladybug operations return "not implemented" errors - this is expected until the Ladybug Go library is available.
 
 **Future**: Once available, potential issues might include:
 - Database file permissions
@@ -209,7 +209,7 @@ ollama pull llama2:7b
 This setup can be memory-intensive:
 - **Ollama models**: 4-8GB RAM (depending on model size)
 - **Embeddings**: Temporary memory for batch processing
-- **Kuzu database**: Memory-mapped files
+- **Ladybug database**: Memory-mapped files
 
 **Recommendations**:
 - Start with `llama2:7b` model (smaller)
@@ -220,7 +220,7 @@ This setup can be memory-intensive:
 
 | Component | Local (This Setup) | Cloud Alternative | Notes |
 |-----------|-------------------|-------------------|--------|
-| Graph DB | Kuzu (embedded) | Neo4j (server) | Local: faster queries, no network |
+| Graph DB | Ladybug (embedded) | Neo4j (server) | Local: faster queries, no network |
 | LLM | Ollama (local) | OpenAI API | Local: no rate limits, slower inference |
 | Embeddings | OpenAI API | OpenAI API | Could be local in future |
 | **Overall** | **Privacy + Control** | **Speed + Convenience** | Trade-offs depend on use case |
@@ -247,7 +247,7 @@ llmConfig := llm.Config{
 ```
 
 ### Production Considerations
-- Database backup strategies for Kuzu files
+- Database backup strategies for Ladybug files
 - Model version management for Ollama
 - Resource monitoring and scaling
 - Error recovery and fallback mechanisms
@@ -259,6 +259,6 @@ llmConfig := llm.Config{
 
 ## Resources
 
-- **Kuzu Documentation**: https://docs.kuzudb.com/
+- **Ladybug Documentation**: https://docs.LadybugDB.com/
 - **Ollama Models**: https://ollama.ai/library
 - **Local Embeddings**: Consider sentence-transformers, BGE, or similar

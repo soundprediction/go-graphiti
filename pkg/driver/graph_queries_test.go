@@ -14,7 +14,7 @@ func TestGraphProvider(t *testing.T) {
 	providers := []GraphProvider{
 		GraphProviderNeo4j,
 		GraphProviderFalkorDB,
-		GraphProviderKuzu,
+		GraphProviderLadybug,
 	}
 
 	for _, provider := range providers {
@@ -34,7 +34,7 @@ func TestGetRangeIndices(t *testing.T) {
 	}{
 		{GraphProviderNeo4j, 20},   // Neo4j has 20 range indices
 		{GraphProviderFalkorDB, 6}, // FalkorDB has 6 range indices
-		{GraphProviderKuzu, 0},     // Kuzu has 0 range indices
+		{GraphProviderLadybug, 0},     // ladybug has 0 range indices
 	}
 
 	for _, tt := range tests {
@@ -46,7 +46,7 @@ func TestGetRangeIndices(t *testing.T) {
 			}
 
 			// Check that all indices contain CREATE INDEX
-			if tt.provider != GraphProviderKuzu {
+			if tt.provider != GraphProviderLadybug {
 				for _, index := range indices {
 					if !strings.Contains(index, "CREATE INDEX") {
 						t.Errorf("Index should contain 'CREATE INDEX': %s", index)
@@ -64,7 +64,7 @@ func TestGetFulltextIndices(t *testing.T) {
 	}{
 		{GraphProviderNeo4j, 4},    // Neo4j has 4 fulltext indices
 		{GraphProviderFalkorDB, 4}, // FalkorDB has 4 fulltext indices
-		{GraphProviderKuzu, 4},     // Kuzu has 4 fulltext indices
+		{GraphProviderLadybug, 4},     // ladybug has 4 fulltext indices
 	}
 
 	for _, tt := range tests {
@@ -86,9 +86,9 @@ func TestGetFulltextIndices(t *testing.T) {
 					if !strings.Contains(index, "FULLTEXT INDEX") {
 						t.Errorf("FalkorDB index should contain 'FULLTEXT INDEX': %s", index)
 					}
-				case GraphProviderKuzu:
+				case GraphProviderLadybug:
 					if !strings.Contains(index, "CREATE_FTS_INDEX") {
-						t.Errorf("Kuzu index should contain 'CREATE_FTS_INDEX': %s", index)
+						t.Errorf("ladybug index should contain 'CREATE_FTS_INDEX': %s", index)
 					}
 				}
 			}
@@ -106,7 +106,7 @@ func TestGetNodesQuery(t *testing.T) {
 	}{
 		{GraphProviderNeo4j, "node_name_and_summary", "test", 10, "db.index.fulltext.queryNodes"},
 		{GraphProviderFalkorDB, "node_name_and_summary", "test", 10, "db.idx.fulltext.queryNodes"},
-		{GraphProviderKuzu, "node_name_and_summary", "test", 10, "QUERY_FTS_INDEX"},
+		{GraphProviderLadybug, "node_name_and_summary", "test", 10, "QUERY_FTS_INDEX"},
 	}
 
 	for _, tt := range tests {
@@ -128,7 +128,7 @@ func TestGetVectorCosineFuncQuery(t *testing.T) {
 	}{
 		{GraphProviderNeo4j, "n.embedding", "m.embedding", "vector.similarity.cosine"},
 		{GraphProviderFalkorDB, "n.embedding", "m.embedding", "vec.cosineDistance"},
-		{GraphProviderKuzu, "n.embedding", "m.embedding", "array_cosine_similarity"},
+		{GraphProviderLadybug, "n.embedding", "m.embedding", "array_cosine_similarity"},
 	}
 
 	for _, tt := range tests {
@@ -150,31 +150,31 @@ func TestQueryBuilder(t *testing.T) {
 	}
 
 	// Test provider setter
-	builder.SetProvider(GraphProviderKuzu)
-	if builder.GetProvider() != GraphProviderKuzu {
-		t.Errorf("Expected provider to be Kuzu, got %s", builder.GetProvider())
+	builder.SetProvider(GraphProviderLadybug)
+	if builder.GetProvider() != GraphProviderLadybug {
+		t.Errorf("Expected provider to be ladybug, got %s", builder.GetProvider())
 	}
 
 	// Test query building methods
 	nodeQuery := builder.BuildFulltextNodeQuery("node_name_and_summary", "test", 10)
 	if !strings.Contains(nodeQuery, "QUERY_FTS_INDEX") {
-		t.Errorf("Kuzu node query should contain 'QUERY_FTS_INDEX': %s", nodeQuery)
+		t.Errorf("ladybug node query should contain 'QUERY_FTS_INDEX': %s", nodeQuery)
 	}
 
 	relQuery := builder.BuildFulltextRelationshipQuery("edge_name_and_fact", 10)
 	if !strings.Contains(relQuery, "QUERY_FTS_INDEX") {
-		t.Errorf("Kuzu relationship query should contain 'QUERY_FTS_INDEX': %s", relQuery)
+		t.Errorf("ladybug relationship query should contain 'QUERY_FTS_INDEX': %s", relQuery)
 	}
 
 	cosineQuery := builder.BuildCosineSimilarityQuery("n.embedding", "m.embedding")
 	if !strings.Contains(cosineQuery, "array_cosine_similarity") {
-		t.Errorf("Kuzu cosine query should contain 'array_cosine_similarity': %s", cosineQuery)
+		t.Errorf("ladybug cosine query should contain 'array_cosine_similarity': %s", cosineQuery)
 	}
 
 	// Test index queries
 	rangeIndices := builder.GetRangeIndexQueries()
-	if len(rangeIndices) != 0 { // Kuzu should have 0 range indices
-		t.Errorf("Kuzu should have 0 range indices, got %d", len(rangeIndices))
+	if len(rangeIndices) != 0 { // ladybug should have 0 range indices
+		t.Errorf("ladybug should have 0 range indices, got %d", len(rangeIndices))
 	}
 
 	fulltextIndices := builder.GetFulltextIndexQueries()
@@ -280,43 +280,43 @@ func TestEntityEdgeIntegration(t *testing.T) {
 	edge.CreatedAt = time.Now()
 	edge.ValidFrom = time.Now()
 
-	// Setup Kuzu driver
-	t.Run("Kuzu", func(t *testing.T) {
-		// Create temp directory for Kuzu database
+	// Setup ladybug driver
+	t.Run("ladybug", func(t *testing.T) {
+		// Create temp directory for ladybug database
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "test_db")
 
-		kuzuDriver, err := NewKuzuDriver(dbPath, 4)
+		ladybugDriver, err := NewLadybugDriver(dbPath, 4)
 		if err != nil {
-			t.Fatalf("Failed to create Kuzu driver: %v", err)
+			t.Fatalf("Failed to create ladybug driver: %v", err)
 		}
-		defer kuzuDriver.Close()
+		defer ladybugDriver.Close()
 
 		// Create indices
-		err = kuzuDriver.CreateIndices(ctx)
+		err = ladybugDriver.CreateIndices(ctx)
 		if err != nil {
 			t.Fatalf("Failed to create indices: %v", err)
 		}
 
 		// Upsert nodes
-		err = kuzuDriver.UpsertNode(ctx, node1)
+		err = ladybugDriver.UpsertNode(ctx, node1)
 		if err != nil {
 			t.Fatalf("Failed to upsert node1: %v", err)
 		}
 
-		err = kuzuDriver.UpsertNode(ctx, node2)
+		err = ladybugDriver.UpsertNode(ctx, node2)
 		if err != nil {
 			t.Fatalf("Failed to upsert node2: %v", err)
 		}
 
 		// Upsert edge
-		err = kuzuDriver.UpsertEdge(ctx, edge)
+		err = ladybugDriver.UpsertEdge(ctx, edge)
 		if err != nil {
 			t.Fatalf("Failed to upsert edge: %v", err)
 		}
 
 		// Retrieve and validate node1
-		retrievedNode1, err := kuzuDriver.GetNode(ctx, "entity-1", groupID)
+		retrievedNode1, err := ladybugDriver.GetNode(ctx, "entity-1", groupID)
 		if err != nil {
 			t.Fatalf("Failed to retrieve node1: %v", err)
 		}
@@ -331,7 +331,7 @@ func TestEntityEdgeIntegration(t *testing.T) {
 		}
 
 		// Retrieve and validate node2
-		retrievedNode2, err := kuzuDriver.GetNode(ctx, "entity-2", groupID)
+		retrievedNode2, err := ladybugDriver.GetNode(ctx, "entity-2", groupID)
 		if err != nil {
 			t.Fatalf("Failed to retrieve node2: %v", err)
 		}
@@ -343,7 +343,7 @@ func TestEntityEdgeIntegration(t *testing.T) {
 		}
 
 		// Retrieve and validate edge
-		retrievedEdge, err := kuzuDriver.GetEdge(ctx, "edge-1", groupID)
+		retrievedEdge, err := ladybugDriver.GetEdge(ctx, "edge-1", groupID)
 		if err != nil {
 			t.Fatalf("Failed to retrieve edge: %v", err)
 		}
@@ -360,7 +360,7 @@ func TestEntityEdgeIntegration(t *testing.T) {
 			t.Errorf("Edge Fact mismatch: got %s, want %s", retrievedEdge.Fact, edge.Fact)
 		}
 
-		t.Logf("✓ Kuzu: Successfully created, upserted, and retrieved 2 nodes and 1 edge")
+		t.Logf("✓ ladybug: Successfully created, upserted, and retrieved 2 nodes and 1 edge")
 	})
 
 	// Setup Memgraph driver

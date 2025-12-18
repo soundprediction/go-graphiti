@@ -110,7 +110,7 @@ func (c *Client) GetStats(ctx context.Context) (*driver.GraphStats, error) {
 //
 // Note: This method delegates to driver-specific implementations to handle
 // database-specific temporal type comparisons (e.g., Memgraph's zoned_date_time
-// vs Kuzu's TIMESTAMP).
+// vs Ladybug's TIMESTAMP).
 func (c *Client) RetrieveEpisodes(
 	ctx context.Context,
 	referenceTime time.Time,

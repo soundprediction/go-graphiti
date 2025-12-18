@@ -2,7 +2,7 @@
 # Copy this file to .graphiti.yaml and customize for your setup
 #
 # This configuration shows options for external services.
-# For minimal setup, use embedded Kuzu database and local LLMs (no config required).
+# For minimal setup, use embedded ladybug database and local LLMs (no config required).
 
 # Logging configuration
 log:
@@ -17,8 +17,8 @@ server:
 
 # Database configuration
 database:
-  driver: kuzu     # kuzu (embedded, recommended), neo4j, falkordb
-  path: "./kuzu_db"  # For Kuzu embedded database
+  driver: ladybug     # ladybug (embedded, recommended), neo4j, falkordb
+  path: "./ladybug_db"  # For ladybug embedded database
 
   # Uncomment for external Neo4j database
   # driver: neo4j

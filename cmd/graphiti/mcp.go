@@ -101,11 +101,11 @@ func init() {
 	mcpCmd.Flags().IntVar(&mcpSemaphoreLimit, "semaphore-limit", DefaultMCPSemaphoreLimit, "Concurrency limit for operations")
 
 	// Database flags
-	mcpCmd.Flags().String("db-driver", "kuzu", "Database driver (kuzu, neo4j, falkordb)")
-	mcpCmd.Flags().String("db-uri", "./kuzu_db", "Database URI/path")
-	mcpCmd.Flags().String("db-username", "", "Database username (not used for Kuzu)")
-	mcpCmd.Flags().String("db-password", "", "Database password (not used for Kuzu)")
-	mcpCmd.Flags().String("db-database", "", "Database name (not used for Kuzu)")
+	mcpCmd.Flags().String("db-driver", "ladybug", "Database driver (ladybug, neo4j, falkordb)")
+	mcpCmd.Flags().String("db-uri", "./ladybug_db", "Database URI/path")
+	mcpCmd.Flags().String("db-username", "", "Database username (not used for ladybug)")
+	mcpCmd.Flags().String("db-password", "", "Database password (not used for ladybug)")
+	mcpCmd.Flags().String("db-database", "", "Database name (not used for ladybug)")
 
 	// LLM flags
 	mcpCmd.Flags().String("llm-api-key", "", "OpenAI API key")
@@ -279,8 +279,8 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 		SemaphoreLimit:    getViperIntWithFallback("mcp.semaphore_limit", mcpSemaphoreLimit),
 
 		// Database configuration - viper handles env vars automatically
-		DatabaseDriver:   getViperStringWithFallback("database.driver", "kuzu"),
-		DatabaseURI:      getViperStringWithFallback("database.uri", "./kuzu_db"),
+		DatabaseDriver:   getViperStringWithFallback("database.driver", "ladybug"),
+		DatabaseURI:      getViperStringWithFallback("database.uri", "./ladybug_db"),
 		DatabaseUser:     getViperStringWithFallback("database.username", ""),
 		DatabasePassword: getViperStringWithFallback("database.password", ""),
 		DatabaseName:     getViperStringWithFallback("database.database", ""),
@@ -365,10 +365,10 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 	var err error
 
 	switch config.DatabaseDriver {
-	case "kuzu":
-		graphDriver, err = driver.NewKuzuDriver(config.DatabaseURI, 16)
+	case "ladybug":
+		graphDriver, err = driver.NewLadybugDriver(config.DatabaseURI, 16)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
+			return nil, fmt.Errorf("failed to create ladybug driver: %w", err)
 		}
 
 	default:

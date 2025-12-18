@@ -13,7 +13,7 @@ import (
 )
 
 // Example demonstrating the combination of:
-// - Kuzu embedded graph database (local, no server required)
+// - Ladybug embedded graph database (local, no server required)
 // - Ollama local LLM inference via OpenAI-compatible API (local, no cloud API required)
 // - OpenAI embeddings (or could be replaced with local embeddings)
 //
@@ -24,30 +24,30 @@ import (
 func main() {
 	ctx := context.Background()
 
-	log.Println("🚀 Starting go-graphiti example with Kuzu + Ollama (OpenAI-compatible)")
+	log.Println("🚀 Starting go-graphiti example with Ladybug + Ollama (OpenAI-compatible)")
 	log.Println("   This example demonstrates a fully local setup:")
-	log.Println("   - Kuzu: embedded graph database")
+	log.Println("   - Ladybug: embedded graph database")
 	log.Println("   - Ollama: local LLM inference via OpenAI-compatible API")
 	log.Println("   - OpenAI: embeddings (could be replaced with local)")
 
 	// ========================================
-	// 1. Create Kuzu Driver (Embedded Graph Database)
+	// 1. Create Ladybug Driver (Embedded Graph Database)
 	// ========================================
-	log.Println("\n📊 Setting up Kuzu embedded graph database...")
+	log.Println("\n📊 Setting up Ladybug embedded graph database...")
 
-	kuzuDriver, err := driver.NewKuzuDriver("./example_graph.db", 1)
+	ladybugDriver, err := driver.NewLadybugDriver("./example_graph.db", 1)
 	if err != nil {
-		log.Fatalf("Failed to create Kuzu driver: %v", err)
+		log.Fatalf("Failed to create Ladybug driver: %v", err)
 	}
 	defer func() {
-		if err := kuzuDriver.Close(); err != nil {
-			log.Printf("Error closing Kuzu driver: %v", err)
+		if err := ladybugDriver.Close(); err != nil {
+			log.Printf("Error closing Ladybug driver: %v", err)
 		}
 	}()
 
 	// Note: In the current stub implementation, this will work but
 	// actual graph operations will return "not implemented" errors
-	log.Println("   ✅ Kuzu driver created (embedded database at ./example_graph.db)")
+	log.Println("   ✅ Ladybug driver created (embedded database at ./example_graph.db)")
 
 	// ========================================
 	// 2. Create Ollama LLM Client (Local Inference)
@@ -100,18 +100,18 @@ func main() {
 	log.Println("\n🌐 Setting up Graphiti client with local components...")
 
 	graphitiConfig := &graphiti.Config{
-		GroupID:  "kuzu-ollama-example",
+		GroupID:  "ladybug-ollama-example",
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(kuzuDriver, ollama, embedderClient, graphitiConfig, nil)
+	client := graphiti.NewClient(ladybugDriver, ollama, embedderClient, graphitiConfig, nil)
 	defer func() {
 		if err := client.Close(ctx); err != nil {
 			log.Printf("Error closing Graphiti client: %v", err)
 		}
 	}()
 
-	log.Println("   ✅ Graphiti client created with local Kuzu + Ollama setup")
+	log.Println("   ✅ Graphiti client created with local Ladybug + Ollama setup")
 
 	// ========================================
 	// 5. Add Some Example Episodes
@@ -122,35 +122,35 @@ func main() {
 		{
 			ID:        "local-setup-1",
 			Name:      "Local Development Setup",
-			Content:   "Set up a fully local development environment using Kuzu embedded database and Ollama for LLM inference. This eliminates cloud dependencies and provides maximum privacy for sensitive development work.",
+			Content:   "Set up a fully local development environment using Ladybug embedded database and Ollama for LLM inference. This eliminates cloud dependencies and provides maximum privacy for sensitive development work.",
 			Reference: time.Now().Add(-2 * time.Hour),
 			CreatedAt: time.Now().Add(-2 * time.Hour),
-			GroupID:   "kuzu-ollama-example",
+			GroupID:   "ladybug-ollama-example",
 		},
 		{
 			ID:        "performance-test-1",
 			Name:      "Local Performance Testing",
-			Content:   "Conducted performance tests comparing local Kuzu+Ollama setup against cloud-based Neo4j+OpenAI. Local setup showed 3x faster response times for graph queries but slower LLM inference due to hardware constraints.",
+			Content:   "Conducted performance tests comparing local Ladybug+Ollama setup against cloud-based Neo4j+OpenAI. Local setup showed 3x faster response times for graph queries but slower LLM inference due to hardware constraints.",
 			Reference: time.Now().Add(-1 * time.Hour),
 			CreatedAt: time.Now().Add(-1 * time.Hour),
-			GroupID:   "kuzu-ollama-example",
+			GroupID:   "ladybug-ollama-example",
 		},
 		{
 			ID:        "privacy-benefits-1",
 			Name:      "Privacy and Security Benefits",
-			Content:   "Local setup ensures all data remains on-premises. Graph data stored in local Kuzu database, LLM processing handled by local Ollama instance. Only embeddings require external API calls unless using local embedding service.",
+			Content:   "Local setup ensures all data remains on-premises. Graph data stored in local Ladybug database, LLM processing handled by local Ollama instance. Only embeddings require external API calls unless using local embedding service.",
 			Reference: time.Now().Add(-30 * time.Minute),
 			CreatedAt: time.Now().Add(-30 * time.Minute),
-			GroupID:   "kuzu-ollama-example",
+			GroupID:   "ladybug-ollama-example",
 		},
 	}
 
 	// Note: In current implementation, this will demonstrate the API
-	// but actual storage won't work until Kuzu library is available
+	// but actual storage won't work until Ladybug library is available
 	_, err = client.Add(ctx, episodes, nil)
 	if err != nil {
 		log.Printf("⚠️  Expected error with stub implementation: %v", err)
-		log.Println("   This will work once the Kuzu Go library is available")
+		log.Println("   This will work once the Ladybug Go library is available")
 	} else {
 		log.Println("   ✅ Episodes added to knowledge graph")
 	}
@@ -171,7 +171,7 @@ func main() {
 		log.Printf("   Searching for: '%s'", query)
 
 		// Note: In current implementation, this will show the API structure
-		// but actual search won't work until Kuzu is fully implemented
+		// but actual search won't work until Ladybug is fully implemented
 		results, err := client.Search(ctx, query, &types.SearchConfig{
 			Limit: 5,
 		})
@@ -199,7 +199,7 @@ func main() {
 	// Test the LLM directly to show it works
 	testMessages := []types.Message{
 		llm.NewSystemMessage("You are a helpful assistant discussing graph databases and local AI setups."),
-		llm.NewUserMessage("What are the advantages of using an embedded graph database like Kuzu compared to a server-based solution like Neo4j?"),
+		llm.NewUserMessage("What are the advantages of using an embedded graph database like Ladybug compared to a server-based solution like Neo4j?"),
 	}
 
 	log.Println("   Sending query to Ollama...")
@@ -222,16 +222,16 @@ func main() {
 	// 8. Summary and Next Steps
 	// ========================================
 	log.Println("\n📋 Example Summary:")
-	log.Println("   ✅ Kuzu driver: Created (stub implementation)")
+	log.Println("   ✅ Ladybug driver: Created (stub implementation)")
 	log.Println("   ✅ Ollama client: Created using OpenAI-compatible API and tested")
 	log.Println("   ✅ Graphiti integration: Demonstrated with modern API approach")
-	log.Println("\n🔮 Future State (when Kuzu library is available):")
+	log.Println("\n🔮 Future State (when Ladybug library is available):")
 	log.Println("   🚀 Full local operation with no cloud dependencies")
 	log.Println("   📊 Embedded graph database for fast local queries")
 	log.Println("   🧠 Local LLM inference via standardized OpenAI-compatible API")
 	log.Println("   🔒 All data remains on your local machine")
 	log.Println("\n💡 To achieve fully local setup:")
-	log.Println("   1. Wait for stable Kuzu Go library release")
+	log.Println("   1. Wait for stable Ladybug Go library release")
 	log.Println("   2. Replace OpenAI embeddings with local alternative")
 	log.Println("   3. Enjoy complete data privacy and control!")
 	log.Println("\n🔧 OpenAI-Compatible API Benefits:")

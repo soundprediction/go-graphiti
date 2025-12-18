@@ -44,8 +44,8 @@ github.com/klauspost/compress v1.18.1 h1:bcSGx7UbpBqMChDtsF28Lw6v/G94LPrrbMbdC3J
 github.com/klauspost/compress v1.18.1/go.mod h1:ZQFFVG+MdnR0P+l6wpXgIL4NTtwiKIdBnrBd8Nrxr+0=
 github.com/klauspost/cpuid/v2 v2.3.0 h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=
 github.com/klauspost/cpuid/v2 v2.3.0/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
-github.com/kuzudb/go-kuzu v0.11.3 h1:jZ58/QXicGumSqQRLxsG8Mm/CGVodkMzLzhuDEn4MsI=
-github.com/kuzudb/go-kuzu v0.11.3/go.mod h1:s2NvXX3fB2QZfWGf6SjJSYawgTPE17a7WHZmzfLIZtU=
+github.com/ladybugdb/go-ladybug v0.11.3 h1:jZ58/QXicGumSqQRLxsG8Mm/CGVodkMzLzhuDEn4MsI=
+github.com/ladybugdb/go-ladybug v0.11.3/go.mod h1:s2NvXX3fB2QZfWGf6SjJSYawgTPE17a7WHZmzfLIZtU=
 github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 h1:AMFGa4R4MiIpspGNG7Z948v4n35fFGB3RR3G/ry4FWs=
 github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8/go.mod h1:mC1jAcsrzbxHt8iiaC+zU4b1ylILSosueou12R++wfY=
 github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 h1:+n/aFZefKZp7spd8DFdX7uMikMLXX4oubIzJF4kv/wI=

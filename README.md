@@ -8,7 +8,7 @@ A production-ready Temporal Knowledge Graph library for Go, designed for buildin
 * **Cost & Budgeting**: Built-in real-time cost tracking with serverless pricing models (Together AI, OpenAI) and granular token usage analytics.
 * **Resiliency**: Advanced routing capabilities with provider fallback, circuit breaking, and usage-based routing rules (e.g., routing HIPAA compliant requests to specific providers).
 * **High Performance**: 
-    * **Embedded Database**: Native KuzuDB support for zero-setup, high-performance graph storage.
+    * **Embedded Database**: Native ladybugDB support for zero-setup, high-performance graph storage.
     * **Caching**: BadgerDB-based caching layer for embeddings and LLM responses to reduce latency and costs.
     * **Protocol Buffers**: TSV-based prompting reduces token usage by 30-50% compared to JSON.
 * **Observability**: Comprehensive error tracking and telemetry with DuckDB persistence.
@@ -19,7 +19,7 @@ A production-ready Temporal Knowledge Graph library for Go, designed for buildin
 
 - **Temporal Knowledge Graphs**: Bi-temporal data model with explicit tracking of event occurrence times
 - **Hybrid Search**: Combines semantic embeddings, keyword search (BM25), and graph traversal
-- **Multiple Graph Backends**: Primary support for embedded Kuzu database, also supports Memgraph and Neo4j
+- **Multiple Graph Backends**: Primary support for embedded ladybug database, also supports Memgraph and Neo4j
 - **Flexible LLM Integration**: Works with any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
 - **No Vendor Lock-in**: No required dependencies on specific services - use local or cloud providers
 - **CLI Tool**: Command-line interface for running servers and managing the knowledge graph
@@ -39,14 +39,14 @@ go get github.com/soundprediction/go-graphiti
 ### Prerequisites
 
 - Go 1.24+
-- **Optional**: Graph database (Kuzu embedded by default, or external Memgraph/Neo4j)
+- **Optional**: Graph database (ladybug embedded by default, or external Memgraph/Neo4j)
 - **Optional**: LLM API access (OpenAI, Ollama, vLLM, or any OpenAI-compatible service)
 
 ### Environment Variables
 
 **Basic Setup (Local/Embedded):**
 ```bash
-# No environment variables required for basic usage with Kuzu embedded database
+# No environment variables required for basic usage with ladybug embedded database
 # and without LLM features
 ```
 
@@ -68,13 +68,13 @@ export NEO4J_URI="bolt://localhost:7687"
 export NEO4J_USER="neo4j"
 export NEO4J_PASSWORD="your-neo4j-password"
 
-# Or for embedded Kuzu (default)
-export KUZU_DB_PATH="./kuzu_db"  # Optional: defaults to "./kuzu_db"
+# Or for embedded ladybug (default)
+export ladybug_DB_PATH="./ladybug_db"  # Optional: defaults to "./ladybug_db"
 ```
 
 ### Basic Usage
 
-**Basic Example (Kuzu + No LLM):**
+**Basic Example (ladybug + No LLM):**
 
 ```go
 package main
@@ -91,19 +91,19 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver (embedded database)
-    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    // Create ladybug driver (embedded database)
+    ladybugDriver, err := driver.NewLadybugDriver("./ladybug_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create Graphiti client (LLM and embedder are optional)
     config := &graphiti.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
     // Add episodes
@@ -146,12 +146,12 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver (embedded database)
-    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    // Create ladybug driver (embedded database)
+    ladybugDriver, err := driver.NewLadybugDriver("./ladybug_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create LLM client (works with any OpenAI-compatible API)
     llmConfig := llm.Config{
@@ -176,7 +176,7 @@ func main() {
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, llmClient, embedderClient, config)
+    client := graphiti.NewClient(ladybugDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
     // Add episodes
@@ -281,12 +281,12 @@ See [cmd/README.md](cmd/README.md) for detailed CLI documentation.
 The library is structured into several key packages:
 
 - **`graphiti.go`**: Main client interface and configuration
-- **`pkg/driver/`**: Graph database drivers (Kuzu, Memgraph, Neo4j)
+- **`pkg/driver/`**: Graph database drivers (ladybug, Memgraph, Neo4j)
 - **`pkg/llm/`**: Language model clients (OpenAI-compatible APIs)
 - **`pkg/embedder/`**: Embedding model clients (OpenAI, Gemini, Voyage)
 - **`pkg/search/`**: Hybrid search functionality
 - **`pkg/types/`**: Core types for nodes, edges, and data structures
-- **`pkg/models/`**: Database models and query operations for nodes and edges
+- **`pkg/models/`**: Database query builders for nodes and edges
 - **`pkg/prompts/`**: LLM prompts for extraction and processing
 - **`pkg/crossencoder/`**: Cross-encoder reranking for improved relevance
 - **`pkg/community/`**: Community detection and management
@@ -297,6 +297,7 @@ The library is structured into several key packages:
 - **EntityNode**: Represents entities extracted from content
 - **EpisodicNode**: Represents episodic memories or events  
 - **CommunityNode**: Represents communities of related entities
+- **SourceNode**: Represents source nodes where content originates
 
 ## Edge Types
 
@@ -312,9 +313,9 @@ The library is structured into several key packages:
 - [x] Node and edge deduplication  
 - [x] Embedding generation and storage
 - [x] Hybrid search implementation
-- [ ] Community detection
-- [ ] Temporal operations
-- [ ] Bulk operations
+- [x] Community detection
+- [x] Temporal operations
+- [x] Bulk operations
 - [x] Error Tracking & Telemetry
 - [x] Cost Calculation Service
 - [x] Advanced Router & Provider Fallback
@@ -326,7 +327,7 @@ The library is structured into several key packages:
 📚 **Documentation**:
 - **[Getting Started](docs/GETTING_STARTED.md)**: Setup guide and first steps
 - **[Examples](docs/EXAMPLES.md)**: Practical usage examples
-- **[Kuzu Setup Guide](docs/KUZU_SETUP.md)**: Using the embedded Kuzu graph database
+- **[ladybug Setup Guide](docs/ladybug_SETUP.md)**: Using the embedded ladybug graph database
 - **[FAQ](docs/FAQ.md)**: Common questions and troubleshooting
 - **[Python to Go Mapping](docs/PYTHON_TO_GO_MAPPING.md)**: Port status tracking
 
@@ -334,8 +335,8 @@ The library is structured into several key packages:
 
 See the `examples/` directory for complete usage examples:
 
-- `examples/basic/`: Minimal setup with Kuzu embedded database
-- `examples/kuzu_ollama/`: Local setup with Kuzu + Ollama (maximum privacy)
+- `examples/basic/`: Minimal setup with ladybug embedded database
+- `examples/ladybug_ollama/`: Local setup with ladybug + Ollama (maximum privacy)
 - `examples/openai_compatible/`: Using various OpenAI-compatible services
 - `examples/chat/`: Chat interface example
 - `examples/prompts/`: Prompt engineering examples
@@ -363,7 +364,7 @@ cd examples/basic
 go run main.go
 
 # Or with local LLM
-cd examples/kuzu_ollama
+cd examples/ladybug_ollama
 go run main.go
 
 # Chat interface example

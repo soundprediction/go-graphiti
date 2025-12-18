@@ -17,7 +17,7 @@ const EPISODIC_EDGE_SAVE = `
 
 // GetEpisodicEdgeSaveBulkQuery returns the bulk save query for episodic edges based on provider
 func GetEpisodicEdgeSaveBulkQuery(provider driver.GraphProvider) string {
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		return `
             MATCH (episode:Episodic {uuid: $source_node_uuid})
             MATCH (node:Entity {uuid: $target_node_uuid})
@@ -71,7 +71,7 @@ func GetEntityEdgeSaveQuery(provider driver.GraphProvider, hasAOSS bool) string 
                 SET e.episodes = join($edge_data.episodes, ",")
                 RETURN $edge_data.uuid AS uuid
             `
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MATCH (source:Entity {uuid: $source_uuid})
                 MATCH (target:Entity {uuid: $target_uuid})
@@ -131,7 +131,7 @@ func GetEntityEdgeSaveBulkQuery(provider driver.GraphProvider, hasAOSS bool) str
                 SET r.episodes = join(edge.episodes, ",")
                 RETURN edge.uuid AS uuid
             `
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MATCH (source:Entity {uuid: $source_node_uuid})
                 MATCH (target:Entity {uuid: $target_node_uuid})
@@ -188,7 +188,7 @@ func GetEntityEdgeReturnQuery(provider driver.GraphProvider) string {
 	}
 
 	attributesClause := "properties(e) AS attributes"
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		attributesClause = "e.attributes AS attributes"
 	}
 
@@ -229,7 +229,7 @@ func GetCommunityEdgeSaveQuery(provider driver.GraphProvider) string {
                 SET r.created_at= $created_at
                 RETURN r.uuid AS uuid
             `
-	case driver.GraphProviderKuzu:
+	case driver.GraphProviderLadybug:
 		return `
                 MATCH (community:Community {uuid: $community_uuid})
                 MATCH (node:Entity {uuid: $entity_uuid})

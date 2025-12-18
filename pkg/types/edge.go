@@ -13,7 +13,7 @@ type GraphProvider string
 const (
 	GraphProviderNeo4j    GraphProvider = "neo4j"
 	GraphProviderFalkorDB GraphProvider = "falkordb"
-	GraphProviderKuzu     GraphProvider = "kuzu"
+	GraphProviderLadybug     GraphProvider = "ladybug"
 	GraphProviderNeptune  GraphProvider = "neptune"
 )
 
@@ -55,8 +55,8 @@ func (e *BaseEdge) GetCreatedAt() time.Time   { return e.CreatedAt }
 
 // Delete replicates the Python Edge.delete() method
 func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
-	if driver.Provider() == GraphProviderKuzu {
-		// Kuzu provider logic (lines 56-70 in Python)
+	if driver.Provider() == GraphProviderLadybug {
+		// ladybug provider logic (lines 56-70 in Python)
 		_, _, _, err := driver.ExecuteQuery(`
 			MATCH (n)-[e:MENTIONS|HAS_MEMBER {uuid: $uuid}]->(m)
 			DELETE e
@@ -75,7 +75,7 @@ func (e *BaseEdge) Delete(ctx context.Context, driver EdgeOperations) error {
 		})
 		return err
 	} else {
-		// Non-Kuzu provider logic (lines 71-78 in Python)
+		// Non-ladybug provider logic (lines 71-78 in Python)
 		_, _, _, err := driver.ExecuteQuery(`
 			MATCH (n)-[e:MENTIONS|RELATES_TO|HAS_MEMBER {uuid: $uuid}]->(m)
 			DELETE e
@@ -96,8 +96,8 @@ func DeleteEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []stri
 		return nil
 	}
 
-	if driver.Provider() == GraphProviderKuzu {
-		// Kuzu provider logic (lines 91-107 in Python)
+	if driver.Provider() == GraphProviderLadybug {
+		// ladybug provider logic (lines 91-107 in Python)
 		_, _, _, err := driver.ExecuteQuery(`
 			MATCH (n)-[e:MENTIONS|HAS_MEMBER]->(m)
 			WHERE e.uuid IN $uuids
@@ -118,7 +118,7 @@ func DeleteEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []stri
 		})
 		return err
 	} else {
-		// Non-Kuzu provider logic (lines 108-116 in Python)
+		// Non-ladybug provider logic (lines 108-116 in Python)
 		_, _, _, err := driver.ExecuteQuery(`
 			MATCH (n)-[e:MENTIONS|RELATES_TO|HAS_MEMBER]->(m)
 			WHERE e.uuid IN $uuids
@@ -336,15 +336,15 @@ func (e *EntityEdge) Save(ctx context.Context, driver EdgeOperations) error {
 		"invalid_at":     e.InvalidAt,
 	}
 
-	if driver.Provider() == GraphProviderKuzu {
-		// Kuzu-specific logic (lines 320-325 in Python)
+	if driver.Provider() == GraphProviderLadybug {
+		// ladybug-specific logic (lines 320-325 in Python)
 		attributesJSON, _ := json.Marshal(e.Attributes)
 		edgeData["attributes"] = string(attributesJSON)
 
-		_, _, _, err := driver.ExecuteQuery("ENTITY_EDGE_SAVE_QUERY_KUZU", edgeData)
+		_, _, _, err := driver.ExecuteQuery("ENTITY_EDGE_SAVE_QUERY_ladybug", edgeData)
 		return err
 	} else {
-		// Non-Kuzu logic (lines 326-335 in Python)
+		// Non-ladybug logic (lines 326-335 in Python)
 		for k, v := range e.Attributes {
 			edgeData[k] = v
 		}
@@ -362,7 +362,7 @@ func (e *EntityEdge) Save(ctx context.Context, driver EdgeOperations) error {
 // GetByUUID implements the Python EntityEdge.get_by_uuid() class method
 func GetEntityEdgeByUUID(ctx context.Context, driver EdgeOperations, uuid string) (*EntityEdge, error) {
 	var query string
-	if driver.Provider() == GraphProviderKuzu {
+	if driver.Provider() == GraphProviderLadybug {
 		query = `
 			MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_ {uuid: $uuid})-[:RELATES_TO]->(m:Entity)
 			RETURN e.uuid AS uuid, e.name AS name, e.fact AS fact, e.group_id AS group_id,
@@ -402,7 +402,7 @@ func GetEntityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []s
 	}
 
 	var query string
-	if driver.Provider() == GraphProviderKuzu {
+	if driver.Provider() == GraphProviderLadybug {
 		query = `
 			MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
 			WHERE e.uuid IN $uuids
@@ -443,7 +443,7 @@ func GetEntityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids []s
 // GetBetweenNodes implements the Python EntityEdge.get_between_nodes() class method
 func GetEntityEdgesBetweenNodes(ctx context.Context, driver EdgeOperations, sourceNodeUUID, targetNodeUUID string) ([]*EntityEdge, error) {
 	var query string
-	if driver.Provider() == GraphProviderKuzu {
+	if driver.Provider() == GraphProviderLadybug {
 		query = `
 			MATCH (n:Entity {uuid: $source_node_uuid})
 			      -[:RELATES_TO]->(e:RelatesToNode_)
@@ -572,8 +572,8 @@ func GetCommunityEdgesByUUIDs(ctx context.Context, driver EdgeOperations, uuids 
 func buildEntityEdgeFromRecord(record map[string]interface{}, provider GraphProvider) *EntityEdge {
 	var attributes map[string]interface{}
 
-	if provider == GraphProviderKuzu {
-		// Kuzu stores attributes as JSON string
+	if provider == GraphProviderLadybug {
+		// ladybug stores attributes as JSON string
 		if attrStr, ok := record["attributes"].(string); ok && attrStr != "" {
 			json.Unmarshal([]byte(attrStr), &attributes)
 		}

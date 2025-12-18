@@ -13,17 +13,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kuzudb/go-kuzu"
+	ladybug "github.com/LadybugDB/go-ladybug"
 
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
-// SCHEMA_QUERIES defines the Kuzu database schema exactly as in Python implementation
-// Kuzu requires an explicit schema.
-// As Kuzu currently does not support creating full text indexes on edge properties,
+// LadybugSchemaQueries defines the Ladybug database schema exactly as in Python implementation
+// Ladybug requires an explicit schema.
+// As Ladybug currently does not support creating full text indexes on edge properties,
 // we work around this by representing (n:Entity)-[:RELATES_TO]->(m:Entity) as
 // (n)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m).
-const KuzuSchemaQueries = `
+const LadybugSchemaQueries = `
     CREATE NODE TABLE IF NOT EXISTS Episodic (
         uuid STRING PRIMARY KEY,
         name STRING,
@@ -101,11 +101,11 @@ type writeResult struct {
 	err    error
 }
 
-// KuzuDriver implements the GraphDriver interface for Kuzu databases exactly like Python implementation
-type KuzuDriver struct {
+// LadybugDriver implements the GraphDriver interface for Ladybug databases exactly like Python implementation
+type LadybugDriver struct {
 	provider     GraphProvider
-	db           *kuzu.Database
-	client       *kuzu.Connection // Note: Python uses AsyncConnection, but Go kuzu doesn't have async
+	db           *ladybug.Database
+	client       *ladybug.Connection // Note: Python uses AsyncConnection, but Go ladybug doesn't have async
 	dbPath       string
 	tempDbPath   string     // If non-empty, this is a temp copy that should be cleaned up
 	originalPath string     // Original path before copying to temp
@@ -197,8 +197,8 @@ func isLockError(err error) bool {
 		strings.Contains(errStr, "busy")
 }
 
-// KuzuDriverConfig holds configuration options for KuzuDriver
-type KuzuDriverConfig struct {
+// LadybugDriverConfig holds configuration options for LadybugDriver
+type LadybugDriverConfig struct {
 	// Database path (defaults to ":memory:")
 	DBPath string
 
@@ -219,9 +219,9 @@ type KuzuDriverConfig struct {
 	MaxDbSize uint64
 }
 
-// DefaultKuzuDriverConfig returns a KuzuDriverConfig with sensible defaults
-func DefaultKuzuDriverConfig() *KuzuDriverConfig {
-	return &KuzuDriverConfig{
+// DefaultLadybugDriverConfig returns a LadybugDriverConfig with sensible defaults
+func DefaultLadybugDriverConfig() *LadybugDriverConfig {
+	return &LadybugDriverConfig{
 		DBPath:               ":memory:",
 		MaxConcurrentQueries: 1,
 		WriteQueueSize:       1000,
@@ -232,42 +232,42 @@ func DefaultKuzuDriverConfig() *KuzuDriverConfig {
 }
 
 // WithDBPath sets the database path
-func (c *KuzuDriverConfig) WithDBPath(path string) *KuzuDriverConfig {
+func (c *LadybugDriverConfig) WithDBPath(path string) *LadybugDriverConfig {
 	c.DBPath = path
 	return c
 }
 
 // WithMaxConcurrentQueries sets the maximum concurrent queries
-func (c *KuzuDriverConfig) WithMaxConcurrentQueries(max int) *KuzuDriverConfig {
+func (c *LadybugDriverConfig) WithMaxConcurrentQueries(max int) *LadybugDriverConfig {
 	c.MaxConcurrentQueries = max
 	return c
 }
 
 // WithWriteQueueSize sets the write queue buffer size
-func (c *KuzuDriverConfig) WithWriteQueueSize(size int) *KuzuDriverConfig {
+func (c *LadybugDriverConfig) WithWriteQueueSize(size int) *LadybugDriverConfig {
 	c.WriteQueueSize = size
 	return c
 }
 
 // WithBufferPoolSize sets the buffer pool size in bytes
-func (c *KuzuDriverConfig) WithBufferPoolSize(size uint64) *KuzuDriverConfig {
+func (c *LadybugDriverConfig) WithBufferPoolSize(size uint64) *LadybugDriverConfig {
 	c.BufferPoolSize = size
 	return c
 }
 
 // WithCompression enables or disables compression
-func (c *KuzuDriverConfig) WithCompression(enable bool) *KuzuDriverConfig {
+func (c *LadybugDriverConfig) WithCompression(enable bool) *LadybugDriverConfig {
 	c.EnableCompression = enable
 	return c
 }
 
 // WithMaxDbSize sets the maximum database size in bytes
-func (c *KuzuDriverConfig) WithMaxDbSize(size uint64) *KuzuDriverConfig {
+func (c *LadybugDriverConfig) WithMaxDbSize(size uint64) *LadybugDriverConfig {
 	c.MaxDbSize = size
 	return c
 }
 
-// NewKuzuDriver creates a new Kuzu driver instance with exact same signature as Python
+// NewLadybugDriver creates a new Ladybug driver instance with exact same signature as Python
 // Parameters:
 //   - db: Database path (defaults to ":memory:" like Python)
 //   - maxConcurrentQueries: Maximum concurrent queries (defaults to 1 like Python)
@@ -275,26 +275,26 @@ func (c *KuzuDriverConfig) WithMaxDbSize(size uint64) *KuzuDriverConfig {
 // If the database is locked by another process, this function will automatically copy
 // the database to a temporary location and open the copy instead, allowing read-only
 // access even while another process is writing to the original.
-func NewKuzuDriver(db string, maxConcurrentQueries int) (*KuzuDriver, error) {
-	config := DefaultKuzuDriverConfig()
+func NewLadybugDriver(db string, maxConcurrentQueries int) (*LadybugDriver, error) {
+	config := DefaultLadybugDriverConfig()
 	if db != "" {
 		config.DBPath = db
 	}
 	if maxConcurrentQueries > 0 {
 		config.MaxConcurrentQueries = maxConcurrentQueries
 	}
-	return NewKuzuDriverWithConfig(config)
+	return NewLadybugDriverWithConfig(config)
 }
 
-// NewKuzuDriverWithConfig creates a new Kuzu driver instance with the given configuration.
+// NewLadybugDriverWithConfig creates a new Ladybug driver instance with the given configuration.
 // This provides more control over driver behavior including write queue size and buffer pool settings.
 //
 // If the database is locked by another process, this function will automatically copy
 // the database to a temporary location and open the copy instead, allowing read-only
 // access even while another process is writing to the original.
-func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
+func NewLadybugDriverWithConfig(config *LadybugDriverConfig) (*LadybugDriver, error) {
 	if config == nil {
-		config = DefaultKuzuDriverConfig()
+		config = DefaultLadybugDriverConfig()
 	}
 
 	// Apply defaults for zero values
@@ -319,8 +319,8 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 	db := config.DBPath
 
 	// Create a SystemConfig manually to avoid version mismatch issues with DefaultSystemConfig()
-	// These are safe, conservative defaults that work with kuzu v0.11.2
-	systemConfig := kuzu.SystemConfig{
+	// These are safe, conservative defaults that work with ladybug
+	systemConfig := ladybug.SystemConfig{
 		BufferPoolSize:    config.BufferPoolSize,
 		MaxNumThreads:     uint64(config.MaxConcurrentQueries),
 		EnableCompression: config.EnableCompression,
@@ -329,13 +329,13 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 	}
 
 	// Try to open the database with our custom config
-	database, err := kuzu.OpenDatabase(db, systemConfig)
+	database, err := ladybug.OpenDatabase(db, systemConfig)
 	if err != nil && isLockError(err) && db != ":memory:" {
 		// Database is locked, try to copy it to a temp location
 		log.Printf("Database at %s is locked, attempting to create temporary copy...", db)
 
 		// Create temp directory
-		tempDir, err := os.MkdirTemp("", "kuzu_readonly_*")
+		tempDir, err := os.MkdirTemp("", "ladybug_readonly_*")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp directory: %w", err)
 		}
@@ -350,7 +350,7 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 		log.Printf("Successfully copied database to temporary location: %s", tempDbPath)
 
 		// Try to open the temp copy with the same config
-		database, err = kuzu.OpenDatabase(tempDbPath, systemConfig)
+		database, err = ladybug.OpenDatabase(tempDbPath, systemConfig)
 		if err != nil {
 			os.RemoveAll(tempDir)
 			return nil, fmt.Errorf("failed to open temporary database copy: %w", err)
@@ -358,11 +358,11 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 
 		db = tempDbPath // Use temp path for the rest of initialization
 	} else if err != nil {
-		return nil, fmt.Errorf("failed to open kuzu database: %w", err)
+		return nil, fmt.Errorf("failed to open ladybug database: %w", err)
 	}
 
-	driver := &KuzuDriver{
-		provider:     GraphProviderKuzu,
+	driver := &LadybugDriver{
+		provider:     GraphProviderLadybug,
 		db:           database,
 		dbPath:       db,
 		tempDbPath:   tempDbPath,
@@ -378,11 +378,11 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 	// Setup schema exactly like Python
 	driver.setupSchema()
 
-	// Create connection - Go kuzu doesn't have AsyncConnection but we simulate the interface
-	client, err := kuzu.OpenConnection(database)
+	// Create connection - Go ladybug doesn't have AsyncConnection but we simulate the interface
+	client, err := ladybug.OpenConnection(database)
 	if err != nil {
 		database.Close()
-		return nil, fmt.Errorf("failed to open kuzu connection: %w", err)
+		return nil, fmt.Errorf("failed to open ladybug connection: %w", err)
 	}
 	driver.client = client
 
@@ -397,10 +397,10 @@ func NewKuzuDriverWithConfig(config *KuzuDriverConfig) (*KuzuDriver, error) {
 }
 
 // ExecuteQuery executes a query with parameters, exactly matching Python signature.
-// Returns (results, summary, keys) tuple like Python, though summary and keys are unused in Kuzu.
+// Returns (results, summary, keys) tuple like Python, though summary and keys are unused in Ladybug.
 // Write operations are automatically queued and executed sequentially for thread safety.
 // Read operations execute directly with mutex protection for better performance.
-func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+func (k *LadybugDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
 	// Check if driver is closed
 	k.closeMu.RLock()
 	if k.closed {
@@ -434,7 +434,7 @@ func (k *KuzuDriver) ExecuteQuery(cypherQuery string, kwargs map[string]interfac
 }
 
 // isWriteQuery checks if a query is a write operation (CREATE, MERGE, SET, DELETE, etc.)
-func (k *KuzuDriver) isWriteQuery(query string) bool {
+func (k *LadybugDriver) isWriteQuery(query string) bool {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	writeKeywords := []string{
 		"CREATE ", "MERGE ", "SET ", "DELETE ", "DETACH DELETE",
@@ -449,7 +449,7 @@ func (k *KuzuDriver) isWriteQuery(query string) bool {
 }
 
 // writeWorker processes write operations sequentially from the queue
-func (k *KuzuDriver) writeWorker() {
+func (k *LadybugDriver) writeWorker() {
 	defer k.writeWg.Done()
 
 	for {
@@ -475,24 +475,22 @@ func (k *KuzuDriver) writeWorker() {
 }
 
 // executeQueryInternal performs the actual query execution with mutex protection
-func (k *KuzuDriver) executeQueryInternal(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
-	// Lock to prevent concurrent database access (Kuzu C++ library is not thread-safe)
+func (k *LadybugDriver) executeQueryInternal(cypherQuery string, kwargs map[string]interface{}) (interface{}, interface{}, interface{}, error) {
+	// Lock to prevent concurrent database access (ladybug C++ library is not thread-safe)
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
 	// Filter parameters exactly like Python implementation
-	params := make(map[string]any) // Use 'any' instead of 'interface{}' for go-kuzu compatibility
+	params := make(map[string]any) // Use 'any' instead of 'interface{}' for go-ladybug compatibility
 	for key, value := range kwargs {
-		if value != nil {
-			params[key] = value
-		}
+		params[key] = value
 	}
 
-	// Kuzu does not support these parameters (matching Python comment)
+	// ladybug does not support these parameters (matching Python comment)
 	delete(params, "database_")
 	delete(params, "routing_")
 
-	var results *kuzu.QueryResult
+	var results *ladybug.QueryResult
 	var err error
 
 	// Check if we have parameters to use prepared statement
@@ -509,7 +507,7 @@ func (k *KuzuDriver) executeQueryInternal(cypherQuery string, kwargs map[string]
 					truncatedParams[key] = value
 				}
 			}
-			log.Printf("Error preparing Kuzu query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
+			log.Printf("Error preparing ladybug query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
 			return nil, nil, nil, err
 		}
 
@@ -524,14 +522,14 @@ func (k *KuzuDriver) executeQueryInternal(cypherQuery string, kwargs map[string]
 					truncatedParams[key] = value
 				}
 			}
-			log.Printf("Error executing Kuzu query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
+			log.Printf("Error executing ladybug query: %v\nQuery: %s\nParams: %v", err, cypherQuery, truncatedParams)
 			return nil, nil, nil, err
 		}
 	} else {
 		// Use simple Query for queries without parameters
 		results, err = k.client.Query(cypherQuery)
 		if err != nil {
-			log.Printf("Error executing Kuzu query: %v\nQuery: %s", err, cypherQuery)
+			log.Printf("Error executing ladybug query: %v\nQuery: %s", err, cypherQuery)
 			return nil, nil, nil, err
 		}
 	}
@@ -573,12 +571,12 @@ func (k *KuzuDriver) executeQueryInternal(cypherQuery string, kwargs map[string]
 }
 
 // Session creates a new session exactly like Python implementation
-func (k *KuzuDriver) Session(database *string) GraphDriverSession {
-	return NewKuzuDriverSession(k)
+func (k *LadybugDriver) Session(database *string) GraphDriverSession {
+	return NewLadybugDriverSession(k)
 }
 
 // Close closes the driver exactly like Python implementation
-func (k *KuzuDriver) Close() error {
+func (k *LadybugDriver) Close() error {
 	// Mark driver as closed
 	k.closeMu.Lock()
 	if k.closed {
@@ -606,14 +604,14 @@ func (k *KuzuDriver) Close() error {
 	return nil
 }
 
-// DeleteAllIndexes does nothing for Kuzu (matching Python implementation)
-func (k *KuzuDriver) DeleteAllIndexes(database string) {
+// DeleteAllIndexes does nothing for ladybug (matching Python implementation)
+func (k *LadybugDriver) DeleteAllIndexes(database string) {
 	// pass (matching Python implementation)
 }
 
 // setupSchema initializes the database schema exactly like Python implementation
-func (k *KuzuDriver) setupSchema() {
-	conn, err := kuzu.OpenConnection(k.db)
+func (k *LadybugDriver) setupSchema() {
+	conn, err := ladybug.OpenConnection(k.db)
 	if err != nil {
 		log.Printf("Failed to create connection for schema setup: %v", err)
 		return
@@ -635,13 +633,13 @@ func (k *KuzuDriver) setupSchema() {
 	}
 
 	// Create schema tables
-	_, err = conn.Query(KuzuSchemaQueries)
+	_, err = conn.Query(LadybugSchemaQueries)
 	if err != nil {
 		log.Printf("Failed to create schema: %v", err)
 	}
 
 	// Create fulltext indexes for BM25 search (matching Python implementation)
-	// From graph_queries.py get_fulltext_indices() for Kuzu provider
+	// From graph_queries.py get_fulltext_indices() for ladybug provider
 	// Note: These can be created before or after data exists in the tables
 	fulltextIndexQueries := []string{
 		"CALL CREATE_FTS_INDEX('Episodic', 'episode_content', ['content', 'source', 'source_description']);",
@@ -660,23 +658,23 @@ func (k *KuzuDriver) setupSchema() {
 }
 
 // Provider returns the graph provider type
-func (k *KuzuDriver) Provider() GraphProvider {
+func (k *LadybugDriver) Provider() GraphProvider {
 	return k.provider
 }
 
-// GetAossClient returns nil for Kuzu (matching Python implementation)
-func (k *KuzuDriver) GetAossClient() interface{} {
+// GetAossClient returns nil for ladybug (matching Python implementation)
+func (k *LadybugDriver) GetAossClient() interface{} {
 	return nil // aoss_client: None = None
 }
 
-// flatTupleToDict converts a Kuzu FlatTuple to a map to simulate Python's rows_as_dict()
-func (k *KuzuDriver) flatTupleToDict(tuple *kuzu.FlatTuple) (map[string]interface{}, error) {
+// flatTupleToDict converts a Ladybug FlatTuple to a map to simulate Python's rows_as_dict()
+func (k *LadybugDriver) flatTupleToDict(tuple *ladybug.FlatTuple) (map[string]interface{}, error) {
 	values, err := tuple.GetAsSlice()
 	if err != nil {
 		return nil, err
 	}
 
-	// For now, create generic column names since Kuzu Go doesn't expose column names easily
+	// For now, create generic column names since ladybug Go doesn't expose column names easily
 	// In a full implementation, this would need proper column name extraction
 	result := make(map[string]interface{})
 	for i, value := range values {
@@ -689,7 +687,7 @@ func (k *KuzuDriver) flatTupleToDict(tuple *kuzu.FlatTuple) (map[string]interfac
 // === Backward compatibility methods for existing interface ===
 
 // GetNode retrieves a node by ID from the appropriate table based on node type.
-func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
+func (k *LadybugDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
 	// Try to find node in each table type
 	tables := []string{"Entity", "Episodic", "Community", "RelatesToNode_"}
 
@@ -718,7 +716,7 @@ func (k *KuzuDriver) GetNode(ctx context.Context, nodeID, groupID string) (*type
 	return nil, fmt.Errorf("node not found")
 }
 
-func (k *KuzuDriver) NodeExists(ctx context.Context, node *types.Node) bool {
+func (k *LadybugDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 	// Handle nil node
 	if node == nil {
 		return false
@@ -751,7 +749,7 @@ func (k *KuzuDriver) NodeExists(ctx context.Context, node *types.Node) bool {
 }
 
 // UpsertNode creates or updates a node in the appropriate table based on node type.
-func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
+func (k *LadybugDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 	// Handle nil node
 	if node == nil {
 		return fmt.Errorf("cannot upsert nil node")
@@ -790,7 +788,7 @@ func (k *KuzuDriver) UpsertNode(ctx context.Context, node *types.Node) error {
 }
 
 // DeleteNode removes a node and its relationships from all tables.
-func (k *KuzuDriver) DeleteNode(ctx context.Context, nodeID, groupID string) error {
+func (k *LadybugDriver) DeleteNode(ctx context.Context, nodeID, groupID string) error {
 	// Delete from all possible tables
 	tables := []string{"Entity", "Episodic", "Community", "RelatesToNode_"}
 
@@ -818,7 +816,7 @@ func (k *KuzuDriver) DeleteNode(ctx context.Context, nodeID, groupID string) err
 }
 
 // GetNodes retrieves multiple nodes by their IDs.
-func (k *KuzuDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID string) ([]*types.Node, error) {
+func (k *LadybugDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID string) ([]*types.Node, error) {
 	if len(nodeIDs) == 0 {
 		return []*types.Node{}, nil
 	}
@@ -835,7 +833,7 @@ func (k *KuzuDriver) GetNodes(ctx context.Context, nodeIDs []string, groupID str
 }
 
 // GetEdge retrieves an edge by ID using the RelatesToNode_ pattern.
-func (k *KuzuDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
+func (k *LadybugDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
 	// Query using the RelatesToNode_ pattern from Python implementation
 	query := `
 		MATCH (a:Entity)-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
@@ -861,7 +859,7 @@ func (k *KuzuDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*type
 }
 
 // UpsertEdge creates or updates an edge using the RelatesToNode_ pattern.
-func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
+func (k *LadybugDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 	if edge.CreatedAt.IsZero() {
 		edge.CreatedAt = time.Now()
 	}
@@ -886,7 +884,7 @@ func (k *KuzuDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {
 	return nil
 }
 
-func (k *KuzuDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
+func (k *LadybugDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 	query := `
 		MATCH (rel:RelatesToNode_)
 		WHERE rel.uuid = $uuid AND rel.group_id = $group_id
@@ -911,7 +909,7 @@ func (k *KuzuDriver) EdgeExists(ctx context.Context, edge *types.Edge) bool {
 	return false
 }
 
-func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
+func (k *LadybugDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	var metadataJSON string
 	if edge.Metadata != nil {
 		if data, err := json.Marshal(edge.Metadata); err == nil {
@@ -928,7 +926,7 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	// Handle fact_embedding
 	if len(edge.FactEmbedding) > 0 {
 		factEmbeddingValue = "$fact_embedding"
-		// Convert float32 to float64 for Kuzu
+		// Convert float32 to float64 for ladybug
 		embedding := make([]float64, len(edge.FactEmbedding))
 		for i, v := range edge.FactEmbedding {
 			embedding[i] = float64(v)
@@ -988,7 +986,7 @@ func (k *KuzuDriver) executeEdgeCreateQuery(edge *types.Edge) error {
 	return err
 }
 
-func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
+func (k *LadybugDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 	var metadataJSON string
 	if edge.Metadata != nil {
 		if data, err := json.Marshal(edge.Metadata); err == nil {
@@ -1005,7 +1003,7 @@ func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 	// Handle fact_embedding
 	if len(edge.FactEmbedding) > 0 {
 		factEmbeddingClause = "rel.fact_embedding = $fact_embedding"
-		// Convert float32 to float64 for Kuzu
+		// Convert float32 to float64 for ladybug
 		embedding := make([]float64, len(edge.FactEmbedding))
 		for i, v := range edge.FactEmbedding {
 			embedding[i] = float64(v)
@@ -1057,7 +1055,7 @@ func (k *KuzuDriver) executeEdgeUpdateQuery(edge *types.Edge) error {
 
 // UpsertEpisodicEdge creates or updates a MENTIONS relationship between an Episodic node and an Entity node.
 // This matches Python's EpisodicEdge.save() method.
-func (k *KuzuDriver) UpsertEpisodicEdge(ctx context.Context, episodeUUID, entityUUID, groupID string) error {
+func (k *LadybugDriver) UpsertEpisodicEdge(ctx context.Context, episodeUUID, entityUUID, groupID string) error {
 	// Python EPISODIC_EDGE_SAVE uses MERGE for idempotent upserts
 	// The MENTIONS relationship only has group_id and created_at fields (no uuid in Python)
 	query := `
@@ -1086,9 +1084,9 @@ func (k *KuzuDriver) UpsertEpisodicEdge(ctx context.Context, episodeUUID, entity
 
 // UpsertCommunityEdge creates or updates a HAS_MEMBER relationship between a Community node and an Entity or Community node.
 // This matches Python's CommunityEdge.save() method.
-func (k *KuzuDriver) UpsertCommunityEdge(ctx context.Context, communityUUID, nodeUUID, uuid, groupID string) error {
+func (k *LadybugDriver) UpsertCommunityEdge(ctx context.Context, communityUUID, nodeUUID, uuid, groupID string) error {
 	// Python uses UNION to handle both Entity and Community targets
-	// For Kuzu, we try Entity first, then Community
+	// For ladybug, we try Entity first, then Community
 	query := `
 		MATCH (community:Community {uuid: $community_uuid, group_id: $group_id})
 		MATCH (node:Entity {uuid: $node_uuid, group_id: $group_id})
@@ -1126,7 +1124,7 @@ func (k *KuzuDriver) UpsertCommunityEdge(ctx context.Context, communityUUID, nod
 }
 
 // DeleteEdge removes an edge.
-func (k *KuzuDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) error {
+func (k *LadybugDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) error {
 	// Delete using RelatesToNode_ pattern
 	deleteQuery := fmt.Sprintf(`
 		MATCH (a:Entity)-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
@@ -1143,7 +1141,7 @@ func (k *KuzuDriver) DeleteEdge(ctx context.Context, edgeID, groupID string) err
 }
 
 // GetEdges retrieves multiple edges by their IDs.
-func (k *KuzuDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID string) ([]*types.Edge, error) {
+func (k *LadybugDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID string) ([]*types.Edge, error) {
 	if len(edgeIDs) == 0 {
 		return []*types.Edge{}, nil
 	}
@@ -1160,7 +1158,7 @@ func (k *KuzuDriver) GetEdges(ctx context.Context, edgeIDs []string, groupID str
 }
 
 // GetNeighbors retrieves neighboring nodes within a specified distance.
-func (k *KuzuDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, maxDistance int) ([]*types.Node, error) {
+func (k *LadybugDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, maxDistance int) ([]*types.Node, error) {
 	if maxDistance <= 0 {
 		maxDistance = 1
 	}
@@ -1197,27 +1195,27 @@ func (k *KuzuDriver) GetNeighbors(ctx context.Context, nodeID, groupID string, m
 }
 
 // GetRelatedNodes retrieves nodes related through specific edge types
-func (k *KuzuDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID string, edgeTypes []types.EdgeType) ([]*types.Node, error) {
+func (k *LadybugDriver) GetRelatedNodes(ctx context.Context, nodeID, groupID string, edgeTypes []types.EdgeType) ([]*types.Node, error) {
 	// Simple implementation for now
 	return k.GetNeighbors(ctx, nodeID, groupID, 1)
 }
 
 // SearchNodesByEmbedding performs vector similarity search on node embeddings using cosine similarity.
 // This matches the Python implementation in search_utils.py:node_similarity_search()
-// For Kuzu, it uses array_cosine_similarity function on name_embedding field.
-func (k *KuzuDriver) SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error) {
+// For ladybug, it uses array_cosine_similarity function on name_embedding field.
+func (k *LadybugDriver) SearchNodesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Node, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	// Convert float32 embedding to float64 for kuzu parameter
+	// Convert float32 embedding to float64 for ladybug parameter
 	embeddingF64 := make([]float64, len(embedding))
 	for i, v := range embedding {
 		embeddingF64[i] = float64(v)
 	}
 
-	// Build the Cypher query matching Python's Kuzu implementation
-	// From search_utils.py:node_similarity_search() for Kuzu provider
+	// Build the Cypher query matching Python's ladybug implementation
+	// From search_utils.py:node_similarity_search() for ladybug provider
 	query := `
 		MATCH (n:Entity)
 		WHERE n.group_id = $group_id
@@ -1309,20 +1307,20 @@ func (k *KuzuDriver) SearchNodesByEmbedding(ctx context.Context, embedding []flo
 
 // SearchEdgesByEmbedding performs vector similarity search on edge embeddings using cosine similarity.
 // This matches the Python implementation in search_utils.py:edge_similarity_search()
-// For Kuzu, edges are represented as RelatesToNode_ intermediate nodes with fact_embedding field.
-func (k *KuzuDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Edge, error) {
+// For ladybug, edges are represented as RelatesToNode_ intermediate nodes with fact_embedding field.
+func (k *LadybugDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []float32, groupID string, limit int) ([]*types.Edge, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	// Convert float32 embedding to float64 for kuzu parameter
+	// Convert float32 embedding to float64 for ladybug parameter
 	embeddingF64 := make([]float64, len(embedding))
 	for i, v := range embedding {
 		embeddingF64[i] = float64(v)
 	}
 
-	// Build the Cypher query matching Python's Kuzu implementation for edges
-	// From search_utils.py:edge_similarity_search() for Kuzu provider
+	// Build the Cypher query matching Python's ladybug implementation for edges
+	// From search_utils.py:edge_similarity_search() for ladybug provider
 	// Uses RelatesToNode_ intermediate representation
 	query := `
 		MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
@@ -1436,7 +1434,7 @@ func (k *KuzuDriver) SearchEdgesByEmbedding(ctx context.Context, embedding []flo
 }
 
 // SearchNodes performs text-based search on nodes
-func (k *KuzuDriver) SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error) {
+func (k *LadybugDriver) SearchNodes(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Node, error) {
 	if strings.TrimSpace(query) == "" {
 		return []*types.Node{}, nil
 	}
@@ -1448,7 +1446,7 @@ func (k *KuzuDriver) SearchNodes(ctx context.Context, query, groupID string, opt
 
 	// BM25 fulltext search using QUERY_FTS_INDEX (matching Python implementation)
 	// From graph_queries.py get_nodes_query() and search_utils.py node_fulltext_search()
-	// For Kuzu: CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', query, TOP := limit)
+	// For ladybug: CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', query, TOP := limit)
 	searchQuery := `
 		CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', cast($query AS STRING), TOP := $limit)
 		WITH node AS n, score
@@ -1482,7 +1480,7 @@ func (k *KuzuDriver) SearchNodes(ctx context.Context, query, groupID string, opt
 }
 
 // SearchEdges performs text-based search on edges
-func (k *KuzuDriver) SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error) {
+func (k *LadybugDriver) SearchEdges(ctx context.Context, query, groupID string, options *SearchOptions) ([]*types.Edge, error) {
 	if strings.TrimSpace(query) == "" {
 		return []*types.Edge{}, nil
 	}
@@ -1494,7 +1492,7 @@ func (k *KuzuDriver) SearchEdges(ctx context.Context, query, groupID string, opt
 
 	// BM25 fulltext search using QUERY_FTS_INDEX (matching Python implementation)
 	// From graph_queries.py get_relationships_query() and search_utils.py edge_fulltext_search()
-	// For Kuzu edges (RelatesToNode_): CALL QUERY_FTS_INDEX('RelatesToNode_', 'edge_name_and_fact', query, TOP := limit)
+	// For ladybug edges (RelatesToNode_): CALL QUERY_FTS_INDEX('RelatesToNode_', 'edge_name_and_fact', query, TOP := limit)
 	searchQuery := `
 		CALL QUERY_FTS_INDEX('RelatesToNode_', 'edge_name_and_fact', cast($query AS STRING), TOP := $limit)
 		YIELD node, score
@@ -1542,7 +1540,7 @@ func (k *KuzuDriver) SearchEdges(ctx context.Context, query, groupID string, opt
 }
 
 // SearchNodesByVector performs vector similarity search on nodes with additional options
-func (k *KuzuDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error) {
+func (k *LadybugDriver) SearchNodesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Node, error) {
 	if len(vector) == 0 {
 		return []*types.Node{}, nil
 	}
@@ -1553,7 +1551,7 @@ func (k *KuzuDriver) SearchNodesByVector(ctx context.Context, vector []float32, 
 	}
 
 	// Use the existing SearchNodesByEmbedding method which already handles similarity scoring
-	// The Kuzu query already includes the score in the results
+	// The ladybug query already includes the score in the results
 	nodes, err := k.SearchNodesByEmbedding(ctx, vector, groupID, limit)
 	if err != nil {
 		return nil, err
@@ -1571,7 +1569,7 @@ func (k *KuzuDriver) SearchNodesByVector(ctx context.Context, vector []float32, 
 }
 
 // SearchEdgesByVector performs vector similarity search on edges with additional options
-func (k *KuzuDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error) {
+func (k *LadybugDriver) SearchEdgesByVector(ctx context.Context, vector []float32, groupID string, options *VectorSearchOptions) ([]*types.Edge, error) {
 	if len(vector) == 0 {
 		return []*types.Edge{}, nil
 	}
@@ -1582,7 +1580,7 @@ func (k *KuzuDriver) SearchEdgesByVector(ctx context.Context, vector []float32, 
 	}
 
 	// Use the existing SearchEdgesByEmbedding method which already handles similarity scoring
-	// The Kuzu query already includes the score in the results
+	// The ladybug query already includes the score in the results
 	edges, err := k.SearchEdgesByEmbedding(ctx, vector, groupID, limit)
 	if err != nil {
 		return nil, err
@@ -1600,7 +1598,7 @@ func (k *KuzuDriver) SearchEdgesByVector(ctx context.Context, vector []float32, 
 }
 
 // UpsertNodes bulk upserts nodes
-func (k *KuzuDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) error {
+func (k *LadybugDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) error {
 	for _, node := range nodes {
 		if err := k.UpsertNode(ctx, node); err != nil {
 			return err
@@ -1610,7 +1608,7 @@ func (k *KuzuDriver) UpsertNodes(ctx context.Context, nodes []*types.Node) error
 }
 
 // UpsertEdges bulk upserts edges
-func (k *KuzuDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error {
+func (k *LadybugDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error {
 	for _, edge := range edges {
 		if err := k.UpsertEdge(ctx, edge); err != nil {
 			return err
@@ -1620,7 +1618,7 @@ func (k *KuzuDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error
 }
 
 // GetNodesInTimeRange retrieves nodes in a time range
-func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error) {
+func (k *LadybugDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Node, error) {
 	query := `
 		MATCH (n:Entity)
 		WHERE n.group_id = $group_id
@@ -1687,7 +1685,7 @@ func (k *KuzuDriver) GetNodesInTimeRange(ctx context.Context, start, end time.Ti
 }
 
 // GetEdgesInTimeRange retrieves edges in a time range
-func (k *KuzuDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error) {
+func (k *LadybugDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Time, groupID string) ([]*types.Edge, error) {
 	query := `
 		MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
 		WHERE e.group_id = $group_id
@@ -1782,8 +1780,8 @@ func (k *KuzuDriver) GetEdgesInTimeRange(ctx context.Context, start, end time.Ti
 }
 
 // RetrieveEpisodes retrieves episodic nodes with temporal filtering.
-// Kuzu-specific implementation that works with TIMESTAMP type.
-func (k *KuzuDriver) RetrieveEpisodes(
+// ladybug-specific implementation that works with TIMESTAMP type.
+func (k *LadybugDriver) RetrieveEpisodes(
 	ctx context.Context,
 	referenceTime time.Time,
 	groupIDs []string,
@@ -1815,7 +1813,7 @@ func (k *KuzuDriver) RetrieveEpisodes(
 	}
 
 	// Build complete query
-	// Kuzu uses TIMESTAMP type, so direct comparison works
+	// ladybug uses TIMESTAMP type, so direct comparison works
 	query := fmt.Sprintf(`
 		MATCH (e:Episodic)
 		WHERE e.valid_at <= $reference_time
@@ -1889,7 +1887,7 @@ func (k *KuzuDriver) RetrieveEpisodes(
 }
 
 // GetCommunities retrieves community nodes
-func (k *KuzuDriver) GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error) {
+func (k *LadybugDriver) GetCommunities(ctx context.Context, groupID string, level int) ([]*types.Node, error) {
 	return []*types.Node{}, nil // Placeholder
 }
 
@@ -1911,7 +1909,7 @@ func (k *KuzuDriver) GetCommunities(ctx context.Context, groupID string, level i
 // - Testing without LLM access
 // - Batch processing scenarios
 // - Simple structural community detection
-func (k *KuzuDriver) BuildCommunities(ctx context.Context, groupID string) error {
+func (k *LadybugDriver) BuildCommunities(ctx context.Context, groupID string) error {
 	// Note: This implementation is kept simple intentionally.
 	// The full LLM-powered community building is available through
 	// community.Builder (see pkg/community/community.go) which provides:
@@ -1925,7 +1923,7 @@ func (k *KuzuDriver) BuildCommunities(ctx context.Context, groupID string) error
 }
 
 // GetExistingCommunity checks if an entity is already part of a community
-func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+func (k *LadybugDriver) GetExistingCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
 		MATCH (c:Community)-[:HAS_MEMBER]->(n:Entity {uuid: $entity_uuid})
 		RETURN c.uuid AS uuid, c.name AS name, c.summary AS summary, c.created_at AS created_at
@@ -1955,7 +1953,7 @@ func (k *KuzuDriver) GetExistingCommunity(ctx context.Context, entityUUID string
 }
 
 // FindModalCommunity finds the most common community among connected entities
-func (k *KuzuDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
+func (k *LadybugDriver) FindModalCommunity(ctx context.Context, entityUUID string) (*types.Node, error) {
 	query := `
 		MATCH (c:Community)-[:HAS_MEMBER]->(m:Entity)-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(n:Entity {uuid: $entity_uuid})
 		WITH c, count(*) AS count
@@ -1986,8 +1984,8 @@ func (k *KuzuDriver) FindModalCommunity(ctx context.Context, entityUUID string) 
 	return nil, nil
 }
 
-// parseCommunityNodesFromRecords parses community nodes from Kuzu query records
-func (k *KuzuDriver) parseCommunityNodesFromRecords(result interface{}) ([]*types.Node, error) {
+// parseCommunityNodesFromRecords parses community nodes from ladybug query records
+func (k *LadybugDriver) parseCommunityNodesFromRecords(result interface{}) ([]*types.Node, error) {
 	var nodes []*types.Node
 
 	recordSlice, ok := result.([]map[string]interface{})
@@ -2023,8 +2021,8 @@ func (k *KuzuDriver) parseCommunityNodesFromRecords(result interface{}) ([]*type
 }
 
 // RemoveCommunities removes all community nodes and their relationships from the graph.
-// Kuzu-specific implementation using DELETE.
-func (k *KuzuDriver) RemoveCommunities(ctx context.Context) error {
+// ladybug-specific implementation using DELETE.
+func (k *LadybugDriver) RemoveCommunities(ctx context.Context) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -2039,15 +2037,15 @@ func (k *KuzuDriver) RemoveCommunities(ctx context.Context) error {
 }
 
 // CreateIndices creates database indices
-// For Kuzu, this is a no-op as indices are managed through the schema
-// This matches the Python implementation where create_indices is not implemented for Kuzu
-func (k *KuzuDriver) CreateIndices(ctx context.Context) error {
-	// No-op for Kuzu - indices are created as part of schema setup
+// For ladybug, this is a no-op as indices are managed through the schema
+// This matches the Python implementation where create_indices is not implemented for ladybug
+func (k *LadybugDriver) CreateIndices(ctx context.Context) error {
+	// No-op for ladybug - indices are created as part of schema setup
 	return nil
 }
 
 // GetStats returns graph statistics
-func (k *KuzuDriver) GetStats(ctx context.Context, groupID string) (*GraphStats, error) {
+func (k *LadybugDriver) GetStats(ctx context.Context, groupID string) (*GraphStats, error) {
 	stats := &GraphStats{
 		NodesByType: make(map[string]int64),
 		EdgesByType: make(map[string]int64),
@@ -2098,7 +2096,7 @@ func (k *KuzuDriver) GetStats(ctx context.Context, groupID string) (*GraphStats,
 
 // === Helper methods ===
 
-func (k *KuzuDriver) getTableNameForNodeType(nodeType types.NodeType) string {
+func (k *LadybugDriver) getTableNameForNodeType(nodeType types.NodeType) string {
 	switch nodeType {
 	case types.EpisodicNodeType:
 		return "Episodic"
@@ -2111,7 +2109,7 @@ func (k *KuzuDriver) getTableNameForNodeType(nodeType types.NodeType) string {
 	}
 }
 
-func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*types.Node, error) {
+func (k *LadybugDriver) mapToNode(data map[string]interface{}, tableName string) (*types.Node, error) {
 	node := &types.Node{}
 
 	if id, ok := data["node.uuid"]; ok {
@@ -2212,7 +2210,7 @@ func (k *KuzuDriver) mapToNode(data map[string]interface{}, tableName string) (*
 	return node, nil
 }
 
-func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error) {
+func (k *LadybugDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error) {
 	edge := &types.Edge{}
 
 	if id, ok := data["uuid"]; ok {
@@ -2257,7 +2255,7 @@ func (k *KuzuDriver) mapToEdge(data map[string]interface{}) (*types.Edge, error)
 	return edge, nil
 }
 
-func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) error {
+func (k *LadybugDriver) executeNodeCreateQuery(node *types.Node, tableName string) error {
 	// Defensive nil check for node
 	if node == nil {
 		return fmt.Errorf("cannot create nil node")
@@ -2282,7 +2280,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 			entityEdgesValue = "$entity_edges"
 			params["entity_edges"] = node.EntityEdges
 		} else {
-			// Use explicit cast for empty array to avoid go-kuzu type inference issues
+			// Use explicit cast for empty array to avoid go-ladybug type inference issues
 			entityEdgesValue = "CAST([] AS STRING[])"
 		}
 
@@ -2326,7 +2324,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		// Handle name_embedding
 		if len(node.NameEmbedding) > 0 {
 			embeddingValue = "$name_embedding"
-			// Convert float32 to float64 for Kuzu
+			// Convert float32 to float64 for ladybug
 			embedding := make([]float64, len(node.NameEmbedding))
 			for i, v := range node.NameEmbedding {
 				embedding[i] = float64(v)
@@ -2362,7 +2360,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 		// Handle name_embedding
 		if len(node.NameEmbedding) > 0 {
 			embeddingValue = "$name_embedding"
-			// Convert float32 to float64 for Kuzu
+			// Convert float32 to float64 for ladybug
 			embedding := make([]float64, len(node.NameEmbedding))
 			for i, v := range node.NameEmbedding {
 				embedding[i] = float64(v)
@@ -2396,7 +2394,7 @@ func (k *KuzuDriver) executeNodeCreateQuery(node *types.Node, tableName string) 
 	return err
 }
 
-func (k *KuzuDriver) executeNodeUpdateQuery(node *types.Node, tableName string) error {
+func (k *LadybugDriver) executeNodeUpdateQuery(node *types.Node, tableName string) error {
 	// Defensive nil check for node
 	if node == nil {
 		return fmt.Errorf("cannot update nil node")
@@ -2549,7 +2547,7 @@ func convertToFloat32Slice(data interface{}) []float32 {
 }
 
 // cosineSimilarity computes the cosine similarity between two vectors
-func (k *KuzuDriver) cosineSimilarity(a, b []float32) float32 {
+func (k *LadybugDriver) cosineSimilarity(a, b []float32) float32 {
 	if len(a) != len(b) {
 		return 0.0
 	}
@@ -2568,39 +2566,39 @@ func (k *KuzuDriver) cosineSimilarity(a, b []float32) float32 {
 	return dotProduct / (float32(math.Sqrt(float64(normA))) * float32(math.Sqrt(float64(normB))))
 }
 
-// KuzuDriverSession implements GraphDriverSession for Kuzu exactly like Python
-type KuzuDriverSession struct {
+// LadybugDriverSession implements GraphDriverSession for ladybug exactly like Python
+type LadybugDriverSession struct {
 	provider GraphProvider
-	driver   *KuzuDriver
+	driver   *LadybugDriver
 }
 
-// NewKuzuDriverSession creates a new KuzuDriverSession
-func NewKuzuDriverSession(driver *KuzuDriver) *KuzuDriverSession {
-	return &KuzuDriverSession{
-		provider: GraphProviderKuzu,
+// NewLadybugDriverSession creates a new LadybugDriverSession
+func NewLadybugDriverSession(driver *LadybugDriver) *LadybugDriverSession {
+	return &LadybugDriverSession{
+		provider: GraphProviderLadybug,
 		driver:   driver,
 	}
 }
 
 // Provider returns the provider type
-func (s *KuzuDriverSession) Provider() GraphProvider {
+func (s *LadybugDriverSession) Provider() GraphProvider {
 	return s.provider
 }
 
-// Close implements session close (no cleanup needed for Kuzu, matching Python comment)
-func (s *KuzuDriverSession) Close() error {
+// Close implements session close (no cleanup needed for ladybug, matching Python comment)
+func (s *LadybugDriverSession) Close() error {
 	// Do not close the session here, as we're reusing the driver connection (matching Python comment)
 	return nil
 }
 
 // ExecuteWrite executes a write function exactly like Python implementation
-func (s *KuzuDriverSession) ExecuteWrite(ctx context.Context, fn func(context.Context, GraphDriverSession, ...interface{}) (interface{}, error), args ...interface{}) (interface{}, error) {
+func (s *LadybugDriverSession) ExecuteWrite(ctx context.Context, fn func(context.Context, GraphDriverSession, ...interface{}) (interface{}, error), args ...interface{}) (interface{}, error) {
 	// Directly await the provided function with `self` as the transaction/session (matching Python comment)
 	return fn(ctx, s, args...)
 }
 
 // Run executes a query or list of queries exactly like Python implementation
-func (s *KuzuDriverSession) Run(ctx context.Context, query interface{}, kwargs map[string]interface{}) error {
+func (s *LadybugDriverSession) Run(ctx context.Context, query interface{}, kwargs map[string]interface{}) error {
 	if queryList, ok := query.([][]interface{}); ok {
 		// Handle list of [cypher, params] pairs
 		for _, queryPair := range queryList {
@@ -2631,17 +2629,17 @@ func (s *KuzuDriverSession) Run(ctx context.Context, query interface{}, kwargs m
 }
 
 // Enter implements context manager entry (for async with in Python)
-func (s *KuzuDriverSession) Enter(ctx context.Context) (GraphDriverSession, error) {
+func (s *LadybugDriverSession) Enter(ctx context.Context) (GraphDriverSession, error) {
 	return s, nil
 }
 
 // Exit implements context manager exit (for async with in Python)
-func (s *KuzuDriverSession) Exit(ctx context.Context, excType, excVal, excTb interface{}) error {
-	// No cleanup needed for Kuzu, but method must exist (matching Python comment)
+func (s *LadybugDriverSession) Exit(ctx context.Context, excType, excVal, excTb interface{}) error {
+	// No cleanup needed for ladybug, but method must exist (matching Python comment)
 	return nil
 }
 
-func (k *KuzuDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error) {
+func (k *LadybugDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNodeID string) ([]*types.Edge, error) {
 	query := `
 		MATCH (a:Entity {uuid: $source_uuid})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {uuid: $target_uuid})
 		RETURN rel.uuid AS uuid, rel.name AS name, rel.fact AS fact, rel.group_id AS group_id,
@@ -2685,7 +2683,7 @@ func (k *KuzuDriver) GetBetweenNodes(ctx context.Context, sourceNodeID, targetNo
 	return edges, nil
 }
 
-func (k *KuzuDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
+func (k *LadybugDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID string) ([]types.Neighbor, error) {
 	query := `
 		MATCH (n:Entity {uuid: $uuid, group_id: $group_id})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(m:Entity {group_id: $group_id})
 		WITH count(e) AS count, m.uuid AS uuid
@@ -2720,11 +2718,11 @@ func (k *KuzuDriver) GetNodeNeighbors(ctx context.Context, nodeUUID, groupID str
 	return neighbors, nil
 }
 
-func (k *KuzuDriver) ParseNodesFromRecords(records interface{}) ([]*types.Node, error) {
+func (k *LadybugDriver) ParseNodesFromRecords(records interface{}) ([]*types.Node, error) {
 	var nodes []*types.Node
 	switch v := records.(type) {
 	case []map[string]interface{}:
-		// Result is a list of records (Kuzu format)
+		// Result is a list of records (ladybug format)
 		for _, record := range v {
 			if nodeData, ok := record["e"].(map[string]interface{}); ok {
 				node, err := types.ParseNodeFromMap(nodeData)
@@ -2753,8 +2751,8 @@ func (k *KuzuDriver) ParseNodesFromRecords(records interface{}) ([]*types.Node, 
 	return nodes, nil
 }
 
-// getEntityNodesByGroupKuzu gets entity nodes specifically for Kuzu
-func (k *KuzuDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
+// getEntityNodesByGroupladybug gets entity nodes specifically for ladybug
+func (k *LadybugDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) ([]*types.Node, error) {
 	query := `
 		MATCH (n:Entity {group_id: $group_id})
 		RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, n.created_at AS created_at
@@ -2796,8 +2794,8 @@ func (k *KuzuDriver) GetEntityNodesByGroup(ctx context.Context, groupID string) 
 }
 
 // GetAllGroupIDs retrieves all distinct group IDs from entity nodes.
-// Kuzu-specific implementation.
-func (k *KuzuDriver) GetAllGroupIDs(ctx context.Context) ([]string, error) {
+// ladybug-specific implementation.
+func (k *LadybugDriver) GetAllGroupIDs(ctx context.Context) ([]string, error) {
 	query := `
 		MATCH (n:Entity)
 		WHERE n.group_id IS NOT NULL

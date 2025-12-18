@@ -6,7 +6,7 @@ This document provides practical examples of using go-graphiti for various use c
 
 go-graphiti is designed to work out-of-the-box with minimal dependencies:
 
-- **Default Database**: Kuzu embedded database (no external setup required)
+- **Default Database**: ladybug embedded database (no external setup required)
 - **LLM Integration**: Any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
 - **Zero Dependencies**: Basic functionality works without external services
 
@@ -474,14 +474,14 @@ func personalKnowledgeManagement(client graphiti.Graphiti) {
 
 ## Local Setup Examples
 
-### Complete Local Setup with Kuzu + Ollama
+### Complete Local Setup with ladybug + Ollama
 
 For maximum privacy and control, you can run go-graphiti entirely locally using:
-- **Kuzu**: Embedded graph database (no server required)
+- **ladybug**: Embedded graph database (no server required)
 - **Ollama**: Local LLM inference (no cloud API required)  
 - **Local embeddings**: Optional local embedding service
 
-**Complete example**: See [`examples/kuzu_ollama/`](../examples/kuzu_ollama/) for a full working example.
+**Complete example**: See [`examples/ladybug_ollama/`](../examples/ladybug_ollama/) for a full working example.
 
 ```go
 package main
@@ -501,11 +501,11 @@ func main() {
     ctx := context.Background()
 
     // 1. Embedded graph database (local file)
-    kuzuDriver, err := driver.NewKuzuDriver("./my_graph.db")
+    ladybugDriver, err := driver.NewLadybugDriver("./my_graph.db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // 2. Local LLM inference with Ollama
     ollama, err := llm.NewOllamaClient("", "llama2:7b", llm.Config{
@@ -524,7 +524,7 @@ func main() {
     defer embedder.Close()
 
     // 4. Create fully local Graphiti client
-    client := graphiti.NewClient(kuzuDriver, ollama, embedder, &graphiti.Config{
+    client := graphiti.NewClient(ladybugDriver, ollama, embedder, &graphiti.Config{
         GroupID: "local-setup",
     })
     defer client.Close(ctx)
@@ -546,7 +546,7 @@ func main() {
 - Model downloaded (`ollama pull llama2:7b`)
 - Sufficient RAM for local model (4-8GB recommended)
 
-**Current Status**: Kuzu driver is implemented as a stub. Full functionality will be available when the Kuzu Go library is released.
+**Current Status**: ladybug driver is implemented as a stub. Full functionality will be available when the ladybug Go library is released.
 
 ### Alternative Local LLM Services
 
@@ -570,8 +570,8 @@ custom, err := llm.NewOpenAICompatibleClient("http://localhost:1234", "", "my-mo
 ```go
 // Create a standard client configuration
 func createStandardClient() graphiti.Graphiti {
-    // Kuzu embedded driver (recommended default)
-    driver, err := driver.NewKuzuDriver(os.Getenv("KUZU_DB_PATH")) // defaults to "./kuzu_db"
+    // ladybug embedded driver (recommended default)
+    driver, err := driver.NewLadybugDriver(os.Getenv("ladybug_DB_PATH")) // defaults to "./ladybug_db"
     if err != nil {
         log.Fatal(err)
     }
