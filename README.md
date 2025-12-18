@@ -286,7 +286,7 @@ The library is structured into several key packages:
 - **`pkg/embedder/`**: Embedding model clients (OpenAI, Gemini, Voyage)
 - **`pkg/search/`**: Hybrid search functionality
 - **`pkg/types/`**: Core types for nodes, edges, and data structures
-- **`pkg/models/`**: Database models and query operations for nodes and edges
+- **`pkg/models/`**: Database query builders for nodes and edges
 - **`pkg/prompts/`**: LLM prompts for extraction and processing
 - **`pkg/crossencoder/`**: Cross-encoder reranking for improved relevance
 - **`pkg/community/`**: Community detection and management
@@ -297,6 +297,7 @@ The library is structured into several key packages:
 - **EntityNode**: Represents entities extracted from content
 - **EpisodicNode**: Represents episodic memories or events  
 - **CommunityNode**: Represents communities of related entities
+- **SourceNode**: Represents source nodes where content originates
 
 ## Edge Types
 
@@ -312,9 +313,9 @@ The library is structured into several key packages:
 - [x] Node and edge deduplication  
 - [x] Embedding generation and storage
 - [x] Hybrid search implementation
-- [ ] Community detection
-- [ ] Temporal operations
-- [ ] Bulk operations
+- [x] Community detection
+- [x] Temporal operations
+- [x] Bulk operations
 - [x] Error Tracking & Telemetry
 - [x] Cost Calculation Service
 - [x] Advanced Router & Provider Fallback
