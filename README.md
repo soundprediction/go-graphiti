@@ -1,14 +1,12 @@
 # go-graphiti
 
-# go-graphiti
-
 A production-ready Temporal Knowledge Graph library for Go, designed for building robust, context-aware AI applications.
 
 ## Core Advancements
 
 * **Universal LLM Support**: Native support for any OpenAI-compatible provider (OpenAI, Anthropic, Together AI, Ollama, vLLM).
 * **Cost & Budgeting**: Built-in real-time cost tracking with serverless pricing models (Together AI, OpenAI) and granular token usage analytics.
-* **Resiliency**: Advanced routing capabilities with provider fallback, circuit breaking (planned), and usage-based routing rules (e.g., routing HIPAA compliant requests to specific providers).
+* **Resiliency**: Advanced routing capabilities with provider fallback, circuit breaking, and usage-based routing rules (e.g., routing HIPAA compliant requests to specific providers).
 * **High Performance**: 
     * **Embedded Database**: Native KuzuDB support for zero-setup, high-performance graph storage.
     * **Caching**: BadgerDB-based caching layer for embeddings and LLM responses to reduce latency and costs.
@@ -321,6 +319,7 @@ The library is structured into several key packages:
 - [x] Cost Calculation Service
 - [x] Advanced Router & Provider Fallback
 - [x] Caching Layer (BadgerDB)
+- [x] Circuit Breaker & Email Alerts
 
 ## Documentation
 
