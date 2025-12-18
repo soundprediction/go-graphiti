@@ -483,9 +483,7 @@ func (k *LadybugDriver) executeQueryInternal(cypherQuery string, kwargs map[stri
 	// Filter parameters exactly like Python implementation
 	params := make(map[string]any) // Use 'any' instead of 'interface{}' for go-ladybug compatibility
 	for key, value := range kwargs {
-		if value != nil {
-			params[key] = value
-		}
+		params[key] = value
 	}
 
 	// ladybug does not support these parameters (matching Python comment)
