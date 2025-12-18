@@ -27,8 +27,11 @@ require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/dgraph-io/badger/v4 v4.9.0 // indirect
+	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
 	github.com/duckdb/duckdb-go-bindings v0.1.22 // indirect
 	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.22 // indirect
 	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.22 // indirect
@@ -37,6 +40,7 @@ require (
 	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.22 // indirect
 	github.com/duckdb/duckdb-go/arrowmapping v0.0.22 // indirect
 	github.com/duckdb/duckdb-go/mapping v0.0.22 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
@@ -68,6 +72,7 @@ require (
 	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect

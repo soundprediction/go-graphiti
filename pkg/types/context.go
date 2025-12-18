@@ -8,4 +8,5 @@ const (
 	ContextKeyRequestSource   ContextKey = "request_source"
 	ContextKeyIngestionSource ContextKey = "ingestion_source"
 	ContextKeySystemCall      ContextKey = "system_call"
+	ContextKeyUsage           ContextKey = "usage"
 )
