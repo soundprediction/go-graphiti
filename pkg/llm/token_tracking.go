@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
+	"github.com/soundprediction/go-graphiti/pkg/cost"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 )
 
@@ -20,6 +20,7 @@ type TokenUsageRecord struct {
 	TotalTokens      int
 	PromptTokens     int
 	CompletionTokens int
+	EstimatedCost    float64
 	UserID           string
 	SessionID        string
 	RequestSource    string
@@ -29,38 +30,19 @@ type TokenUsageRecord struct {
 
 // TokenTracker handles persistence of token usage stats
 type TokenTracker struct {
-	db    *sql.DB
-	path  string
-	Model string // Default model fallback
+	db             *sql.DB
+	costCalculator *cost.CostCalculator
+	Model          string // Default model fallback
 }
 
-// NewTokenTracker creates a new token tracker using DuckDB
-func NewTokenTracker(path string) (*TokenTracker, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve path: %w", err)
-	}
-
-	// Ensure directory exists - DuckDB usually handles file creation but directory must exist
-	// dir := filepath.Dir(absPath)
-	// if err := os.MkdirAll(dir, 0755); err != nil {
-	// 	return nil, fmt.Errorf("failed to create directory: %w", err)
-	// }
-
-	// Connect to DuckDB
-	dsn := absPath
-	db, err := sql.Open("duckdb", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
+// NewTokenTracker creates a new token tracker using an existing DuckDB connection
+func NewTokenTracker(db *sql.DB) (*TokenTracker, error) {
 	tracker := &TokenTracker{
-		db:   db,
-		path: absPath,
+		db:             db,
+		costCalculator: cost.NewCostCalculator(),
 	}
 
 	if err := tracker.initSchema(); err != nil {
-		db.Close()
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -77,6 +59,7 @@ func (t *TokenTracker) initSchema() error {
 		total_tokens INTEGER,
 		prompt_tokens INTEGER,
 		completion_tokens INTEGER,
+		cost_usd DOUBLE,
 		user_id VARCHAR,
 		session_id VARCHAR,
 		request_source VARCHAR,
@@ -85,6 +68,11 @@ func (t *TokenTracker) initSchema() error {
 	);
 	`
 	_, err := t.db.Exec(query)
+	// Check if cost_usd column exists (migration)
+	// DuckDB allows ADD COLUMN IF NOT EXISTS in newer versions, or we can catch error
+	// Simple approach: try to add column, ignore error if exists
+	t.db.Exec("ALTER TABLE token_usage ADD COLUMN IF NOT EXISTS cost_usd DOUBLE")
+
 	return err
 }
 
@@ -94,6 +82,8 @@ func (t *TokenTracker) AddUsage(ctx context.Context, usage *types.TokenUsage, mo
 		return nil
 	}
 
+	costUSD := t.costCalculator.CalculateCost(model, usage.PromptTokens, usage.CompletionTokens)
+
 	record := TokenUsageRecord{
 		ID:               uuid.New().String(),
 		Timestamp:        time.Now().UTC(),
@@ -101,6 +91,7 @@ func (t *TokenTracker) AddUsage(ctx context.Context, usage *types.TokenUsage, mo
 		TotalTokens:      usage.TotalTokens,
 		PromptTokens:     usage.PromptTokens,
 		CompletionTokens: usage.CompletionTokens,
+		EstimatedCost:    costUSD,
 	}
 
 	// Extract context
@@ -122,9 +113,9 @@ func (t *TokenTracker) AddUsage(ctx context.Context, usage *types.TokenUsage, mo
 
 	query := `
 	INSERT INTO token_usage (
-		id, timestamp, model, total_tokens, prompt_tokens, completion_tokens,
+		id, timestamp, model, total_tokens, prompt_tokens, completion_tokens, cost_usd,
 		user_id, session_id, request_source, ingestion_source, is_system_call
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`
 
 	_, err := t.db.Exec(query,
@@ -134,6 +125,7 @@ func (t *TokenTracker) AddUsage(ctx context.Context, usage *types.TokenUsage, mo
 		record.TotalTokens,
 		record.PromptTokens,
 		record.CompletionTokens,
+		record.EstimatedCost,
 		record.UserID,
 		record.SessionID,
 		record.RequestSource,
@@ -142,11 +134,6 @@ func (t *TokenTracker) AddUsage(ctx context.Context, usage *types.TokenUsage, mo
 	)
 
 	return err
-}
-
-// Close closes the database connection
-func (t *TokenTracker) Close() error {
-	return t.db.Close()
 }
 
 // TokenTrackingClient wraps a Client to track usage
@@ -172,11 +159,12 @@ func (c *TokenTrackingClient) Chat(ctx context.Context, messages []types.Message
 	}
 
 	if resp.TokensUsed != nil {
-		// Try to determine model. Response might not have it field, maybe added later.
-		// For now we pass empty or "unknown" if not available in response.
-		// types.Response doesn't have Model field yet, assuming "unknown" or passed from config if we had it.
-		// Ideally we should update types.Response to include Model.
-		model := "unknown"
+		// Use model from response if available
+		model := resp.Model
+		if model == "" {
+			model = "unknown"
+		}
+
 		if err := c.tracker.AddUsage(ctx, resp.TokensUsed, model); err != nil {
 			fmt.Printf("Warning: Failed to log token usage: %v\n", err)
 		}
@@ -193,7 +181,12 @@ func (c *TokenTrackingClient) ChatWithStructuredOutput(ctx context.Context, mess
 	}
 
 	if resp.TokensUsed != nil {
-		model := "unknown"
+		// Use model from response if available
+		model := resp.Model
+		if model == "" {
+			model = "unknown"
+		}
+
 		if err := c.tracker.AddUsage(ctx, resp.TokensUsed, model); err != nil {
 			fmt.Printf("Warning: Failed to log token usage: %v\n", err)
 		}
@@ -204,6 +197,5 @@ func (c *TokenTrackingClient) ChatWithStructuredOutput(ctx context.Context, mess
 
 // Close implements Client
 func (c *TokenTrackingClient) Close() error {
-	c.tracker.Close() // Best effort close tracker
 	return c.client.Close()
 }

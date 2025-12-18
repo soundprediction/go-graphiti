@@ -23,6 +23,40 @@ type Config struct {
 
 	// Embedding configuration
 	Embedding EmbeddingConfig `mapstructure:"embedding"`
+
+	// Telemetry configuration
+	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+
+	// Alert configuration
+	Alert AlertConfig `mapstructure:"alert"`
+
+	// CircuitBreaker configuration
+	CircuitBreaker CircuitBreakerConfig `mapstructure:"circuit_breaker"`
+}
+
+// AlertConfig holds configuration for alerting
+type AlertConfig struct {
+	Enabled  bool     `mapstructure:"enabled"`
+	SMTPHost string   `mapstructure:"smtp_host"`
+	SMTPPort int      `mapstructure:"smtp_port"`
+	Username string   `mapstructure:"username"`
+	Password string   `mapstructure:"password"`
+	From     string   `mapstructure:"from"`
+	To       []string `mapstructure:"to"`
+}
+
+// CircuitBreakerConfig holds configuration for circuit breaking
+type CircuitBreakerConfig struct {
+	Enabled          bool    `mapstructure:"enabled"`
+	MaxRequests      uint32  `mapstructure:"max_requests"`
+	Interval         int     `mapstructure:"interval"` // in seconds
+	Timeout          int     `mapstructure:"timeout"`  // in seconds
+	ReadyToTripRatio float64 `mapstructure:"ready_to_trip_ratio"`
+}
+
+// TelemetryConfig holds telemetry configuration
+type TelemetryConfig struct {
+	DuckDBPath string `mapstructure:"duckdb_path"`
 }
 
 // LogConfig holds logging configuration
@@ -49,12 +83,41 @@ type DatabaseConfig struct {
 
 // LLMConfig holds LLM configuration
 type LLMConfig struct {
-	Provider    string  `mapstructure:"provider"` // openai, anthropic, etc.
+	// Deprecated: Use Providers map instead
+	Provider string `mapstructure:"provider"`
+	// Deprecated: Use Providers map instead
+	Model string `mapstructure:"model"`
+	// Deprecated: Use Providers map instead
+	APIKey string `mapstructure:"api_key"`
+	// Deprecated: Use Providers map instead
+	BaseURL string `mapstructure:"base_url"`
+	// Deprecated: Use Providers map instead
+	Temperature float32 `mapstructure:"temperature"`
+	// Deprecated: Use Providers map instead
+	MaxTokens int `mapstructure:"max_tokens"`
+
+	// Providers is a map of provider configurations (e.g. "openai", "anthropic", "local")
+	Providers map[string]ProviderConfig `mapstructure:"providers"`
+
+	// RouterRules defines how to route requests
+	RouterRules []RouterRule `mapstructure:"router_rules"`
+}
+
+// ProviderConfig holds configuration for a specific provider
+type ProviderConfig struct {
+	Provider    string  `mapstructure:"provider"` // type: openai, anthropic
 	Model       string  `mapstructure:"model"`
 	APIKey      string  `mapstructure:"api_key"`
 	BaseURL     string  `mapstructure:"base_url"`
 	Temperature float32 `mapstructure:"temperature"`
 	MaxTokens   int     `mapstructure:"max_tokens"`
+}
+
+// RouterRule defines a rule for routing requests
+type RouterRule struct {
+	Usage    string `mapstructure:"usage"`    // Tag to match (e.g. "hipaa", "coding")
+	Provider string `mapstructure:"provider"` // Provider ID to use
+	Fallback string `mapstructure:"fallback"` // Fallback provider ID
 }
 
 // EmbeddingConfig holds embedding configuration
@@ -105,9 +168,15 @@ func setDefaults() {
 	viper.SetDefault("llm.temperature", 0.1)
 	viper.SetDefault("llm.max_tokens", 2048)
 
-	// Embedding defaults
 	viper.SetDefault("embedding.provider", "openai")
 	viper.SetDefault("embedding.model", "text-embedding-3-small")
+
+	// Telemetry defaults
+	home, err := os.UserHomeDir()
+	if err == nil {
+		defaultPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", home)
+		viper.SetDefault("telemetry.duckdb_path", defaultPath)
+	}
 }
 
 // overrideWithEnv overrides config with environment variables
@@ -151,5 +220,10 @@ func overrideWithEnv(config *Config) {
 	}
 	if port := os.Getenv("SERVER_PORT"); port != "" {
 		viper.Set("server.port", port)
+	}
+
+	// Telemetry settings
+	if path := os.Getenv("TELEMETRY_DUCKDB_PATH"); path != "" {
+		config.Telemetry.DuckDBPath = path
 	}
 }
