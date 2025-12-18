@@ -157,11 +157,11 @@ func (a *AzureOpenAIClient) Chat(ctx context.Context, messages []types.Message) 
 
 // ChatWithStructuredOutput implements structured output for Azure OpenAI.
 // Azure OpenAI supports structured output similar to OpenAI.
-func (a *AzureOpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (string, error) {
+func (a *AzureOpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema interface{}) (*types.Response, error) {
 	// For now, use prompt engineering approach
 	schemaBytes, err := json.Marshal(schema)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal schema: %w", err)
+		return nil, fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
 	modifiedMessages := append(messages, types.Message{
@@ -169,5 +169,14 @@ func (a *AzureOpenAIClient) ChatWithStructuredOutput(ctx context.Context, messag
 		Content: fmt.Sprintf("Please respond with valid JSON that matches this schema: %s", string(schemaBytes)),
 	})
 
-	return a.Chat(ctx, modifiedMessages)
+	content, err := a.Chat(ctx, modifiedMessages)
+	if err != nil {
+		return nil, err
+	}
+
+	// AzureOpenAIClient.Chat currently only returns string, so we construct a minimal Response object
+	// TODO: Update AzureOpenAIClient.Chat to return *types.Response to capture token usage
+	return &types.Response{
+		Content: content,
+	}, nil
 }

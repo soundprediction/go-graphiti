@@ -21,6 +21,7 @@ type Response struct {
 	TokensUsed   *TokenUsage            `json:"tokens_used,omitempty"`
 	FinishReason string                 `json:"finish_reason,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Model        string                 `json:"model,omitempty"`
 }
 
 // TokenUsage represents token usage statistics.

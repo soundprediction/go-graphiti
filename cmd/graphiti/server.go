@@ -2,10 +2,12 @@ package graphiti
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
 	"github.com/soundprediction/go-graphiti/pkg/server"
+	"github.com/soundprediction/go-graphiti/pkg/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -68,6 +71,9 @@ func init() {
 	serverCmd.Flags().String("embedding-model", "text-embedding-3-small", "Embedding model")
 	serverCmd.Flags().String("embedding-api-key", "", "Embedding API key")
 	serverCmd.Flags().String("embedding-base-url", "", "Embedding base URL")
+
+	// Telemetry flags
+	serverCmd.Flags().String("telemetry-duckdb-path", "", "Path to DuckDB file for telemetry (errors and token usage)")
 }
 
 func runServer(cmd *cobra.Command, args []string) error {
@@ -195,6 +201,11 @@ func overrideConfigWithFlags(cmd *cobra.Command, cfg *config.Config) {
 	if cmd.Flags().Changed("embedding-base-url") {
 		cfg.Embedding.BaseURL, _ = cmd.Flags().GetString("embedding-base-url")
 	}
+
+	// Telemetry flags
+	if cmd.Flags().Changed("telemetry-duckdb-path") {
+		cfg.Telemetry.DuckDBPath, _ = cmd.Flags().GetString("telemetry-duckdb-path")
+	}
 }
 
 func validateServerConfig(cfg *config.Config) error {
@@ -244,7 +255,55 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 				return nil, fmt.Errorf("failed to create LLM client: %w", err)
 			}
 			// Wrap with retry client for automatic retry on errors
-			llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+			retryClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+
+			// Open DuckDB connection for telemetry (shared between token tracking and error logging)
+			trackingPath := cfg.Telemetry.DuckDBPath
+			if trackingPath == "" {
+				homeDir, err := os.UserHomeDir()
+				if err != nil {
+					return nil, fmt.Errorf("failed to get user home directory: %w", err)
+				}
+				trackingPath = fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
+			}
+
+			// Ensure directory exists
+			dir := filepath.Dir(trackingPath)
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create directory: %w", err)
+			}
+
+			telemetryDB, err := sql.Open("duckdb", trackingPath)
+			if err != nil {
+				fmt.Printf("Warning: Failed to open telemetry DB: %v\n", err)
+				// Proceed without telemetry
+				llmClient = retryClient
+			} else {
+				// Initialize Token Tracker
+				tracker, err := llm.NewTokenTracker(telemetryDB)
+				if err != nil {
+					fmt.Printf("Warning: Failed to initialize token tracker: %v\n", err)
+					llmClient = retryClient
+				} else {
+					llmClient = llm.NewTokenTrackingClient(retryClient, tracker)
+					fmt.Printf("Token tracking enabled at: %s\n", trackingPath)
+				}
+
+				// Initialize Error Tracking Logger
+				// We wrap the existing color handler with our DuckDB handler
+				colorHandler := graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
+					Level: slog.LevelInfo,
+				})
+
+				duckHandler, err := telemetry.NewDuckDBHandler(colorHandler, telemetryDB)
+				if err != nil {
+					fmt.Printf("Warning: Failed to initialize error tracking: %v\n", err)
+				} else {
+					// Update the global logger to use our new handler
+					logger = slog.New(duckHandler)
+					fmt.Printf("Error tracking enabled\n")
+				}
+			}
 		default:
 			return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.LLM.Provider)
 		}

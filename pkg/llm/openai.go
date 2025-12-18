@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -86,6 +85,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, messages []types.Message) (*typ
 	response := &types.Response{
 		Content:      choice.Message.Content,
 		FinishReason: string(choice.FinishReason),
+		Model:        resp.Model,
 	}
 
 	// Include token usage if available (some OpenAI-compatible services might not provide this)
@@ -101,7 +101,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, messages []types.Message) (*typ
 }
 
 // ChatWithStructuredOutput sends a chat completion request with structured output.
-func (c *OpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
+func (c *OpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (*types.Response, error) {
 	req := c.buildChatRequest(messages, true, schema)
 
 	resp, err := c.client.CreateChatCompletion(ctx, req)
@@ -114,7 +114,22 @@ func (c *OpenAIClient) ChatWithStructuredOutput(ctx context.Context, messages []
 	}
 
 	choice := resp.Choices[0]
-	return json.RawMessage(choice.Message.Content), nil
+	response := &types.Response{
+		Content:      choice.Message.Content,
+		FinishReason: string(choice.FinishReason),
+		Model:        resp.Model,
+	}
+
+	// Include token usage if available
+	if resp.Usage.TotalTokens > 0 {
+		response.TokensUsed = &types.TokenUsage{
+			PromptTokens:     resp.Usage.PromptTokens,
+			CompletionTokens: resp.Usage.CompletionTokens,
+			TotalTokens:      resp.Usage.TotalTokens,
+		}
+	}
+
+	return response, nil
 }
 
 // Close cleans up resources (no-op for OpenAI client).

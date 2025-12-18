@@ -2,11 +2,13 @@ package graphiti
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/soundprediction/go-graphiti/pkg/embedder"
 	"github.com/soundprediction/go-graphiti/pkg/llm"
 	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
+	"github.com/soundprediction/go-graphiti/pkg/telemetry"
 	"github.com/soundprediction/go-graphiti/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -113,6 +116,9 @@ func init() {
 	mcpCmd.Flags().String("embedding-api-key", "", "Embedding API key")
 	mcpCmd.Flags().String("embedding-base-url", "", "Embedding base URL")
 
+	// Telemetry flags
+	mcpCmd.Flags().String("telemetry-duckdb-path", "", "Path to DuckDB file for telemetry (errors and token usage)")
+
 	// Bind flags to viper for configuration
 	viper.BindPFlag("mcp.group_id", mcpCmd.Flags().Lookup("group-id"))
 	viper.BindPFlag("mcp.transport", mcpCmd.Flags().Lookup("transport"))
@@ -139,6 +145,9 @@ func init() {
 	viper.BindPFlag("embedder.model", mcpCmd.Flags().Lookup("embedder-model"))
 	viper.BindPFlag("embedder.api_key", mcpCmd.Flags().Lookup("embedding-api-key"))
 	viper.BindPFlag("embedder.base_url", mcpCmd.Flags().Lookup("embedding-base-url"))
+
+	// Telemetry configuration
+	viper.BindPFlag("telemetry.duckdb_path", mcpCmd.Flags().Lookup("telemetry-duckdb-path"))
 }
 
 // MCPConfig holds all configuration for the MCP server
@@ -172,6 +181,9 @@ type MCPConfig struct {
 
 	// Concurrency limits
 	SemaphoreLimit int
+
+	// Telemetry Configuration
+	TelemetryDuckDBPath string
 }
 
 // MCPServer wraps the Graphiti client for MCP operations
@@ -281,6 +293,9 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 		EmbedderModel:    getViperStringWithFallback("embedder.model", DefaultMCPEmbedderModel),
 		EmbeddingAPIKey:  viper.GetString("embedder.api_key"), // No fallback - truly optional
 		EmbeddingBaseURL: viper.GetString("embedder.base_url"),
+
+		// Telemetry configuration
+		TelemetryDuckDBPath: viper.GetString("telemetry.duckdb_path"),
 	}
 
 	// Use LLM API key for embeddings if embedding API key not provided
@@ -378,7 +393,51 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 			return nil, fmt.Errorf("failed to create LLM client: %w", err)
 		}
 		// Wrap with retry client for automatic retry on errors
-		llmClient = llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+		retryClient := llm.NewRetryClient(baseLLMClient, llm.DefaultRetryConfig())
+
+		// Open DuckDB connection for telemetry (shared between token tracking and error logging)
+		trackingPath := config.TelemetryDuckDBPath
+		if trackingPath == "" {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get user home directory: %w", err)
+			}
+			trackingPath = fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
+		}
+
+		// Ensure directory exists
+		dir := filepath.Dir(trackingPath)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory: %w", err)
+		}
+
+		telemetryDB, err := sql.Open("duckdb", trackingPath)
+		if err != nil {
+			logger.Warn("Failed to open telemetry DB", "error", err)
+			llmClient = retryClient
+		} else {
+			// Initialize Token Tracker
+			tracker, err := llm.NewTokenTracker(telemetryDB)
+			if err != nil {
+				logger.Warn("Failed to initialize token tracker", "error", err)
+				llmClient = retryClient
+			} else {
+				llmClient = llm.NewTokenTrackingClient(retryClient, tracker)
+				logger.Info("Token tracking enabled", "path", trackingPath)
+			}
+
+			// Initialize Error Tracking Logger
+			// We wrap the existing logger's handler with our DuckDB handler
+			// Note: Logger was already initialized with color handler at start of func
+			duckHandler, err := telemetry.NewDuckDBHandler(logger.Handler(), telemetryDB)
+			if err != nil {
+				logger.Warn("Failed to initialize error tracking", "error", err)
+			} else {
+				// Update the logger to use our new handler
+				logger = slog.New(duckHandler)
+				logger.Info("Error tracking enabled")
+			}
+		}
 	} else {
 		logger.Warn("No LLM configuration provided - LLM functionality will be disabled")
 	}

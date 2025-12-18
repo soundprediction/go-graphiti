@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -30,12 +29,12 @@ func (m *mockClient) Chat(ctx context.Context, messages []types.Message) (*types
 	return &types.Response{Content: "success"}, nil
 }
 
-func (m *mockClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (json.RawMessage, error) {
+func (m *mockClient) ChatWithStructuredOutput(ctx context.Context, messages []types.Message, schema any) (*types.Response, error) {
 	m.callCount++
 	if m.callCount <= m.failUntilCall {
 		return nil, m.errorToReturn
 	}
-	return json.RawMessage(`{"status": "success"}`), nil
+	return &types.Response{Content: `{"status": "success"}`}, nil
 }
 
 func (m *mockClient) Close() error {
@@ -313,8 +312,8 @@ func TestRetryClient_ChatWithStructuredOutput(t *testing.T) {
 		t.Fatalf("expected success after retries, got error: %v", err)
 	}
 
-	if string(result) != `{"status": "success"}` {
-		t.Errorf("unexpected result: %s", string(result))
+	if result.Content != `{"status": "success"}` {
+		t.Errorf("unexpected result: %s", result.Content)
 	}
 
 	if mock.callCount != 3 {
