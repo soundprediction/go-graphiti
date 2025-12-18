@@ -1,14 +1,14 @@
-# Kuzu Driver Setup Guide
+# Ladybug Driver Setup Guide
 
-This guide explains how to use the Kuzu graph database driver with go-graphiti.
+This guide explains how to use the Ladybug graph database driver with go-graphiti.
 
-## What is Kuzu?
+## What is Ladybug?
 
-[Kuzu](https://kuzudb.com/) is an embedded graph database management system built for speed and scalability. Unlike Neo4j which runs as a separate server, Kuzu is embedded directly into your application, similar to SQLite for relational databases.
+[Ladybug](https://ladybugdb.com/) is an embedded graph database management system built for speed and scalability. Unlike Neo4j which runs as a separate server, Ladybug is embedded directly into your application, similar to SQLite for relational databases.
 
-## Why Kuzu is the Default
+## Why Ladybug is the Default
 
-Kuzu is the **default and recommended** database driver for go-graphiti because:
+Ladybug is the **default and recommended** database driver for go-graphiti because:
 
 - **Zero Setup**: No external database server required
 - **Embedded**: Database files stored locally alongside your application
@@ -23,7 +23,7 @@ Kuzu is the **default and recommended** database driver for go-graphiti because:
 
 ## Installation
 
-No installation required! Kuzu is embedded and works immediately when you import go-graphiti.
+No installation required! Ladybug is embedded and works immediately when you import go-graphiti.
 
 ```bash
 go get github.com/soundprediction/go-graphiti
@@ -33,7 +33,7 @@ go get github.com/soundprediction/go-graphiti
 
 ### Basic Setup
 
-The simplest way to create a Kuzu-based knowledge graph:
+The simplest way to create a Ladybug-based knowledge graph:
 
 ```go
 package main
@@ -51,22 +51,22 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver - creates database files in the specified directory
-    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    // Create Ladybug driver - creates database files in the specified directory
+    ladybugDriver, err := driver.NewLadybugDriver("./ladybug_db")
     if err != nil {
-        log.Fatal("Failed to create Kuzu driver:", err)
+        log.Fatal("Failed to create Ladybug driver:", err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create Graphiti client
     config := &graphiti.Config{
         GroupID:  "my-app",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
-    log.Println("Kuzu-based knowledge graph ready!")
+    log.Println("Ladybug-based knowledge graph ready!")
 }
 
 ### Basic Usage
@@ -88,12 +88,12 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver (embedded database)
-    kuzuDriver, err := driver.NewKuzuDriver("./my_graph_db")
+    // Create Ladybug driver (embedded database)
+    ladybugDriver, err := driver.NewLadybugDriver("./my_graph_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create LLM client
     llmConfig := llm.Config{
@@ -109,15 +109,15 @@ func main() {
     }
     embedderClient := embedder.NewOpenAIEmbedder("your-api-key", embedderConfig)
 
-    // Create Graphiti client with Kuzu
+    // Create Graphiti client with Ladybug
     config := &graphiti.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, llmClient, embedderClient, config)
+    client := graphiti.NewClient(ladybugDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
-    // Use normally - Kuzu handles all graph operations locally
+    // Use normally - Ladybug handles all graph operations locally
     episodes := []graphiti.Episode{
         {
             ID:        "meeting-1",
@@ -148,13 +148,13 @@ func main() {
 
 ```go
 // Create with custom database path
-driver, err := driver.NewKuzuDriver("/path/to/my/graph.db")
+driver, err := driver.NewLadybugDriver("/path/to/my/graph.db")
 
-// Create with default path (./kuzu_graphiti_db)
-driver, err := driver.NewKuzuDriver("")
+// Create with default path (./ladybug_graphiti_db)
+driver, err := driver.NewLadybugDriver("")
 ```
 
-## Advantages of Kuzu
+## Advantages of Ladybug
 
 ### ✅ Benefits
 
@@ -184,7 +184,7 @@ driver, err := driver.NewKuzuDriver("")
 
 ### Local vs Server Databases
 
-| Feature | Kuzu (Embedded) | Neo4j (Server) |
+| Feature | Ladybug (Embedded) | Neo4j (Server) |
 |---------|----------------|----------------|
 | Setup complexity | Low | High |
 | Performance | Very fast (local) | Fast (network overhead) |
@@ -202,41 +202,27 @@ driver, err := driver.NewKuzuDriver("")
 
 ## Development Workflow
 
-### Current State (Stub Implementation)
+### Driver Usage
 
 ```go
-// This will return an error
-driver, err := driver.NewKuzuDriver("./test.db")
+// Create driver instance
+driver, err := driver.NewLadybugDriver("./test.db", 1)
 if err != nil {
     log.Fatal(err)
 }
 
-// All operations return "not implemented" errors
-node, err := driver.GetNode(ctx, "node-id", "group-id")
-// err: "KuzuDriver not implemented - requires github.com/kuzudb/go-kuzu dependency"
-```
-
-### Future State (Full Implementation)
-
-```go
-// This will work once the library is available
-driver, err := driver.NewKuzuDriver("./test.db")
-if err != nil {
-    log.Fatal(err)
-}
-
-// All operations will work with actual Kuzu database
+// All operations will work with actual Ladybug database
 node, err := driver.GetNode(ctx, "node-id", "group-id")
 if err != nil {
-    log.Fatal(err)
+    // Handle error
 }
 ```
 
 ## Testing
 
-The Kuzu driver includes comprehensive tests that verify:
+The Ladybug driver includes comprehensive tests that verify:
 
-1. **Interface compliance**: Ensures KuzuDriver implements GraphDriver interface
+1. **Interface compliance**: Ensures LadybugDriver implements GraphDriver interface
 2. **Stub behavior**: Verifies all methods return appropriate "not implemented" errors
 3. **Configuration**: Tests driver creation with various parameters
 4. **Future usage patterns**: Includes skipped tests showing expected usage
@@ -249,19 +235,19 @@ go test ./pkg/driver -v
 
 ## Migration from Neo4j
 
-If you're currently using Neo4j and want to switch to Kuzu:
+If you're currently using Neo4j and want to switch to Ladybug:
 
 ### Data Migration
 
 ```go
 // Example migration script
-func migrateFromNeo4j(neo4jDriver *driver.Neo4jDriver, kuzuDriver *driver.KuzuDriver) error {
+func migrateFromNeo4j(neo4jDriver *driver.Neo4jDriver, ladybugDriver *driver.LadybugDriver) error {
     ctx := context.Background()
     
     // 1. Export all nodes from Neo4j
-    // 2. Import nodes to Kuzu
+    // 2. Import nodes to Ladybug
     // 3. Export all edges from Neo4j  
-    // 4. Import edges to Kuzu
+    // 4. Import edges to Ladybug
     
     // This is conceptual - actual implementation depends on your data structure
     return nil
@@ -279,8 +265,8 @@ neo4jDriver, err := driver.NewNeo4jDriver(
     "neo4j",
 )
 
-// After (Kuzu)
-kuzuDriver, err := driver.NewKuzuDriver("./graph.db")
+// After (Ladybug)
+ladybugDriver, err := driver.NewLadybugDriver("./graph.db")
 ```
 
 ## Troubleshooting
@@ -295,7 +281,7 @@ kuzuDriver, err := driver.NewKuzuDriver("./graph.db")
 
 2. **Library not found**
    ```
-   Error: github.com/kuzudb/go-kuzu not found
+   Error: github.com/ladybugdb/go-ladybug not found
    ```
    - Solution: Wait for stable release or build from source
 
@@ -322,30 +308,30 @@ sudo apt-get install build-essential
 **Windows:**
 ```bash
 # May need MSYS2 with UCRT64 environment
-# See Kuzu documentation for Windows setup
+# See Ladybug documentation for Windows setup
 ```
 
 ## Contributing
 
-To contribute to the Kuzu driver implementation:
+To contribute to the Ladybug driver implementation:
 
-1. **Monitor the go-kuzu repository**: https://github.com/kuzudb/go-kuzu
-2. **Implement missing functionality**: Replace stub implementations with actual Kuzu API calls
+1. **Monitor the go-ladybug repository**: https://github.com/ladybugdb/go-ladybug
+2. **Implement missing functionality**: Replace stub implementations with actual Ladybug API calls
 3. **Add comprehensive tests**: Test all driver operations
 4. **Update documentation**: Keep this guide current with implementation status
 
 ## Resources
 
-- **Kuzu Documentation**: https://docs.kuzudb.com/
-- **Kuzu GitHub**: https://github.com/kuzudb/kuzu
-- **Go Binding**: https://github.com/kuzudb/go-kuzu
-- **Community**: https://github.com/kuzudb/kuzu/discussions
+- **Ladybug Documentation**: https://docs.ladybugdb.com/
+- **Ladybug GitHub**: https://github.com/ladybugdb/ladybug
+- **Go Binding**: https://github.com/ladybugdb/go-ladybug
+- **Community**: https://github.com/ladybugdb/ladybug/discussions
 
 ## Roadmap
 
-- [ ] Monitor go-kuzu library stability
-- [ ] Replace stub implementations with actual Kuzu API calls
+- [ ] Monitor go-ladybug library stability
+- [ ] Replace stub implementations with actual Ladybug API calls
 - [ ] Add comprehensive integration tests
 - [ ] Performance benchmarks vs Neo4j
-- [ ] Migration tools from Neo4j to Kuzu
+- [ ] Migration tools from Neo4j to Ladybug
 - [ ] Advanced features (streaming, backup/restore)

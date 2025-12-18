@@ -15,8 +15,8 @@ var neo4jToFalkorDBMapping = map[string]string{
 	"edge_name_and_fact":    "RELATES_TO",
 }
 
-// Mapping from fulltext index names to Kuzu node labels
-var indexToLabelKuzuMapping = map[string]string{
+// Mapping from fulltext index names to ladybug node labels
+var indexToLabelladybugMapping = map[string]string{
 	"node_name_and_summary": "Entity",
 	"community_name":        "Community",
 	"episode_content":       "Episodic",
@@ -42,8 +42,8 @@ func GetRangeIndices(provider GraphProvider) []string {
 			"CREATE INDEX FOR ()-[e:HAS_MEMBER]-() ON (e.uuid)",
 		}
 
-	case GraphProviderKuzu:
-		return []string{} // Kuzu doesn't require explicit range index creation
+	case GraphProviderLadybug:
+		return []string{} // ladybug doesn't require explicit range index creation
 
 	default: // Neo4j
 		return []string{
@@ -82,7 +82,7 @@ func GetFulltextIndices(provider GraphProvider) []string {
 			"CREATE FULLTEXT INDEX FOR ()-[e:RELATES_TO]-() ON (e.name, e.fact, e.group_id)",
 		}
 
-	case GraphProviderKuzu:
+	case GraphProviderLadybug:
 		return []string{
 			"CALL CREATE_FTS_INDEX('Episodic', 'episode_content', ['content', 'source', 'source_description']);",
 			"CALL CREATE_FTS_INDEX('Entity', 'node_name_and_summary', ['name', 'summary']);",
@@ -111,8 +111,8 @@ func GetNodesQuery(indexName, query string, limit int, provider GraphProvider) s
 		label := neo4jToFalkorDBMapping[indexName]
 		return fmt.Sprintf("CALL db.idx.fulltext.queryNodes('%s', %s)", label, query)
 
-	case GraphProviderKuzu:
-		label := indexToLabelKuzuMapping[indexName]
+	case GraphProviderLadybug:
+		label := indexToLabelladybugMapping[indexName]
 		return fmt.Sprintf("CALL QUERY_FTS_INDEX('%s', '%s', %s, TOP := $limit)", label, indexName, query)
 
 	default: // Neo4j
@@ -127,8 +127,8 @@ func GetRelationshipsQuery(indexName string, limit int, provider GraphProvider) 
 		label := neo4jToFalkorDBMapping[indexName]
 		return fmt.Sprintf("CALL db.idx.fulltext.queryRelationships('%s', $query)", label)
 
-	case GraphProviderKuzu:
-		label := indexToLabelKuzuMapping[indexName]
+	case GraphProviderLadybug:
+		label := indexToLabelladybugMapping[indexName]
 		return fmt.Sprintf("CALL QUERY_FTS_INDEX('%s', '%s', cast($query AS STRING), TOP := $limit)", label, indexName)
 
 	default: // Neo4j
@@ -143,7 +143,7 @@ func GetVectorCosineFuncQuery(vec1, vec2 string, provider GraphProvider) string 
 		// FalkorDB uses a different syntax for regular cosine similarity and Neo4j uses normalized cosine similarity
 		return fmt.Sprintf("(2 - vec.cosineDistance(%s, vecf32(%s)))/2", vec1, vec2)
 
-	case GraphProviderKuzu:
+	case GraphProviderLadybug:
 		return fmt.Sprintf("array_cosine_similarity(%s, %s)", vec1, vec2)
 
 	default: // Neo4j

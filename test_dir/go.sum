@@ -2,8 +2,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/kuzudb/go-kuzu v0.11.2 h1:av/6wJzq3e3Uty/DpFh3LUzyiWwciVA3zpMD1D/L71U=
-github.com/kuzudb/go-kuzu v0.11.2/go.mod h1:s2NvXX3fB2QZfWGf6SjJSYawgTPE17a7WHZmzfLIZtU=
+github.com/ladybugdb/go-ladybug v0.11.2 h1:av/6wJzq3e3Uty/DpFh3LUzyiWwciVA3zpMD1D/L71U=
+github.com/ladybugdb/go-ladybug v0.11.2/go.mod h1:s2NvXX3fB2QZfWGf6SjJSYawgTPE17a7WHZmzfLIZtU=
 github.com/neo4j/neo4j-go-driver/v5 v5.28.0 h1:chDT68PHNa8JZRmjSkGzAbk1weLWo4rMtDvccvpobg0=
 github.com/neo4j/neo4j-go-driver/v5 v5.28.0/go.mod h1:Vff8OwT7QpLm7L2yYr85XNWe9Rbqlbeb9asNXJTHO4k=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=

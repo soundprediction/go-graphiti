@@ -8,7 +8,7 @@ This guide will help you get started with go-graphiti, a temporal knowledge grap
 - **Optional**: External graph database (Neo4j or FalkorDB)
 - **Optional**: LLM API access (OpenAI, Ollama, vLLM, or any OpenAI-compatible service)
 
-> **Note**: go-graphiti works out-of-the-box with embedded Kuzu database and no external dependencies!
+> **Note**: go-graphiti works out-of-the-box with embedded ladybug database and no external dependencies!
 
 ## Installation
 
@@ -20,7 +20,7 @@ go get github.com/soundprediction/go-graphiti
 
 ### Option 1: Minimal Setup (No External Dependencies)
 
-The simplest way to get started is with embedded Kuzu database and no LLM:
+The simplest way to get started is with embedded ladybug database and no LLM:
 
 ```go
 package main
@@ -37,19 +37,19 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver (embedded database)
-    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    // Create ladybug driver (embedded database)
+    ladybugDriver, err := driver.NewLadybugDriver("./ladybug_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create Graphiti client
     config := &graphiti.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
     // Your code here...
@@ -82,7 +82,7 @@ llmConfig := llm.Config{
 llmClient, err := llm.NewOpenAIClient("dummy", llmConfig)  // API key not needed for Ollama
 
 // Create Graphiti client with LLM
-client := graphiti.NewClient(kuzuDriver, llmClient, nil, config)
+client := graphiti.NewClient(ladybugDriver, llmClient, nil, config)
 ```
 
 ### Option 3: Full Setup with External Services
@@ -107,7 +107,7 @@ NEO4J_DATABASE=neo4j
 
 **2. Database Setup (Optional - only for Neo4j):**
 
-> **Note**: This is only needed if you want to use Neo4j instead of the default Kuzu embedded database.
+> **Note**: This is only needed if you want to use Neo4j instead of the default ladybug embedded database.
 
 #### Option A: Local Neo4j with Docker
 
@@ -155,19 +155,19 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver (embedded database - no setup required)
-    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    // Create ladybug driver (embedded database - no setup required)
+    ladybugDriver, err := driver.NewLadybugDriver("./ladybug_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create Graphiti client (no LLM or embedder required for basic usage)
     config := &graphiti.Config{
         GroupID:  "getting-started",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, nil, nil, config)
+    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
     fmt.Println("Graphiti client created successfully with embedded database!")
@@ -217,12 +217,12 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Create Kuzu driver (still using embedded database)
-    kuzuDriver, err := driver.NewKuzuDriver("./kuzu_db")
+    // Create ladybug driver (still using embedded database)
+    ladybugDriver, err := driver.NewLadybugDriver("./ladybug_db")
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close(ctx)
+    defer ladybugDriver.Close(ctx)
 
     // Create LLM client (works with OpenAI, Ollama, vLLM, etc.)
     llmConfig := llm.Config{
@@ -247,7 +247,7 @@ func main() {
         GroupID:  "getting-started",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(kuzuDriver, llmClient, embedderClient, config)
+    client := graphiti.NewClient(ladybugDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
     fmt.Println("Graphiti client created with LLM integration!")

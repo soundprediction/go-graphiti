@@ -32,9 +32,9 @@ The server can be configured via environment variables or command-line flags:
 - `OPENAI_API_KEY`: Required for LLM and embedding operations
 - `MODEL_NAME`: LLM model to use (default: gpt-4o-mini)
 - `EMBEDDER_MODEL_NAME`: Embedding model (default: text-embedding-3-small)
-- `DB_DRIVER`: Database driver to use (default: kuzu)
-- `DB_URI`: Database connection URI/path (default: ./kuzu_db for kuzu, bolt://localhost:7687 for neo4j)
-- `KUZU_DB_PATH`: Path to Kuzu database directory (default: ./kuzu_db)
+- `DB_DRIVER`: Database driver to use (default: ladybug)
+- `DB_URI`: Database connection URI/path (default: ./ladybug_db for ladybug, bolt://localhost:7687 for neo4j)
+- `ladybug_DB_PATH`: Path to ladybug database directory (default: ./ladybug_db)
 - `NEO4J_USER`: Neo4j username (required when using neo4j driver)
 - `NEO4J_PASSWORD`: Neo4j password (required when using neo4j driver)
 - `GROUP_ID`: Default group ID for data isolation (default: default)
@@ -63,7 +63,7 @@ Available flags:
 ### Basic Usage
 
 ```bash
-# Start with default settings (uses Kuzu database)
+# Start with default settings (uses ladybug database)
 ./mcp-server
 
 # Start with custom group ID and destroy existing graph
@@ -72,11 +72,11 @@ Available flags:
 # Start with custom entities enabled
 ./mcp-server --use-custom-entities
 
-# Use Neo4j instead of Kuzu (requires NEO4J_USER and NEO4J_PASSWORD)
+# Use Neo4j instead of ladybug (requires NEO4J_USER and NEO4J_PASSWORD)
 DB_DRIVER=neo4j DB_URI=bolt://localhost:7687 NEO4J_USER=neo4j NEO4J_PASSWORD=password ./mcp-server
 
-# Use custom Kuzu database path
-KUZU_DB_PATH=/path/to/my/kuzu_db ./mcp-server
+# Use custom ladybug database path
+ladybug_DB_PATH=/path/to/my/ladybug_db ./mcp-server
 ```
 
 ### Available Tools
@@ -169,7 +169,7 @@ The MCP server is built on:
 
 - **Genkit**: Google's framework for AI applications, handling MCP protocol
 - **go-graphiti**: Temporal knowledge graph implementation
-- **Kuzu**: Default graph database backend (high-performance embedded graph database)
+- **ladybug**: Default graph database backend (high-performance embedded graph database)
 - **Neo4j**: Alternative graph database backend (requires separate installation)
 - **OpenAI API**: LLM and embedding services
 

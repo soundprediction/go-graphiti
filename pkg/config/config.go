@@ -156,8 +156,8 @@ func setDefaults() {
 	viper.SetDefault("server.mode", "debug")
 
 	// Database defaults
-	viper.SetDefault("database.driver", "kuzu")
-	viper.SetDefault("database.uri", "./kuzu_db")
+	viper.SetDefault("database.driver", "ladybug")
+	viper.SetDefault("database.uri", "./ladybug_db")
 	viper.SetDefault("database.username", "")
 	viper.SetDefault("database.password", "")
 	viper.SetDefault("database.database", "")
@@ -201,8 +201,8 @@ func overrideWithEnv(config *Config) {
 		config.Database.Password = pass
 	}
 
-	// Kuzu database path
-	if dbPath := os.Getenv("KUZU_DB_PATH"); dbPath != "" {
+	// ladybug database path
+	if dbPath := os.Getenv("ladybug_DB_PATH"); dbPath != "" {
 		config.Database.URI = dbPath
 	}
 

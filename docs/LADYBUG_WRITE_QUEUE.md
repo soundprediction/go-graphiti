@@ -1,6 +1,6 @@
-# KuzuDriver Write Queue - Usage Guide
+# LadybugDriver Write Queue - Usage Guide
 
-The KuzuDriver now includes transparent write queue handling that automatically manages concurrent writes to the Kuzu database, which cannot safely handle concurrent write operations.
+The LadybugDriver now includes transparent write queue handling that automatically manages concurrent writes to the Ladybug database, which cannot safely handle concurrent write operations.
 
 ## Overview
 
@@ -25,16 +25,16 @@ import (
 
 func main() {
     // Create driver with default settings (1000-operation write queue)
-    kuzuDriver, err := driver.NewKuzuDriver("./my_db", 4)
+    ladybugDriver, err := driver.NewLadybugDriver("./my_db", 4)
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close()
+    defer ladybugDriver.Close()
 
     ctx := context.Background()
 
     // Write operations are automatically queued
-    _, _, _, err = kuzuDriver.ExecuteQuery(
+    _, _, _, err = ladybugDriver.ExecuteQuery(
         "CREATE (n:Entity {uuid: $uuid, name: $name})",
         map[string]interface{}{
             "uuid": "id1",
@@ -47,7 +47,7 @@ func main() {
 
     // Multiple concurrent writes work seamlessly
     for i := 0; i < 100; i++ {
-        go kuzuDriver.ExecuteQuery(
+        go ladybugDriver.ExecuteQuery(
             "CREATE (n:Entity {uuid: $uuid, name: $name})",
             map[string]interface{}{
                 "uuid": fmt.Sprintf("id%d", i),
@@ -57,7 +57,7 @@ func main() {
     }
 
     // Read operations execute immediately (don't wait in queue)
-    result, _, _, err := kuzuDriver.ExecuteQuery(
+    result, _, _, err := ladybugDriver.ExecuteQuery(
         "MATCH (n:Entity) RETURN count(n) as count",
         nil,
     )
@@ -71,7 +71,7 @@ func main() {
 
 ### Advanced Configuration
 
-For fine-tuned control, use `NewKuzuDriverWithConfig`:
+For fine-tuned control, use `NewLadybugDriverWithConfig`:
 
 ```go
 package main
@@ -83,7 +83,7 @@ import (
 
 func main() {
     // Create custom configuration
-    config := driver.DefaultKuzuDriverConfig().
+    config := driver.DefaultLadybugDriverConfig().
         WithDBPath("./my_db").
         WithMaxConcurrentQueries(8).
         WithWriteQueueSize(5000).                    // Larger queue for high write throughput
@@ -91,11 +91,11 @@ func main() {
         WithCompression(true).
         WithMaxDbSize(1 << 44)                       // 16TB max DB size
 
-    kuzuDriver, err := driver.NewKuzuDriverWithConfig(config)
+    ladybugDriver, err := driver.NewLadybugDriverWithConfig(config)
     if err != nil {
         log.Fatal(err)
     }
-    defer kuzuDriver.Close()
+    defer ladybugDriver.Close()
 
     // Use driver as normal...
 }
@@ -103,7 +103,7 @@ func main() {
 
 ## Configuration Options
 
-### KuzuDriverConfig Fields
+### LadybugDriverConfig Fields
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -116,10 +116,10 @@ func main() {
 
 ### Builder Methods
 
-All builder methods return `*KuzuDriverConfig` for chaining:
+All builder methods return `*LadybugDriverConfig` for chaining:
 
 ```go
-config := driver.DefaultKuzuDriverConfig().
+config := driver.DefaultLadybugDriverConfig().
     WithDBPath("./my_db").
     WithMaxConcurrentQueries(8).
     WithWriteQueueSize(5000).
@@ -155,7 +155,7 @@ The system detects these write operations:
 
 #### Write Operations
 - **Latency**: Slightly increased (queuing overhead ~1-5ms)
-- **Throughput**: Same as sequential (limited by Kuzu's thread safety)
+- **Throughput**: Same as sequential (limited by Ladybug's thread safety)
 - **Concurrency**: Transparent - callers can issue concurrent writes safely
 
 #### Read Operations
@@ -220,19 +220,19 @@ For a 5000-operation queue:
 5000 * 200 bytes = ~1 MB
 ```
 
-Memory usage is minimal compared to Kuzu's buffer pool.
+Memory usage is minimal compared to Ladybug's buffer pool.
 
 ## Examples by Use Case
 
 ### High-Volume Indexing
 
 ```go
-config := driver.DefaultKuzuDriverConfig().
+config := driver.DefaultLadybugDriverConfig().
     WithDBPath("./large_db").
     WithWriteQueueSize(10000).              // Large queue for bursts
     WithBufferPoolSize(4 * 1024 * 1024 * 1024) // 4GB buffer
 
-driver, _ := driver.NewKuzuDriverWithConfig(config)
+driver, _ := driver.NewLadybugDriverWithConfig(config)
 defer driver.Close()
 
 // Process 100K documents concurrently
@@ -252,12 +252,12 @@ for i := 0; i < 100000; i++ {
 ### Real-Time Updates with Reads
 
 ```go
-config := driver.DefaultKuzuDriverConfig().
+config := driver.DefaultLadybugDriverConfig().
     WithDBPath("./realtime_db").
     WithMaxConcurrentQueries(8).  // More concurrent reads
     WithWriteQueueSize(2000)       // Moderate write buffer
 
-driver, _ := driver.NewKuzuDriverWithConfig(config)
+driver, _ := driver.NewLadybugDriverWithConfig(config)
 defer driver.Close()
 
 // Concurrent writes don't block reads
@@ -288,13 +288,13 @@ go func() {
 ### Memory-Constrained Environment
 
 ```go
-config := driver.DefaultKuzuDriverConfig().
+config := driver.DefaultLadybugDriverConfig().
     WithDBPath("./small_db").
     WithWriteQueueSize(100).                       // Small queue
     WithBufferPoolSize(256 * 1024 * 1024).        // 256MB buffer
     WithCompression(true)                          // Enable compression
 
-driver, _ := driver.NewKuzuDriverWithConfig(config)
+driver, _ := driver.NewLadybugDriverWithConfig(config)
 defer driver.Close()
 
 // Still handles concurrent writes, just with smaller buffer
@@ -340,7 +340,7 @@ if err != nil {
 The driver ensures graceful shutdown:
 
 ```go
-driver, _ := driver.NewKuzuDriver("./my_db", 4)
+driver, _ := driver.NewLadybugDriver("./my_db", 4)
 
 // Queue 1000 writes
 for i := 0; i < 1000; i++ {
@@ -381,7 +381,7 @@ No code changes required! The write queue is completely transparent:
 
 ```go
 // Old code (works exactly the same)
-driver, _ := driver.NewKuzuDriver("./db", 4)
+driver, _ := driver.NewLadybugDriver("./db", 4)
 defer driver.Close()
 
 driver.ExecuteQuery("CREATE (n:Entity {uuid: 'id1'})", nil)
@@ -391,11 +391,11 @@ If you want to optimize:
 
 ```go
 // New code (same behavior, optimized config)
-config := driver.DefaultKuzuDriverConfig().
+config := driver.DefaultLadybugDriverConfig().
     WithDBPath("./db").
     WithWriteQueueSize(5000)  // Tune for your workload
 
-driver, _ := driver.NewKuzuDriverWithConfig(config)
+driver, _ := driver.NewLadybugDriverWithConfig(config)
 defer driver.Close()
 
 driver.ExecuteQuery("CREATE (n:Entity {uuid: 'id1'})", nil)
@@ -409,7 +409,7 @@ driver.ExecuteQuery("CREATE (n:Entity {uuid: 'id1'})", nil)
 
 **Possible causes**:
 1. Write queue is full (check for timeout errors)
-2. Kuzu database is slow (check disk I/O, buffer pool size)
+2. Ladybug database is slow (check disk I/O, buffer pool size)
 3. Complex queries (optimize Cypher queries)
 
 **Solutions**:

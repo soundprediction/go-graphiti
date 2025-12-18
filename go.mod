@@ -3,7 +3,6 @@ module github.com/soundprediction/go-graphiti
 go 1.25.5
 
 require (
-	// github.com/kuzudb/go-kuzu - to be added when available
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
 	github.com/sashabaranov/go-openai v1.41.2
 	github.com/stretchr/testify v1.11.1

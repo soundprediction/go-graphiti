@@ -2,7 +2,7 @@
 
 This example demonstrates using go-graphiti with external services: Neo4j database and OpenAI APIs.
 
-> **Note**: For the recommended minimal setup, see the [Kuzu + Ollama example](../kuzu_ollama/) which requires no external dependencies.
+> **Note**: For the recommended minimal setup, see the [ladybug + Ollama example](../ladybug_ollama/) which requires no external dependencies.
 
 ## Features
 
@@ -33,7 +33,7 @@ This example shows how to:
    - Sign up at https://platform.openai.com/
    - Requires API credits for usage
 
-> **Alternative**: For a setup requiring no external services, see the [Kuzu + Ollama example](../kuzu_ollama/)
+> **Alternative**: For a setup requiring no external services, see the [ladybug + Ollama example](../ladybug_ollama/)
 
 ## Environment Variables
 

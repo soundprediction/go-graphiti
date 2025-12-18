@@ -39,7 +39,7 @@ export OPENAI_API_KEY=your_api_key_here
 2. (Optional) Populate a global knowledge base:
 ```bash
 # Use the basic example or another method to create a knowledge graph
-# at ./knowledge_db/content_graph.kuzudb
+# at ./knowledge_db/content_graph.ladybugdb
 ```
 
 ## Usage
@@ -63,7 +63,7 @@ go run main.go --user-id bob
 ```bash
 go run main.go \
   --user-id alice \
-  --global-db /path/to/global/knowledge.kuzudb \
+  --global-db /path/to/global/knowledge.ladybugdb \
   --user-db-dir /path/to/user/databases
 ```
 
@@ -91,8 +91,8 @@ Once the chat is running, you can use these commands:
 🔧 Initializing clients...
    ✅ LLM client created (model: gpt-4o-mini)
    ✅ Embedder client created (model: text-embedding-3-small)
-   ✅ Global knowledge base loaded from ./knowledge_db/content_graph.kuzudb
-   ✅ User database initialized at ./user_dbs/user_alice.kuzudb
+   ✅ Global knowledge base loaded from ./knowledge_db/content_graph.ladybugdb
+   ✅ User database initialized at ./user_dbs/user_alice.ladybugdb
 
 ======================================================================
 💬 Graphiti Interactive Chat
@@ -191,10 +191,10 @@ After running:
 ```
 ./
 ├── knowledge_db/              # Global knowledge base (optional)
-│   └── content_graph.kuzudb/
+│   └── content_graph.ladybugdb/
 └── user_dbs/                  # User-specific databases
-    ├── user_alice.kuzudb/
-    ├── user_bob.kuzudb/
+    ├── user_alice.ladybugdb/
+    ├── user_bob.ladybugdb/
     └── ...
 ```
 
@@ -226,12 +226,12 @@ The current example keeps sessions in memory. To persist across runs, you could:
 
 ### Multi-User Support
 
-The example already supports multiple users through the `--user-id` flag. Each user gets their own Kuzu database file, ensuring data isolation.
+The example already supports multiple users through the `--user-id` flag. Each user gets their own ladybug database file, ensuring data isolation.
 
 ## Notes
 
 - User databases are created automatically on first use
-- Each user's conversation history is stored in their own Kuzu database
+- Each user's conversation history is stored in their own ladybug database
 - The global knowledge base is optional and read-only during chat
 - Episode IDs use UUID v7 for temporal ordering
 - All conversation turns are appended to a single episode per session

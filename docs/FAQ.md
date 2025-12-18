@@ -28,11 +28,11 @@ The Go version maintains the same core concepts but follows Go idioms and patter
 ### What databases are supported?
 
 Currently supported:
-- **Kuzu**: Embedded graph database (default, recommended) - no external setup required
+- **ladybug**: Embedded graph database (default, recommended) - no external setup required
 - **Neo4j**: External graph database for advanced production deployments
 - **Planned**: FalkorDB, ArangoDB, Amazon Neptune, other graph databases
 
-The modular driver architecture makes it easy to add new database backends. Kuzu is recommended for most use cases due to its simplicity and zero-setup requirements.
+The modular driver architecture makes it easy to add new database backends. ladybug is recommended for most use cases due to its simplicity and zero-setup requirements.
 
 ### What LLM providers are supported?
 
@@ -88,25 +88,25 @@ config := &graphiti.Config{
 
 **Minimal Setup (Recommended):**
 - **Go**: Version 1.24 or later
-- **Database**: Kuzu embedded (no external setup required)
+- **Database**: ladybug embedded (no external setup required)
 - **LLM/Embeddings**: Optional - can work without LLM features
 - **Memory**: 256MB+ for basic usage
 - **Storage**: Minimal - database files stored locally
 
 **With External Services:**
-- **Database**: Neo4j 5.0+ (if not using Kuzu)
+- **Database**: Neo4j 5.0+ (if not using ladybug)
 - **API Keys**: For external LLM/embedding services (OpenAI, etc.)
 - **Memory**: 512MB+ recommended
 - **Storage**: Depends on database choice and data volume
 
 ### How do I set up the graph database?
 
-**Option 1 - Kuzu Embedded (Recommended):**
+**Option 1 - ladybug Embedded (Recommended):**
 ```go
 // No setup required! Just specify a directory path
-driver, err := driver.NewKuzuDriver("./my_graph_db")
+driver, err := driver.NewLadybugDriver("./my_graph_db")
 ```
-Kuzu creates database files locally and requires no external services.
+ladybug creates database files locally and requires no external services.
 
 **Option 2 - Neo4j (For External Database):**
 
@@ -151,7 +151,7 @@ docker run \
 **Minimal Setup (No external dependencies):**
 ```bash
 # No environment variables required!
-# Kuzu database and basic functionality work out-of-the-box
+# ladybug database and basic functionality work out-of-the-box
 ```
 
 **With LLM Services:**
@@ -171,9 +171,9 @@ NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j  # Optional: defaults to "neo4j"
 ```
 
-**With Kuzu (Optional):**
+**With ladybug (Optional):**
 ```bash
-KUZU_DB_PATH=./my_graph_db  # Optional: defaults to "./kuzu_db"
+ladybug_DB_PATH=./my_graph_db  # Optional: defaults to "./ladybug_db"
 ```
 
 ## Usage Questions

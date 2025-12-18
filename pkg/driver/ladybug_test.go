@@ -12,16 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// createTempKuzuDB creates a temporary directory for Kuzu database testing
-func createTempKuzuDB(t *testing.T) string {
+// createTempLadybugDB creates a temporary directory for ladybug database testing
+func createTempLadybugDB(t *testing.T) string {
 	t.Helper()
 	tempDir := t.TempDir()
-	return filepath.Join(tempDir, "kuzu_test.db")
+	return filepath.Join(tempDir, "ladybug_test.db")
 }
 
-func TestNewKuzuDriver(t *testing.T) {
+func TestNewLadybugDriver(t *testing.T) {
 	t.Run("default path", func(t *testing.T) {
-		d, err := driver.NewKuzuDriver("", 1)
+		d, err := driver.NewLadybugDriver("", 1)
 		require.NoError(t, err)
 		assert.NotNil(t, d)
 
@@ -31,8 +31,8 @@ func TestNewKuzuDriver(t *testing.T) {
 	})
 
 	t.Run("custom path", func(t *testing.T) {
-		dbPath := createTempKuzuDB(t)
-		d, err := driver.NewKuzuDriver(dbPath, 1)
+		dbPath := createTempLadybugDB(t)
+		d, err := driver.NewLadybugDriver(dbPath, 1)
 		require.NoError(t, err)
 		assert.NotNil(t, d)
 
@@ -42,24 +42,24 @@ func TestNewKuzuDriver(t *testing.T) {
 	})
 }
 
-// TestKuzuDriverStubImplementation is now deprecated since KuzuDriver is fully implemented
+// TestLadybugDriverStubImplementation is now deprecated since LadybugDriver is fully implemented
 // Kept as a placeholder to maintain test compatibility, but skipped
-func TestKuzuDriverStubImplementation(t *testing.T) {
-	t.Skip("KuzuDriver is now fully implemented - this stub test is no longer needed")
+func TestLadybugDriverStubImplementation(t *testing.T) {
+	t.Skip("LadybugDriver is now fully implemented - this stub test is no longer needed")
 }
 
-// TestKuzuDriverInterface verifies that KuzuDriver implements GraphDriver interface
-func TestKuzuDriverInterface(t *testing.T) {
-	var _ driver.GraphDriver = (*driver.KuzuDriver)(nil)
+// TestLadybugDriverInterface verifies that LadybugDriver implements GraphDriver interface
+func TestLadybugDriverInterface(t *testing.T) {
+	var _ driver.GraphDriver = (*driver.LadybugDriver)(nil)
 }
 
 // Example test showing expected usage once the full implementation is available
-func TestKuzuDriverUsageExample(t *testing.T) {
-	t.Skip("Skip until Kuzu library is available")
+func TestLadybugDriverUsageExample(t *testing.T) {
+	// t.Skip("Skip until ladybug library is available")
 
 	// This test demonstrates expected usage patterns but is skipped
-	// until the actual Kuzu library dependency is available
-	d, err := driver.NewKuzuDriver("./test_kuzu_db", 1)
+	// until the actual ladybug library dependency is available
+	d, err := driver.NewLadybugDriver("./test_ladybug_db", 1)
 	require.NoError(t, err)
 	defer d.Close()
 
@@ -91,9 +91,9 @@ func TestKuzuDriverUsageExample(t *testing.T) {
 	// assert.NotEmpty(t, neighbors)
 }
 
-func TestKuzuDriver_UpsertNode(t *testing.T) {
-	dbPath := createTempKuzuDB(t)
-	d, err := driver.NewKuzuDriver(dbPath, 1)
+func TestLadybugDriver_UpsertNode(t *testing.T) {
+	dbPath := createTempLadybugDB(t)
+	d, err := driver.NewLadybugDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 
@@ -151,9 +151,9 @@ func TestKuzuDriver_UpsertNode(t *testing.T) {
 	assert.Equal(t, testNode.Name, updatedNode.Name, "Node name should remain the same")
 }
 
-func TestKuzuDriver_UpsertEdge(t *testing.T) {
-	dbPath := createTempKuzuDB(t)
-	d, err := driver.NewKuzuDriver(dbPath, 1)
+func TestLadybugDriver_UpsertEdge(t *testing.T) {
+	dbPath := createTempLadybugDB(t)
+	d, err := driver.NewLadybugDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 
@@ -236,9 +236,9 @@ func TestKuzuDriver_UpsertEdge(t *testing.T) {
 	assert.Equal(t, testEdge.Name, updatedEdge.Name, "Edge name should remain the same")
 }
 
-func TestKuzuDriver_UpsertEpisodicNode(t *testing.T) {
-	dbPath := createTempKuzuDB(t)
-	d, err := driver.NewKuzuDriver(dbPath, 1)
+func TestLadybugDriver_UpsertEpisodicNode(t *testing.T) {
+	dbPath := createTempLadybugDB(t)
+	d, err := driver.NewLadybugDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 
@@ -305,9 +305,9 @@ func TestKuzuDriver_UpsertEpisodicNode(t *testing.T) {
 	assert.Equal(t, testNode.EpisodeType, updatedNode.EpisodeType, "EpisodeType should be preserved after update")
 }
 
-func TestKuzuDriver_UpsertEpisodicEdge(t *testing.T) {
-	dbPath := createTempKuzuDB(t)
-	d, err := driver.NewKuzuDriver(dbPath, 1)
+func TestLadybugDriver_UpsertEpisodicEdge(t *testing.T) {
+	dbPath := createTempLadybugDB(t)
+	d, err := driver.NewLadybugDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 
@@ -375,9 +375,9 @@ func TestKuzuDriver_UpsertEpisodicEdge(t *testing.T) {
 	require.NoError(t, err, "Second UpsertEpisodicEdge should succeed (idempotent)")
 }
 
-func TestKuzuDriver_UpsertCommunityEdge(t *testing.T) {
-	dbPath := createTempKuzuDB(t)
-	d, err := driver.NewKuzuDriver(dbPath, 1)
+func TestLadybugDriver_UpsertCommunityEdge(t *testing.T) {
+	dbPath := createTempLadybugDB(t)
+	d, err := driver.NewLadybugDriver(dbPath, 1)
 	require.NoError(t, err)
 	defer d.Close()
 

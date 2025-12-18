@@ -64,7 +64,7 @@ type ChatClients struct {
 func main() {
 	// Command-line flags
 	userID := flag.String("user-id", "alice", "User ID for the chat session")
-	globalDBPath := flag.String("global-db", "./knowledge_db/content_graph.kuzudb", "Path to global knowledge base (Kuzu database)")
+	globalDBPath := flag.String("global-db", "./knowledge_db/content_graph.ladybugdb", "Path to global knowledge base (ladybug database)")
 	userDBDir := flag.String("user-db-dir", "./user_dbs", "Directory for user-specific databases")
 	skipGlobal := flag.Bool("skip-global", false, "Skip loading global knowledge base")
 	flag.Parse()
@@ -127,16 +127,16 @@ func initializeClients(apiKey, userID, globalDBPath, userDBDir string, skipGloba
 	if !skipGlobal {
 		// Check if global database exists
 		if _, err := os.Stat(globalDBPath); err == nil {
-			kuzuDriver, err := driver.NewKuzuDriver(globalDBPath, 1)
+			ladybugDriver, err := driver.NewLadybugDriver(globalDBPath, 1)
 			if err != nil {
-				fmt.Printf("   ⚠️  Failed to load global Kuzu database: %v\n", err)
+				fmt.Printf("   ⚠️  Failed to load global ladybug database: %v\n", err)
 				fmt.Println("   Continuing without global knowledge base...")
 			} else {
 				globalConfig := &graphiti.Config{
 					GroupID:  "global-knowledge",
 					TimeZone: time.UTC,
 				}
-				globalGraphitiClient = graphiti.NewClient(kuzuDriver, llmClient, embedderClient, globalConfig, nil)
+				globalGraphitiClient = graphiti.NewClient(ladybugDriver, llmClient, embedderClient, globalConfig, nil)
 				fmt.Printf("   ✅ Global knowledge base loaded from %s\n", globalDBPath)
 			}
 		} else {
@@ -146,23 +146,23 @@ func initializeClients(apiKey, userID, globalDBPath, userDBDir string, skipGloba
 	}
 
 	// Create user-specific Graphiti client
-	userDBPath := filepath.Join(userDBDir, fmt.Sprintf("user_%s.kuzudb", userID))
+	userDBPath := filepath.Join(userDBDir, fmt.Sprintf("user_%s.ladybugdb", userID))
 
 	// Create parent directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(userDBPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create user database directory: %w", err)
 	}
 
-	userKuzuDriver, err := driver.NewKuzuDriver(userDBPath, 1)
+	userLadybugDriver, err := driver.NewLadybugDriver(userDBPath, 1)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user Kuzu driver: %w", err)
+		return nil, fmt.Errorf("failed to create user ladybug driver: %w", err)
 	}
 
 	userConfig := &graphiti.Config{
 		GroupID:  fmt.Sprintf("user-%s-chat", userID),
 		TimeZone: time.UTC,
 	}
-	userGraphitiClient := graphiti.NewClient(userKuzuDriver, llmClient, embedderClient, userConfig, nil)
+	userGraphitiClient := graphiti.NewClient(userLadybugDriver, llmClient, embedderClient, userConfig, nil)
 	fmt.Printf("   ✅ User database initialized at %s\n", userDBPath)
 
 	return &ChatClients{

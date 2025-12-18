@@ -4,9 +4,9 @@ This document compares the UpsertEdge implementations between the Python graphit
 
 ## Overview
 
-Similar to nodes, the Go implementation uses a **CREATE-then-UPDATE** approach for Kuzu while Memgraph uses **MERGE**.
+Similar to nodes, the Go implementation uses a **CREATE-then-UPDATE** approach for ladybug while Memgraph uses **MERGE**.
 
-## Kuzu Driver Comparison
+## ladybug Driver Comparison
 
 ### Python Entity Edge (MERGE approach)
 ```cypher
@@ -27,7 +27,7 @@ SET e.attributes = $attributes
 
 ### Go Entity Edge (CREATE + UPDATE approach)
 
-**Create Query** (kuzu.go:949-967):
+**Create Query** (ladybug.go:949-967):
 ```cypher
 MATCH (a:Entity {uuid: $source_uuid, group_id: $group_id})
 MATCH (b:Entity {uuid: $target_uuid, group_id: $group_id})
@@ -48,7 +48,7 @@ CREATE (a)-[:RELATES_TO]->(rel)
 CREATE (rel)-[:RELATES_TO]->(b)
 ```
 
-**Update Query** (kuzu.go:1026-1037):
+**Update Query** (ladybug.go:1026-1037):
 ```cypher
 MATCH (rel:RelatesToNode_)
 WHERE rel.uuid = $uuid AND rel.group_id = $group_id
@@ -63,9 +63,9 @@ SET rel.name = $name,
 ```
 
 **Differences**:
-✅ **FIXED**: Removed invalid `type` field that was causing Kuzu schema errors
+✅ **FIXED**: Removed invalid `type` field that was causing ladybug schema errors
 ✅ **Go improvement**: Explicit CAST for empty arrays to avoid type inference issues
-✅ **Go improvement**: Float32 to Float64 conversion for Kuzu compatibility
+✅ **Go improvement**: Float32 to Float64 conversion for ladybug compatibility
 ✅ **Matching**: All required fields (10 total) are properly set
 
 **Fields**: `uuid`, `group_id`, `created_at`, `name`, `fact`, `fact_embedding`, `episodes`, `expired_at`, `valid_at`, `invalid_at`, `attributes`
@@ -115,7 +115,7 @@ RETURN e
 **Fields**: `group_id`, `created_at` only
 
 ### Go Implementation
-The Go implementation does NOT have a specific UpsertEdge implementation for MENTIONS relationships. The schema defines MENTIONS in kuzu.go:74-79:
+The Go implementation does NOT have a specific UpsertEdge implementation for MENTIONS relationships. The schema defines MENTIONS in ladybug.go:74-79:
 ```sql
 CREATE REL TABLE IF NOT EXISTS MENTIONS(
     FROM Episodic TO Entity,
@@ -143,7 +143,7 @@ RETURN e
 **Fields**: `uuid`, `group_id`, `created_at`
 
 ### Go Implementation
-The Go implementation does NOT have a specific UpsertEdge implementation for HAS_MEMBER relationships. The schema defines HAS_MEMBER in kuzu.go:80-86:
+The Go implementation does NOT have a specific UpsertEdge implementation for HAS_MEMBER relationships. The schema defines HAS_MEMBER in ladybug.go:80-86:
 ```sql
 CREATE REL TABLE IF NOT EXISTS HAS_MEMBER(
     FROM Community TO Entity,
@@ -162,7 +162,7 @@ CREATE REL TABLE IF NOT EXISTS HAS_MEMBER(
 
 ### Python Approach
 
-**Bulk Entity Edges (Kuzu)**:
+**Bulk Entity Edges (ladybug)**:
 ```cypher
 UNWIND $edges AS edge
 MATCH (source:Entity {uuid: edge.source_uuid})
@@ -193,9 +193,9 @@ SET e.created_at = edge.created_at
 
 ### Go Approach
 
-**Kuzu Bulk (kuzu.go:1543-1550)**:
+**ladybug Bulk (ladybug.go:1543-1550)**:
 ```go
-func (k *KuzuDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error {
+func (k *LadybugDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) error {
     for _, edge := range edges {
         if err := k.UpsertEdge(ctx, edge); err != nil {
             return err
@@ -224,17 +224,17 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 **Differences**:
 ⚠️ **Performance issue**: Go uses simple loops instead of UNWIND for bulk operations
 ✅ **Memgraph improvement**: At least uses a single transaction
-⚠️ **Kuzu**: No transaction batching, each edge is a separate operation
+⚠️ **ladybug**: No transaction batching, each edge is a separate operation
 
 ---
 
 ## Issues Found
 
-### 1. ✅ FIXED: Invalid `type` Field in Kuzu Entity Edges
+### 1. ✅ FIXED: Invalid `type` Field in ladybug Entity Edges
 
-**Issue**: The Go CREATE and UPDATE queries for entity edges included a `type` field that doesn't exist in the Kuzu schema.
+**Issue**: The Go CREATE and UPDATE queries for entity edges included a `type` field that doesn't exist in the ladybug schema.
 
-**Fix Applied** (kuzu.go:949-977, 1026-1037): Removed `type` field from both CREATE and UPDATE queries. The RelatesToNode_ schema only has: uuid, group_id, created_at, name, fact, fact_embedding, episodes, expired_at, valid_at, invalid_at, attributes.
+**Fix Applied** (ladybug.go:949-977, 1026-1037): Removed `type` field from both CREATE and UPDATE queries. The RelatesToNode_ schema only has: uuid, group_id, created_at, name, fact, fact_embedding, episodes, expired_at, valid_at, invalid_at, attributes.
 
 ---
 
@@ -242,7 +242,7 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 
 **Issue**: The UPDATE query was missing proper handling for fact_embedding and episodes arrays.
 
-**Fix Applied** (kuzu.go:999-1024): Added dynamic clause building for empty arrays using CAST to avoid Kuzu type inference errors.
+**Fix Applied** (ladybug.go:999-1024): Added dynamic clause building for empty arrays using CAST to avoid ladybug type inference errors.
 
 ---
 
@@ -253,16 +253,16 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 - Community edges (HAS_MEMBER relationship)
 
 **Fix Applied**:
-- **Kuzu** (kuzu.go:1058-1126): Implemented `UpsertEpisodicEdge()` and `UpsertCommunityEdge()` methods
+- **ladybug** (ladybug.go:1058-1126): Implemented `UpsertEpisodicEdge()` and `UpsertCommunityEdge()` methods
 - **Memgraph** (memgraph.go:377-438): Implemented `UpsertEpisodicEdge()` and `UpsertCommunityEdge()` methods
 - Both use MERGE for idempotency matching Python behavior
-- Tests added and passing: `TestKuzuDriver_UpsertEpisodicEdge`, `TestKuzuDriver_UpsertCommunityEdge`
+- Tests added and passing: `TestLadybugDriver_UpsertEpisodicEdge`, `TestLadybugDriver_UpsertCommunityEdge`
 
 ---
 
 ### 4. ✅ PARTIALLY FIXED: Bulk Operations Optimization
 
-**Issue**: Both Kuzu and Memgraph bulk operations use simple loops instead of UNWIND-based batch queries.
+**Issue**: Both ladybug and Memgraph bulk operations use simple loops instead of UNWIND-based batch queries.
 
 **Fix Applied**:
 - **Memgraph** (memgraph.go:805-851): Implemented UNWIND-based bulk upsert for both nodes and edges
@@ -271,10 +271,10 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
   - Significant performance improvement for large batches
 
 **Still Pending**:
-- **Kuzu**: Still uses simple loops (kuzu.go:1543-1550 for edges, 1533-1540 for nodes)
-  - Kuzu doesn't support UNWIND in the same way as Neo4j/Memgraph
+- **ladybug**: Still uses simple loops (ladybug.go:1543-1550 for edges, 1533-1540 for nodes)
+  - ladybug doesn't support UNWIND in the same way as Neo4j/Memgraph
   - Current approach: Sequential individual operations
-  - Could be improved with batched parameter approach if Kuzu supports it
+  - Could be improved with batched parameter approach if ladybug supports it
 
 ---
 
@@ -293,9 +293,9 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 
 ## Test Coverage
 
-✅ **Completed**: TestKuzuDriver_UpsertEdge - Tests entity edge create and update
-✅ **Completed**: TestKuzuDriver_UpsertEpisodicEdge - Tests MENTIONS relationship create and idempotency
-✅ **Completed**: TestKuzuDriver_UpsertCommunityEdge - Tests HAS_MEMBER relationship create and idempotency
+✅ **Completed**: TestLadybugDriver_UpsertEdge - Tests entity edge create and update
+✅ **Completed**: TestLadybugDriver_UpsertEpisodicEdge - Tests MENTIONS relationship create and idempotency
+✅ **Completed**: TestLadybugDriver_UpsertCommunityEdge - Tests HAS_MEMBER relationship create and idempotency
 ⚠️ **Missing**: Bulk operation performance tests
 ⚠️ **Missing**: Tests for empty array handling in bulk operations
 ⚠️ **Missing**: Memgraph-specific tests for new edge methods
@@ -315,7 +315,7 @@ func (m *MemgraphDriver) UpsertEdges(ctx context.Context, edges []*types.Edge) e
 ### Medium Priority
 
 6. **Resolve MENTIONS schema mismatch**: Clarify uuid field requirement (currently generates uuid automatically)
-7. **Optimize Kuzu bulk operations**: Investigate if Kuzu supports batch parameter queries
+7. **Optimize ladybug bulk operations**: Investigate if ladybug supports batch parameter queries
 8. **Add Memgraph tests**: Create tests for episodic and community edges in Memgraph
 9. **Add bulk operation tests**: Verify performance improvements with large datasets
 10. **Document edge type handling**: Explain when to use which edge type and method
@@ -346,8 +346,8 @@ The Go edge implementation now has **full functionality** matching Python behavi
 - All tests passing
 
 ⚠️ **Minor Remaining Items**:
-- Kuzu bulk operations still use loops (Kuzu limitation, not a bug)
+- ladybug bulk operations still use loops (ladybug limitation, not a bug)
 - MENTIONS uuid field auto-generated (implementation choice)
-- Memgraph-specific tests for new edge methods (Kuzu tests validate logic)
+- Memgraph-specific tests for new edge methods (ladybug tests validate logic)
 
 **Status**: Go implementation now has **full parity** with Python for all edge types. All high-priority issues resolved. Ready for production use.

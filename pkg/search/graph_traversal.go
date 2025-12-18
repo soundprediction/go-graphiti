@@ -74,8 +74,8 @@ func (su *SearchUtilities) NodeBFSSearch(ctx context.Context, originNodeUUIDs []
 	// Build match queries based on provider
 	matchQueries := []string{}
 
-	if provider == driver.GraphProviderKuzu {
-		// For Kuzu, we need to handle the RelatesToNode_ intermediate nodes
+	if provider == driver.GraphProviderLadybug {
+		// For Ladybug, we need to handle the RelatesToNode_ intermediate nodes
 		// Depth is multiplied by 2 because of the intermediate nodes
 		depth := options.MaxDepth * 2
 
@@ -200,8 +200,8 @@ func (su *SearchUtilities) EdgeBFSSearch(ctx context.Context, originNodeUUIDs []
 
 	allRecords := []map[string]interface{}{}
 
-	if provider == driver.GraphProviderKuzu {
-		// Kuzu stores entity edges with intermediate RelatesToNode_ nodes
+	if provider == driver.GraphProviderLadybug {
+		// Ladybug stores entity edges with intermediate RelatesToNode_ nodes
 		depth := options.MaxDepth*2 - 1
 		matchQueries := []string{
 			fmt.Sprintf(`
@@ -444,8 +444,8 @@ func (su *SearchUtilities) getRelatedNodes(ctx context.Context, node *types.Node
 	provider := su.driver.Provider()
 
 	var query string
-	if provider == driver.GraphProviderKuzu {
-		// For Kuzu, handle the RelatesToNode_ intermediate nodes
+	if provider == driver.GraphProviderLadybug {
+		// For Ladybug, handle the RelatesToNode_ intermediate nodes
 		query = `
 			MATCH (origin:Entity {uuid: $node_uuid})-[:RELATES_TO*2..2]->(n:Entity)
 			WHERE n.group_id = $group_id
@@ -506,8 +506,8 @@ func (su *SearchUtilities) getEdgesForNode(ctx context.Context, nodeUUID string,
 	provider := su.driver.Provider()
 
 	var query string
-	if provider == driver.GraphProviderKuzu {
-		// For Kuzu, query the RelatesToNode_ intermediate nodes
+	if provider == driver.GraphProviderLadybug {
+		// For Ladybug, query the RelatesToNode_ intermediate nodes
 		query = `
 			MATCH (n:Entity {uuid: $node_uuid})-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
 			WHERE e.group_id = $group_id
@@ -606,7 +606,7 @@ func (pf *PathFinder) FindShortestPath(ctx context.Context, sourceUUID, targetUU
 	provider := pf.driver.Provider()
 
 	var query string
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		query = fmt.Sprintf(`
 			MATCH path = shortestPath((source:Entity {uuid: $source_uuid})-[:RELATES_TO*1..%d]->(target:Entity {uuid: $target_uuid}))
 			RETURN nodes(path) AS nodes, relationships(path) AS edges
@@ -638,7 +638,7 @@ func (pf *PathFinder) FindAllPaths(ctx context.Context, sourceUUID, targetUUID s
 	provider := pf.driver.Provider()
 
 	var query string
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		query = fmt.Sprintf(`
 			MATCH path = (source:Entity {uuid: $source_uuid})-[:RELATES_TO*1..%d]->(target:Entity {uuid: $target_uuid})
 			RETURN nodes(path) AS nodes, relationships(path) AS edges
@@ -671,7 +671,7 @@ func (pf *PathFinder) GetNeighbors(ctx context.Context, nodeUUID string, directi
 	var query string
 	switch direction {
 	case "out":
-		if provider == driver.GraphProviderKuzu {
+		if provider == driver.GraphProviderLadybug {
 			query = `
 				MATCH (n:Entity {uuid: $node_uuid})-[:RELATES_TO*2..2]->(neighbor:Entity)
 				RETURN DISTINCT neighbor.uuid AS uuid, neighbor.name AS name, neighbor.group_id AS group_id
@@ -683,7 +683,7 @@ func (pf *PathFinder) GetNeighbors(ctx context.Context, nodeUUID string, directi
 			`
 		}
 	case "in":
-		if provider == driver.GraphProviderKuzu {
+		if provider == driver.GraphProviderLadybug {
 			query = `
 				MATCH (neighbor:Entity)-[:RELATES_TO*2..2]->(n:Entity {uuid: $node_uuid})
 				RETURN DISTINCT neighbor.uuid AS uuid, neighbor.name AS name, neighbor.group_id AS group_id
@@ -695,7 +695,7 @@ func (pf *PathFinder) GetNeighbors(ctx context.Context, nodeUUID string, directi
 			`
 		}
 	default: // "both"
-		if provider == driver.GraphProviderKuzu {
+		if provider == driver.GraphProviderLadybug {
 			query = `
 				MATCH (n:Entity {uuid: $node_uuid})-[:RELATES_TO*2..2]-(neighbor:Entity)
 				RETURN DISTINCT neighbor.uuid AS uuid, neighbor.name AS name, neighbor.group_id AS group_id
@@ -797,7 +797,7 @@ func (ct *CommunityTraversal) GetInterCommunityEdges(ctx context.Context, commun
 	provider := ct.driver.Provider()
 
 	var query string
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		query = `
 			MATCH (c1:Community {uuid: $community_uuid1})-[:HAS_MEMBER]->(n1:Entity)
 			MATCH (c2:Community {uuid: $community_uuid2})-[:HAS_MEMBER]->(n2:Entity)
@@ -900,7 +900,7 @@ func (tt *TemporalTraversal) GetEdgesInTimeRange(ctx context.Context, timeRange 
 	provider := tt.driver.Provider()
 
 	var query string
-	if provider == driver.GraphProviderKuzu {
+	if provider == driver.GraphProviderLadybug {
 		query = `
 			MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
 			WHERE e.group_id = $group_id
@@ -956,7 +956,7 @@ func (tt *TemporalTraversal) GetTemporalNeighbors(ctx context.Context, nodeUUID 
 	var query string
 	switch direction {
 	case "out":
-		if provider == driver.GraphProviderKuzu {
+		if provider == driver.GraphProviderLadybug {
 			query = `
 				MATCH (n:Entity {uuid: $node_uuid})-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(neighbor:Entity)
 				WHERE e.created_at <= $target_time
@@ -972,7 +972,7 @@ func (tt *TemporalTraversal) GetTemporalNeighbors(ctx context.Context, nodeUUID 
 			`
 		}
 	case "in":
-		if provider == driver.GraphProviderKuzu {
+		if provider == driver.GraphProviderLadybug {
 			query = `
 				MATCH (neighbor:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(n:Entity {uuid: $node_uuid})
 				WHERE e.created_at <= $target_time
@@ -988,7 +988,7 @@ func (tt *TemporalTraversal) GetTemporalNeighbors(ctx context.Context, nodeUUID 
 			`
 		}
 	default: // "both"
-		if provider == driver.GraphProviderKuzu {
+		if provider == driver.GraphProviderLadybug {
 			query = `
 				MATCH (n:Entity {uuid: $node_uuid})-[:RELATES_TO]-(e:RelatesToNode_)-[:RELATES_TO]-(neighbor:Entity)
 				WHERE e.created_at <= $target_time

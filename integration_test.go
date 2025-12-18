@@ -26,12 +26,12 @@ func TestGraphitiIntegration(t *testing.T) {
 	t.Skip("Skip until actual database driver is implemented")
 
 	// In a real integration test, you would:
-	// 1. Set up a test database (Kuzu/Neo4j)
+	// 1. Set up a test database (Ladybug/Neo4j)
 	// 2. Create real LLM and embedder clients
 	// 3. Test full functionality
 
 	// Example setup (would need real implementations):
-	// driver, err := driver.NewKuzuDriver("./test_integration_db")
+	// driver, err := driver.NewLadybugDriver("./test_integration_db")
 	// require.NoError(t, err)
 	// defer driver.Close(ctx)
 

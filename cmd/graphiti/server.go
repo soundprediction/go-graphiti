@@ -52,11 +52,11 @@ func init() {
 	serverCmd.Flags().StringVar(&serverMode, "mode", "debug", "Server mode (debug, release, test)")
 
 	// Database flags
-	serverCmd.Flags().String("db-driver", "kuzu", "Database driver (kuzu, neo4j, falkordb)")
-	serverCmd.Flags().String("db-uri", "./kuzu_db", "Database URI/path")
-	serverCmd.Flags().String("db-username", "", "Database username (not used for Kuzu)")
-	serverCmd.Flags().String("db-password", "", "Database password (not used for Kuzu)")
-	serverCmd.Flags().String("db-database", "", "Database name (not used for Kuzu)")
+	serverCmd.Flags().String("db-driver", "ladybug", "Database driver (ladybug, neo4j, falkordb)")
+	serverCmd.Flags().String("db-uri", "./ladybug_db", "Database URI/path")
+	serverCmd.Flags().String("db-username", "", "Database username (not used for ladybug)")
+	serverCmd.Flags().String("db-password", "", "Database password (not used for ladybug)")
+	serverCmd.Flags().String("db-database", "", "Database name (not used for ladybug)")
 
 	// LLM flags
 	serverCmd.Flags().String("llm-provider", "openai", "LLM provider")
@@ -227,10 +227,10 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 		Level: slog.LevelInfo,
 	}))
 	switch cfg.Database.Driver {
-	case "kuzu":
-		graphDriver, err = driver.NewKuzuDriver(cfg.Database.URI, 16)
+	case "ladybug":
+		graphDriver, err = driver.NewLadybugDriver(cfg.Database.URI, 16)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Kuzu driver: %w", err)
+			return nil, fmt.Errorf("failed to create ladybug driver: %w", err)
 		}
 
 	case "falkordb":

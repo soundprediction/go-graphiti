@@ -15,7 +15,7 @@ const (
 	GraphProviderNeo4j    GraphProvider = "neo4j"
 	GraphProviderMemgraph GraphProvider = "memgraph"
 	GraphProviderFalkorDB GraphProvider = "falkordb"
-	GraphProviderKuzu     GraphProvider = "kuzu"
+	GraphProviderLadybug  GraphProvider = "ladybug"
 	GraphProviderNeptune  GraphProvider = "neptune"
 )
 
