@@ -1,4 +1,4 @@
-# Go Graphiti Makefile
+# Go Predicato Makefile
 
 .PHONY: build build-cli test clean fmt vet lint run-example run-server deps tidy
 
@@ -8,14 +8,14 @@ build:
 
 # Build CLI binary
 build-cli:
-	go build -o bin/graphiti ./cmd/main.go
+	go build -o bin/predicato ./cmd/main.go
 
 # Build CLI for multiple platforms
 build-cli-all:
-	GOOS=linux GOARCH=amd64 go build -o bin/graphiti-linux-amd64 ./cmd/main.go
-	GOOS=darwin GOARCH=amd64 go build -o bin/graphiti-darwin-amd64 ./cmd/main.go
-	GOOS=darwin GOARCH=arm64 go build -o bin/graphiti-darwin-arm64 ./cmd/main.go
-	GOOS=windows GOARCH=amd64 go build -o bin/graphiti-windows-amd64.exe ./cmd/main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/predicato-linux-amd64 ./cmd/main.go
+	GOOS=darwin GOARCH=amd64 go build -o bin/predicato-darwin-amd64 ./cmd/main.go
+	GOOS=darwin GOARCH=arm64 go build -o bin/predicato-darwin-arm64 ./cmd/main.go
+	GOOS=windows GOARCH=amd64 go build -o bin/predicato-windows-amd64.exe ./cmd/main.go
 
 # Run tests
 test:

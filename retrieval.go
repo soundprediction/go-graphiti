@@ -1,13 +1,13 @@
-package graphiti
+package predicato
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/search"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/search"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Search performs hybrid search across the knowledge graph.
@@ -98,7 +98,7 @@ func (c *Client) GetStats(ctx context.Context) (*driver.GraphStats, error) {
 
 // RetrieveEpisodes retrieves episodes from the knowledge graph with temporal filtering.
 // This is an exact translation of the Python retrieve_episodes() function from
-// graphiti_core/utils/maintenance/graph_data_operations.py:122-181
+// predicato_core/utils/maintenance/graph_data_operations.py:122-181
 //
 // Parameters:
 //   - referenceTime: Only episodes with valid_at <= referenceTime will be retrieved

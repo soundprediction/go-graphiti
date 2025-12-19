@@ -18,7 +18,7 @@ The LLM package includes a retry wrapper that automatically retries failed LLM A
 
 ```go
 import (
-    "github.com/soundprediction/go-graphiti/pkg/llm"
+    "github.com/soundprediction/go-predicato/pkg/llm"
 )
 
 // Create your base LLM client

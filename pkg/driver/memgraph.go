@@ -14,7 +14,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/db"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // MemgraphDriver implements the GraphDriver interface for Memgraph databases.
@@ -1738,7 +1738,7 @@ func (s *MemgraphDriverSession) Provider() GraphProvider {
 	return GraphProviderMemgraph
 }
 
-// Helper methods for converting between Graphiti and Memgraph types
+// Helper methods for converting between Predicato and Memgraph types
 
 func (m *MemgraphDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 	props := node.Props

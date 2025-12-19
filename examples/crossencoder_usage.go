@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/soundprediction/go-graphiti/pkg/crossencoder"
+	"github.com/soundprediction/go-predicato/pkg/crossencoder"
 )
 
 // Example demonstrating how to use the generic Jina-compatible reranker

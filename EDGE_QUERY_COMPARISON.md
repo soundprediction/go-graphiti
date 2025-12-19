@@ -1,6 +1,6 @@
 # UpsertEdge Query Comparison: Python vs Go
 
-This document compares the UpsertEdge implementations between the Python graphiti package and the Go go-graphiti port.
+This document compares the UpsertEdge implementations between the Python predicato package and the Go go-predicato port.
 
 ## Overview
 

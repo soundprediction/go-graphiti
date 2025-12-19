@@ -29,6 +29,8 @@ github.com/dgraph-io/badger/v4 v4.9.0 h1:tpqWb0NewSrCYqTvywbcXOhQdWcqephkVkbBmaa
 github.com/dgraph-io/badger/v4 v4.9.0/go.mod h1:5/MEx97uzdPUHR4KtkNt8asfI2T4JiEiQlV7kWUo8c0=
 github.com/dgraph-io/ristretto/v2 v2.2.0 h1:bkY3XzJcXoMuELV8F+vS8kzNgicwQFAaGINAEJdWGOM=
 github.com/dgraph-io/ristretto/v2 v2.2.0/go.mod h1:RZrm63UmcBAaYWC1DotLYBmTvgkrs0+XhBd7Npn7/zI=
+github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da h1:aIftn67I1fkbMa512G+w+Pxci9hJPB8oMnkcP3iZF38=
+github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/duckdb/duckdb-go-bindings v0.1.22 h1:TnkBfSS+UAyOWT6NazyZ+bWDcA+ft8S3Hl+c1SNOkcc=
 github.com/duckdb/duckdb-go-bindings v0.1.22/go.mod h1:pBnfviMzANT/9hi4bg+zW4ykRZZPCXlVuvBWEcZofkc=
 github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.22 h1:kL5Om34dyDt08jtwOqJcjZRf1H2hrjd5ZrhXPNcXrj0=

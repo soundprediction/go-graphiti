@@ -7,20 +7,20 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/server/dto"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/server/dto"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // RetrieveHandler handles data retrieval requests
 type RetrieveHandler struct {
-	graphiti graphiti.Graphiti
+	predicato predicato.Predicato
 }
 
 // NewRetrieveHandler creates a new retrieve handler
-func NewRetrieveHandler(g graphiti.Graphiti) *RetrieveHandler {
+func NewRetrieveHandler(g predicato.Predicato) *RetrieveHandler {
 	return &RetrieveHandler{
-		graphiti: g,
+		predicato: g,
 	}
 }
 
@@ -59,10 +59,10 @@ func (h *RetrieveHandler) Search(c *gin.Context) {
 		Rerank:       true,
 	}
 
-	// Perform the search using graphiti
+	// Perform the search using predicato
 	// Note: Group ID filtering would be implemented in the search configuration
 	// For now, we use the global search
-	searchResults, err := h.graphiti.Search(ctx, req.Query, searchConfig)
+	searchResults, err := h.predicato.Search(ctx, req.Query, searchConfig)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "search_failed",
@@ -71,7 +71,7 @@ func (h *RetrieveHandler) Search(c *gin.Context) {
 		return
 	}
 
-	// Convert graphiti search results to DTO format
+	// Convert predicato search results to DTO format
 	var facts []dto.FactResult
 
 	// Process nodes as facts
@@ -134,11 +134,11 @@ func (h *RetrieveHandler) GetEntityEdge(c *gin.Context) {
 
 	ctx := context.Background()
 
-	// Try to retrieve the edge from graphiti
-	edge, err := h.graphiti.GetEdge(ctx, uuid)
+	// Try to retrieve the edge from predicato
+	edge, err := h.predicato.GetEdge(ctx, uuid)
 	if err != nil {
 		// If edge not found, try as a node
-		node, nodeErr := h.graphiti.GetNode(ctx, uuid)
+		node, nodeErr := h.predicato.GetNode(ctx, uuid)
 		if nodeErr != nil {
 			c.JSON(http.StatusNotFound, dto.ErrorResponse{
 				Error:   "entity_not_found",
@@ -216,8 +216,8 @@ func (h *RetrieveHandler) GetEpisodes(c *gin.Context) {
 
 	ctx := context.Background()
 
-	// Retrieve episodes from graphiti
-	episodeNodes, err := h.graphiti.GetEpisodes(ctx, groupID, lastN)
+	// Retrieve episodes from predicato
+	episodeNodes, err := h.predicato.GetEpisodes(ctx, groupID, lastN)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "retrieval_failed",
@@ -308,7 +308,7 @@ func (h *RetrieveHandler) GetMemory(c *gin.Context) {
 	}
 
 	// Perform search using the combined query
-	searchResults, err := h.graphiti.Search(ctx, combinedQuery, searchConfig)
+	searchResults, err := h.predicato.Search(ctx, combinedQuery, searchConfig)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "memory_retrieval_failed",

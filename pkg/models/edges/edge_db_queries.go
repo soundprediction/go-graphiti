@@ -1,7 +1,7 @@
 package edges
 
 import (
-	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 // EPISODIC_EDGE_SAVE query constant

@@ -1,6 +1,6 @@
 # CrossEncoder Package
 
-The `crossencoder` package provides cross-encoder functionality for ranking passages based on their relevance to a query. This is a Go port of the cross-encoder functionality from the Python Graphiti project.
+The `crossencoder` package provides cross-encoder functionality for ranking passages based on their relevance to a query. This is a Go port of the cross-encoder functionality from the Python Predicato project.
 
 ## Overview
 
@@ -157,7 +157,7 @@ go test ./pkg/crossencoder/... -run Example
 
 ## Integration
 
-The crossencoder package integrates with the search functionality in go-graphiti to provide reranking capabilities for:
+The crossencoder package integrates with the search functionality in go-predicato to provide reranking capabilities for:
 
 - Node search results
 - Edge search results  

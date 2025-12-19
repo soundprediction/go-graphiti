@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 func TestDuckDBWriter(t *testing.T) {

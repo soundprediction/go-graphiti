@@ -1,6 +1,6 @@
 # Checkpoint Package
 
-This package provides checkpoint/resume functionality for the `addEpisodeChunked` pipeline in go-graphiti. It allows you to save the state of a partially processed episode and resume from where it left off if processing fails due to temporary issues (like LLM timeouts, rate limits, or network errors).
+This package provides checkpoint/resume functionality for the `addEpisodeChunked` pipeline in go-predicato. It allows you to save the state of a partially processed episode and resume from where it left off if processing fails due to temporary issues (like LLM timeouts, rate limits, or network errors).
 
 ## Features
 
@@ -48,7 +48,7 @@ The `EpisodeCheckpoint` struct stores:
 ```go
 import (
     "context"
-    "github.com/soundprediction/go-graphiti/pkg/checkpoint"
+    "github.com/soundprediction/go-predicato/pkg/checkpoint"
 )
 
 // Create checkpoint manager
@@ -208,7 +208,7 @@ for _, cp := range checkpoints {
 
 ### Checkpoint Directory
 
-By default, checkpoints are stored in `$TMPDIR/graphiti-checkpoints`. You can customize this:
+By default, checkpoints are stored in `$TMPDIR/predicato-checkpoints`. You can customize this:
 
 ```go
 // Use custom directory
@@ -309,7 +309,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 If a checkpoint file is corrupted, it will be skipped during `List()`. Delete the file manually:
 
 ```bash
-rm $TMPDIR/graphiti-checkpoints/checkpoint_<episode-id>.json
+rm $TMPDIR/predicato-checkpoints/checkpoint_<episode-id>.json
 ```
 
 ### Disk space

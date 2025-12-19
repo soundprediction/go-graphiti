@@ -14,7 +14,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/db"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Neo4jDriver implements the GraphDriver interface for Neo4j databases.
@@ -1736,7 +1736,7 @@ func (s *Neo4jDriverSession) Provider() GraphProvider {
 	return GraphProviderNeo4j
 }
 
-// Helper methods for converting between Graphiti and Neo4j types
+// Helper methods for converting between Predicato and Neo4j types
 
 func (n *Neo4jDriver) nodeFromDBNode(node dbtype.Node) *types.Node {
 	props := node.Props

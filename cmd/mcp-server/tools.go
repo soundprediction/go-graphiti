@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/firebase/genkit/go/ai"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Tool request/response types
@@ -110,7 +110,7 @@ func (s *MCPServer) AddMemoryTool(ctx *ai.ToolContext, input *AddMemoryRequest) 
 		},
 	}
 
-	// Add episode using Graphiti client
+	// Add episode using Predicato client
 	// TODO: Add support for custom entities when s.config.UseCustomEntities is true
 	_, err := s.client.Add(context.Background(), []types.Episode{episode}, nil)
 	if err != nil {
@@ -397,7 +397,7 @@ func (s *MCPServer) GetEntityEdgeTool(ctx *ai.ToolContext, input *UUIDRequest) (
 		}, nil
 	}
 
-	// Get edge using Graphiti client
+	// Get edge using Predicato client
 	edge, err := s.client.GetEdge(context.Background(), input.UUID)
 	if err != nil {
 		s.logger.Error("Failed to get entity edge", "uuid", input.UUID, "error", err)
@@ -449,7 +449,7 @@ func (s *MCPServer) GetEpisodesTool(ctx *ai.ToolContext, input *GetEpisodesReque
 		limit = 10 // Default to 10 episodes
 	}
 
-	// Use the Graphiti client to retrieve episodes
+	// Use the Predicato client to retrieve episodes
 	episodeNodes, err := s.client.GetEpisodes(context.Background(), groupID, limit)
 	if err != nil {
 		s.logger.Error("Failed to retrieve episodes", "error", err)
@@ -546,7 +546,7 @@ func (s *MCPServer) ClearGraphTool(ctx *ai.ToolContext, input *ClearGraphRequest
 		s.logger.Warn("Clearing data from graph", "group_id", groupID)
 	}
 
-	// Use the Graphiti client to clear the graph
+	// Use the Predicato client to clear the graph
 	err := s.client.ClearGraph(context.Background(), groupID)
 	if err != nil {
 		s.logger.Error("Failed to clear graph", "error", err, "group_id", groupID)

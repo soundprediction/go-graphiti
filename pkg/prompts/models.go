@@ -14,8 +14,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // ExtractedEntity represents an entity extracted from content

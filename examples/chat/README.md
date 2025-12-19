@@ -1,6 +1,6 @@
 # Interactive Chat Example
 
-This example demonstrates how to build an interactive chat application using go-graphiti with both global knowledge base and user-specific episodic memory.
+This example demonstrates how to build an interactive chat application using go-predicato with both global knowledge base and user-specific episodic memory.
 
 ## Features
 
@@ -12,14 +12,14 @@ This example demonstrates how to build an interactive chat application using go-
 
 ## Architecture
 
-The example creates two separate Graphiti clients:
+The example creates two separate Predicato clients:
 
-1. **Global Graphiti Client** (optional):
+1. **Global Predicato Client** (optional):
    - Shared knowledge base across all users
    - Read-only for chat purposes
    - Used for contextual information retrieval
 
-2. **User Graphiti Client**:
+2. **User Predicato Client**:
    - User-specific episodic memory
    - Stores conversation history
    - One episode per chat session
@@ -85,7 +85,7 @@ Once the chat is running, you can use these commands:
 ## Example Session
 
 ```
-🚀 Starting Graphiti Chat Example
+🚀 Starting Predicato Chat Example
    User ID: alice
 
 🔧 Initializing clients...
@@ -95,7 +95,7 @@ Once the chat is running, you can use these commands:
    ✅ User database initialized at ./user_dbs/user_alice.ladybugdb
 
 ======================================================================
-💬 Graphiti Interactive Chat
+💬 Predicato Interactive Chat
 ======================================================================
 
 Commands:
@@ -153,19 +153,19 @@ episode := types.Episode{
 
 First message creates the episode:
 ```go
-result, err := clients.UserGraphiti.Add(ctx, []types.Episode{episode}, nil)
+result, err := clients.UserPredicato.Add(ctx, []types.Episode{episode}, nil)
 ```
 
 Subsequent messages append to it:
 ```go
-_, err := clients.UserGraphiti.AddToEpisode(ctx, session.EpisodeID, conversationTurn, nil)
+_, err := clients.UserPredicato.AddToEpisode(ctx, session.EpisodeID, conversationTurn, nil)
 ```
 
 ### 3. Hybrid Search Pattern
 
 ```go
 // Search global knowledge base
-results, err := clients.GlobalGraphiti.Search(ctx, input, searchConfig)
+results, err := clients.GlobalPredicato.Search(ctx, input, searchConfig)
 
 // Build prompt with both:
 // - Context from knowledge base search results
@@ -177,8 +177,8 @@ prompt := buildPrompt(input, session.Messages, contextNodes)
 
 ```go
 type ChatClients struct {
-    GlobalGraphiti *graphiti.Client // Optional, shared knowledge
-    UserGraphiti   *graphiti.Client // Required, user-specific
+    GlobalPredicato *predicato.Client // Optional, shared knowledge
+    UserPredicato   *predicato.Client // Required, user-specific
     LLM            llm.Client
     Context        context.Context
 }

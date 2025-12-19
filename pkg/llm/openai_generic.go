@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // OpenAIGenericClient implements the Client interface for OpenAI's language models

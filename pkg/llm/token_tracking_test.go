@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/telemetry"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/telemetry"
+	"github.com/soundprediction/go-predicato/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDuckDBTokenTracker(t *testing.T) {
 	// Create temp dir for db
-	tempDir, err := os.MkdirTemp("", "graphiti-test")
+	tempDir, err := os.MkdirTemp("", "predicato-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 

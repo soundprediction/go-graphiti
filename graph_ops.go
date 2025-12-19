@@ -1,11 +1,11 @@
-package graphiti
+package predicato
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // ClearGraph removes all nodes and edges from the knowledge graph for a specific group.
@@ -46,7 +46,7 @@ func (c *Client) CreateIndices(ctx context.Context) error {
 }
 
 // RemoveEpisode removes an episode and its associated nodes and edges from the knowledge graph.
-// This is an exact translation of the Python Graphiti.remove_episode() method.
+// This is an exact translation of the Python Predicato.remove_episode() method.
 func (c *Client) RemoveEpisode(ctx context.Context, episodeUUID string) error {
 	// Find the episode to be deleted
 	// Equivalent to: episode = await EpisodicNode.get_by_uuid(self.driver, episode_uuid)

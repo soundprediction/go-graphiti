@@ -1,4 +1,4 @@
-# go-graphiti
+# go-predicato
 
 A production-ready Temporal Knowledge Graph library for Go, designed for building robust, context-aware AI applications.
 
@@ -31,7 +31,7 @@ A production-ready Temporal Knowledge Graph library for Go, designed for buildin
 ## Installation
 
 ```bash
-go get github.com/soundprediction/go-graphiti
+go get github.com/soundprediction/go-predicato
 ```
 
 ## Quick Start
@@ -84,8 +84,8 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 func main() {
@@ -98,16 +98,16 @@ func main() {
     }
     defer ladybugDriver.Close(ctx)
 
-    // Create Graphiti client (LLM and embedder are optional)
-    config := &graphiti.Config{
+    // Create Predicato client (LLM and embedder are optional)
+    config := &predicato.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
+    client := predicato.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
     // Add episodes
-    episodes := []graphiti.Episode{
+    episodes := []predicato.Episode{
         {
             ID:        "meeting-1",
             Name:      "Team Meeting",
@@ -137,10 +137,10 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
-    "github.com/soundprediction/go-graphiti/pkg/embedder"
-    "github.com/soundprediction/go-graphiti/pkg/llm"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/embedder"
+    "github.com/soundprediction/go-predicato/pkg/llm"
 )
 
 func main() {
@@ -171,16 +171,16 @@ func main() {
     }
     embedderClient := embedder.NewOpenAIEmbedder("your-api-key", embedderConfig)
 
-    // Create Graphiti client
-    config := &graphiti.Config{
+    // Create Predicato client
+    config := &predicato.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, llmClient, embedderClient, config)
+    client := predicato.NewClient(ladybugDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
     // Add episodes
-    episodes := []graphiti.Episode{
+    episodes := []predicato.Episode{
         {
             ID:        "meeting-1",
             Name:      "Team Meeting",
@@ -208,7 +208,7 @@ func main() {
 
 ## CLI Tool
 
-Go-Graphiti includes a command-line interface for managing the knowledge graph and running servers.
+Go-Predicato includes a command-line interface for managing the knowledge graph and running servers.
 
 ### Installation
 
@@ -217,7 +217,7 @@ Go-Graphiti includes a command-line interface for managing the knowledge graph a
 make build-cli
 
 # Or build directly
-go build -o bin/graphiti ./cmd/main.go
+go build -o bin/predicato ./cmd/main.go
 ```
 
 ### Server Command
@@ -225,13 +225,13 @@ go build -o bin/graphiti ./cmd/main.go
 Start the HTTP server:
 
 ```bash
-./bin/graphiti server
+./bin/predicato server
 ```
 
 With custom configuration:
 
 ```bash
-./bin/graphiti server --port 9090 --llm-api-key your-key-here
+./bin/predicato server --port 9090 --llm-api-key your-key-here
 ```
 
 ### Configuration
@@ -239,7 +239,7 @@ With custom configuration:
 Create a configuration file:
 
 ```bash
-cp .graphiti.example.yaml .graphiti.yaml
+cp .predicato.example.yaml .predicato.yaml
 # Edit the configuration as needed
 ```
 
@@ -280,7 +280,7 @@ See [cmd/README.md](cmd/README.md) for detailed CLI documentation.
 
 The library is structured into several key packages:
 
-- **`graphiti.go`**: Main client interface and configuration
+- **`predicato.go`**: Main client interface and configuration
 - **`pkg/driver/`**: Graph database drivers (ladybug, Memgraph, Neo4j)
 - **`pkg/llm/`**: Language model clients (OpenAI-compatible APIs)
 - **`pkg/embedder/`**: Embedding model clients (OpenAI, Gemini, Voyage)
@@ -378,9 +378,9 @@ This project follows the same patterns as [go-light-rag](https://github.com/soun
 
 ## License
 
-Apache 2.0 License - see the original [Graphiti license](https://github.com/getzep/graphiti/blob/main/LICENSE)
+Apache 2.0 License - see the original [Predicato license](https://github.com/getzep/predicato/blob/main/LICENSE)
 
 ## Acknowledgments
 
-- Original [Graphiti](https://github.com/getzep/graphiti) Python library by Zep
+- Original [Predicato](https://github.com/getzep/predicato) Python library by Zep
 - [go-light-rag](https://github.com/soundprediction/go-light-rag) for Go patterns and inspiration

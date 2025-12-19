@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	_ "github.com/duckdb/duckdb-go/v2"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // DuckDBWriter handles writing nodes and edges to DuckDB tables

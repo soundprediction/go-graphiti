@@ -174,7 +174,7 @@ func setDefaults() {
 	// Telemetry defaults
 	home, err := os.UserHomeDir()
 	if err == nil {
-		defaultPath := fmt.Sprintf("%s/.graphiti/token_usage.duckdb", home)
+		defaultPath := fmt.Sprintf("%s/.predicato/token_usage.duckdb", home)
 		viper.SetDefault("telemetry.duckdb_path", defaultPath)
 	}
 }

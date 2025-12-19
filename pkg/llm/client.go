@@ -3,7 +3,7 @@ package llm
 import (
 	"context"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Client defines the interface for language model operations.

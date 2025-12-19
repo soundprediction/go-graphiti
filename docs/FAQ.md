@@ -2,9 +2,9 @@
 
 ## General Questions
 
-### What is go-graphiti?
+### What is go-predicato?
 
-go-graphiti is a Go port of the Python Graphiti library, designed for building temporally-aware knowledge graphs for AI agents. It enables real-time incremental updates without batch recomputation and provides hybrid search capabilities.
+go-predicato is a Go port of the Python Predicato library, designed for building temporally-aware knowledge graphs for AI agents. It enables real-time incremental updates without batch recomputation and provides hybrid search capabilities.
 
 ### How does it differ from the Python version?
 
@@ -36,7 +36,7 @@ The modular driver architecture makes it easy to add new database backends. lady
 
 ### What LLM providers are supported?
 
-go-graphiti works with **any OpenAI-compatible API**, including:
+go-predicato works with **any OpenAI-compatible API**, including:
 - **OpenAI**: GPT-3.5, GPT-4, and all variants
 - **Local services**: Ollama, LocalAI, vLLM, Text Generation Inference
 - **Cloud alternatives**: Together AI, Anyscale, Replicate, Hugging Face
@@ -46,7 +46,7 @@ The library provides convenience functions for popular services, but the standar
 
 ### What embedding providers are supported?
 
-go-graphiti works with **any OpenAI-compatible embedding API**, including:
+go-predicato works with **any OpenAI-compatible embedding API**, including:
 - **OpenAI**: text-embedding-ada-002, text-embedding-3-small, text-embedding-3-large
 - **Local services**: Ollama with embedding models, LocalAI, vLLM
 - **Cloud alternatives**: Together AI, Voyage AI, Cohere (via compatibility layers)
@@ -77,7 +77,7 @@ Multi-tenancy is implemented via `GroupID`:
 
 ```go
 // User-specific client
-config := &graphiti.Config{
+config := &predicato.Config{
     GroupID: fmt.Sprintf("user-%s", userID),
 }
 ```
@@ -243,7 +243,7 @@ The library provides typed errors:
 ```go
 node, err := client.GetNode(ctx, nodeID)
 if err != nil {
-    if errors.Is(err, graphiti.ErrNodeNotFound) {
+    if errors.Is(err, predicato.ErrNodeNotFound) {
         // Handle missing node
         fmt.Println("Node not found")
     } else {
@@ -258,7 +258,7 @@ if err != nil {
 Always close clients and drivers:
 
 ```go
-client := graphiti.NewClient(driver, llm, embedder, config)
+client := predicato.NewClient(driver, llm, embedder, config)
 defer client.Close(ctx)
 
 driver, err := driver.NewNeo4jDriver(uri, user, pass, db)

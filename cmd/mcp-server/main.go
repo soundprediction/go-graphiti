@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	predicatoLogger "github.com/soundprediction/go-predicato/pkg/logger"
 )
 
 // Default configuration values
@@ -70,10 +70,10 @@ type Config struct {
 	SemaphoreLimit int
 }
 
-// MCPServer wraps the Graphiti client for MCP operations
+// MCPServer wraps the Predicato client for MCP operations
 type MCPServer struct {
 	config *Config
-	client *graphiti.Client
+	client *predicato.Client
 	logger *slog.Logger
 }
 
@@ -138,7 +138,7 @@ func getEnvInt(key string, defaultValue int) int {
 
 // NewMCPServer creates a new MCP server instance
 func NewMCPServer(config *Config) (*MCPServer, error) {
-	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(predicatoLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 
@@ -181,13 +181,13 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 		embedderClient = embedder.NewOpenAIEmbedder(config.OpenAIAPIKey, embedderConfig)
 	}
 
-	// Create Graphiti client
-	graphitiConfig := &graphiti.Config{
+	// Create Predicato client
+	predicatoConfig := &predicato.Config{
 		GroupID:  config.GroupID,
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig, logger)
+	client := predicato.NewClient(graphDriver, llmClient, embedderClient, predicatoConfig, logger)
 
 	return &MCPServer{
 		config: config,
@@ -196,13 +196,13 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 	}, nil
 }
 
-// Initialize sets up the MCP server and Graphiti client
+// Initialize sets up the MCP server and Predicato client
 func (s *MCPServer) Initialize(ctx context.Context) error {
-	s.logger.Info("Initializing Graphiti MCP server...")
+	s.logger.Info("Initializing Predicato MCP server...")
 
 	// Verify the client is ready
 	if s.client == nil {
-		return fmt.Errorf("graphiti client not initialized")
+		return fmt.Errorf("predicato client not initialized")
 	}
 
 	// Initialize graph indices and constraints
@@ -227,7 +227,7 @@ func (s *MCPServer) Initialize(ctx context.Context) error {
 		s.logger.Info("Graph cleared successfully during initialization")
 	}
 
-	s.logger.Info("Graphiti client initialized successfully")
+	s.logger.Info("Predicato client initialized successfully")
 	s.logger.Info("MCP server configuration",
 		"llm_model", s.config.LLMModel,
 		"temperature", s.config.LLMTemperature,
@@ -310,7 +310,7 @@ func main() {
 		model             = flag.String("model", "", fmt.Sprintf("Model name to use (default: %s)", DefaultLLMModel))
 		smallModel        = flag.String("small-model", "", fmt.Sprintf("Small model name to use (default: %s)", DefaultSmallModel))
 		temperature       = flag.Float64("temperature", -1, "Temperature setting for the LLM (0.0-2.0)")
-		destroyGraph      = flag.Bool("destroy-graph", false, "Destroy all Graphiti graphs")
+		destroyGraph      = flag.Bool("destroy-graph", false, "Destroy all Predicato graphs")
 		useCustomEntities = flag.Bool("use-custom-entities", false, "Enable entity extraction using predefined entity types")
 		host              = flag.String("host", "", "Host to bind the MCP server to")
 		port              = flag.Int("port", 0, "Port to bind the MCP server to")

@@ -1,23 +1,23 @@
 //go:build integration
 // +build integration
 
-package graphiti_test
+package predicato_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
 // Integration tests require actual database connections and are marked with build tag
 // Run with: go test -tags=integration
 
-func TestGraphitiIntegration(t *testing.T) {
+func TestPredicatoIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -47,7 +47,7 @@ func TestGraphitiIntegration(t *testing.T) {
 	// require.NoError(t, err)
 	// defer embedder.Close()
 
-	// client := graphiti.NewClient(driver, llmClient, embedder, &graphiti.Config{
+	// client := predicato.NewClient(driver, llmClient, embedder, &predicato.Config{
 	//     GroupID: "test-integration",
 	//     TimeZone: time.UTC,
 	// })
@@ -132,7 +132,7 @@ func (m *MockIntegrationDriver) GetNode(ctx context.Context, nodeID, groupID str
 	if node, exists := m.nodes[nodeID]; exists {
 		return node, nil
 	}
-	return nil, graphiti.ErrNodeNotFound
+	return nil, predicato.ErrNodeNotFound
 }
 
 func (m *MockIntegrationDriver) UpsertNode(ctx context.Context, node *types.Node) error {
@@ -159,7 +159,7 @@ func (m *MockIntegrationDriver) GetEdge(ctx context.Context, edgeID, groupID str
 	if edge, exists := m.edges[edgeID]; exists {
 		return edge, nil
 	}
-	return nil, graphiti.ErrEdgeNotFound
+	return nil, predicato.ErrEdgeNotFound
 }
 
 func (m *MockIntegrationDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {

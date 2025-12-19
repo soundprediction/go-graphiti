@@ -1,16 +1,16 @@
-# Go-Graphiti Project Instructions
+# Go-Predicato Project Instructions
 
 ## Overview
 
-The `go-graphiti` package is a Go port of the Python [Graphiti](https://github.com/getzep/graphiti) package, which is a temporally-aware knowledge graph framework designed for building and querying dynamic knowledge graphs that evolve over time.
+The `go-predicato` package is a Go port of the Python [Predicato](https://github.com/getzep/predicato) package, which is a temporally-aware knowledge graph framework designed for building and querying dynamic knowledge graphs that evolve over time.
 
 ## Context and Background
 
 When working on this project, you should:
 
-1. **Read the Python Context**: Always start by reading `graphiti/CLAUDE.md` from the original Python package to understand the framework's purpose, architecture, and design principles.
+1. **Read the Python Context**: Always start by reading `predicato/CLAUDE.md` from the original Python package to understand the framework's purpose, architecture, and design principles.
 
-2. **Understand the Port Status**: Read `go-graphiti/docs/PYTHON_TO_GO_MAPPING.md` to understand the current status of the port. This document tracks which Python methods have been implemented in Go and which are still missing or incomplete.
+2. **Understand the Port Status**: Read `go-predicato/docs/PYTHON_TO_GO_MAPPING.md` to understand the current status of the port. This document tracks which Python methods have been implemented in Go and which are still missing or incomplete.
 
 3. **Update Documentation**: When you make modifications to the source tree, update the `PYTHON_TO_GO_MAPPING.md` file accordingly to reflect the current implementation status.
 
@@ -79,4 +79,4 @@ Follow the existing project structure and conventions:
 
 The port is ongoing. Check `docs/PYTHON_TO_GO_MAPPING.md` for the most current status of what has been implemented and what remains to be done.
 
-Remember: The goal is to create a fully functional Go implementation that Python Graphiti users can migrate to with minimal changes to their application logic, while providing the benefits of Go's performance, type safety, and deployment characteristics.
+Remember: The goal is to create a fully functional Go implementation that Python Predicato users can migrate to with minimal changes to their application logic, while providing the benefits of Go's performance, type safety, and deployment characteristics.

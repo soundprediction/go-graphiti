@@ -6,8 +6,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // OpenAIRerankerClient implements cross-encoder functionality using OpenAI's API

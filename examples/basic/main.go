@@ -1,7 +1,7 @@
-// Package main demonstrates basic usage of go-graphiti with OpenAI LLM and Neo4j database.
+// Package main demonstrates basic usage of go-predicato with OpenAI LLM and Neo4j database.
 //
 // This example shows how to:
-// - Create and configure a Graphiti client with Neo4j and OpenAI
+// - Create and configure a Predicato client with Neo4j and OpenAI
 // - Add episodes (data) to the knowledge graph
 // - Search the knowledge graph for relevant information
 //
@@ -23,11 +23,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 func main() {
@@ -68,7 +68,7 @@ func main() {
 
 	ctx := context.Background()
 
-	fmt.Println("🚀 Starting go-graphiti basic example")
+	fmt.Println("🚀 Starting go-predicato basic example")
 	fmt.Printf("   Neo4j URI: %s\n", neo4jURI)
 	fmt.Printf("   Neo4j User: %s\n", neo4jUser)
 	fmt.Println()
@@ -108,16 +108,16 @@ func main() {
 	defer embedderClient.Close()
 	fmt.Printf("   ✅ OpenAI embedder client created (model: %s)\n", embedderConfig.Model)
 
-	// Create Graphiti client
-	fmt.Println("\n🌐 Creating Graphiti client...")
-	config := &graphiti.Config{
+	// Create Predicato client
+	fmt.Println("\n🌐 Creating Predicato client...")
+	config := &predicato.Config{
 		GroupID:  "example-group",
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config)
+	client := predicato.NewClient(neo4jDriver, llmClient, embedderClient, config)
 	defer client.Close(ctx)
-	fmt.Printf("   ✅ Graphiti client created (group: %s)\n", config.GroupID)
+	fmt.Printf("   ✅ Predicato client created (group: %s)\n", config.GroupID)
 
 	// Example: Add some episodes
 	fmt.Println("\n📝 Preparing sample episodes...")

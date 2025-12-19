@@ -1,4 +1,4 @@
-package graphiti
+package predicato
 
 import (
 	"context"
@@ -12,13 +12,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
-	"github.com/soundprediction/go-graphiti/pkg/telemetry"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	predicatoLogger "github.com/soundprediction/go-predicato/pkg/logger"
+	"github.com/soundprediction/go-predicato/pkg/telemetry"
+	"github.com/soundprediction/go-predicato/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -97,7 +97,7 @@ func init() {
 	mcpCmd.Flags().StringVar(&mcpSmallModel, "small-model", DefaultMCPSmallModel, "Small LLM model name")
 	mcpCmd.Flags().Float64Var(&mcpTemperature, "temperature", 0.0, "Temperature setting for the LLM (0.0-2.0)")
 	mcpCmd.Flags().BoolVar(&mcpUseCustomEntities, "use-custom-entities", false, "Enable entity extraction using predefined entity types")
-	mcpCmd.Flags().BoolVar(&mcpDestroyGraph, "destroy-graph", false, "Destroy all Graphiti graphs on startup")
+	mcpCmd.Flags().BoolVar(&mcpDestroyGraph, "destroy-graph", false, "Destroy all Predicato graphs on startup")
 	mcpCmd.Flags().IntVar(&mcpSemaphoreLimit, "semaphore-limit", DefaultMCPSemaphoreLimit, "Concurrency limit for operations")
 
 	// Database flags
@@ -186,10 +186,10 @@ type MCPConfig struct {
 	TelemetryDuckDBPath string
 }
 
-// MCPServer wraps the Graphiti client for MCP operations
+// MCPServer wraps the Predicato client for MCP operations
 type MCPServer struct {
 	config *MCPConfig
-	client *graphiti.Client
+	client *predicato.Client
 	logger *slog.Logger
 }
 
@@ -356,7 +356,7 @@ func runMCPServer(cmd *cobra.Command, args []string) error {
 
 // NewMCPServer creates a new MCP server instance
 func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
-	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(predicatoLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 
@@ -402,7 +402,7 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to get user home directory: %w", err)
 			}
-			trackingPath = fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
+			trackingPath = fmt.Sprintf("%s/.predicato/token_usage.duckdb", homeDir)
 		}
 
 		// Ensure directory exists
@@ -459,13 +459,13 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 		logger.Warn("No embedder configuration provided - embedding functionality will be disabled")
 	}
 
-	// Create Graphiti client
-	graphitiConfig := &graphiti.Config{
+	// Create Predicato client
+	predicatoConfig := &predicato.Config{
 		GroupID:  config.GroupID,
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig, logger)
+	client := predicato.NewClient(graphDriver, llmClient, embedderClient, predicatoConfig, logger)
 
 	return &MCPServer{
 		config: config,
@@ -474,13 +474,13 @@ func NewMCPServer(config *MCPConfig) (*MCPServer, error) {
 	}, nil
 }
 
-// Initialize sets up the MCP server and Graphiti client
+// Initialize sets up the MCP server and Predicato client
 func (s *MCPServer) Initialize(ctx context.Context) error {
-	s.logger.Info("Initializing Graphiti MCP server...")
+	s.logger.Info("Initializing Predicato MCP server...")
 
 	// Verify the client is ready
 	if s.client == nil {
-		return fmt.Errorf("graphiti client not initialized")
+		return fmt.Errorf("predicato client not initialized")
 	}
 
 	// Clear graph if requested
@@ -496,7 +496,7 @@ func (s *MCPServer) Initialize(ctx context.Context) error {
 		s.logger.Info("Graph cleared successfully during initialization")
 	}
 
-	s.logger.Info("Graphiti client initialized successfully")
+	s.logger.Info("Predicato client initialized successfully")
 	s.logger.Info("MCP server configuration",
 		"llm_model", s.config.LLMModel,
 		"temperature", s.config.LLMTemperature,
@@ -688,7 +688,7 @@ func (s *MCPServer) AddMemoryTool(ctx context.Context, input *AddMemoryRequest) 
 		},
 	}
 
-	// Add episode using Graphiti client
+	// Add episode using Predicato client
 	_, err := s.client.Add(ctx, []types.Episode{episode}, nil)
 	if err != nil {
 		s.logger.Error("Failed to add episode", "error", err)
@@ -864,7 +864,7 @@ func (s *MCPServer) GetEpisodesTool(ctx context.Context, input *GetEpisodesReque
 		limit = 10 // Default to 10 episodes
 	}
 
-	// Use the Graphiti client to retrieve episodes
+	// Use the Predicato client to retrieve episodes
 	episodeNodes, err := s.client.GetEpisodes(ctx, groupID, limit)
 	if err != nil {
 		s.logger.Error("Failed to retrieve episodes", "error", err)
@@ -937,7 +937,7 @@ func (s *MCPServer) ClearGraphTool(ctx context.Context, input *ClearGraphRequest
 	// Warn about the destructive operation
 	s.logger.Warn("Clearing all data from graph", "group_id", groupID)
 
-	// Use the Graphiti client to clear the graph
+	// Use the Predicato client to clear the graph
 	err := s.client.ClearGraph(ctx, groupID)
 	if err != nil {
 		s.logger.Error("Failed to clear graph", "error", err, "group_id", groupID)

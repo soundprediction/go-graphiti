@@ -1,6 +1,6 @@
-# Getting Started with go-graphiti
+# Getting Started with go-predicato
 
-This guide will help you get started with go-graphiti, a temporal knowledge graph library for Go.
+This guide will help you get started with go-predicato, a temporal knowledge graph library for Go.
 
 ## Prerequisites
 
@@ -8,12 +8,12 @@ This guide will help you get started with go-graphiti, a temporal knowledge grap
 - **Optional**: External graph database (Neo4j or FalkorDB)
 - **Optional**: LLM API access (OpenAI, Ollama, vLLM, or any OpenAI-compatible service)
 
-> **Note**: go-graphiti works out-of-the-box with embedded ladybug database and no external dependencies!
+> **Note**: go-predicato works out-of-the-box with embedded ladybug database and no external dependencies!
 
 ## Installation
 
 ```bash
-go get github.com/soundprediction/go-graphiti
+go get github.com/soundprediction/go-predicato
 ```
 
 ## Quick Start Options
@@ -30,8 +30,8 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 func main() {
@@ -44,12 +44,12 @@ func main() {
     }
     defer ladybugDriver.Close(ctx)
 
-    // Create Graphiti client
-    config := &graphiti.Config{
+    // Create Predicato client
+    config := &predicato.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
+    client := predicato.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
     // Your code here...
@@ -81,8 +81,8 @@ llmConfig := llm.Config{
 }
 llmClient, err := llm.NewOpenAIClient("dummy", llmConfig)  // API key not needed for Ollama
 
-// Create Graphiti client with LLM
-client := graphiti.NewClient(ladybugDriver, llmClient, nil, config)
+// Create Predicato client with LLM
+client := predicato.NewClient(ladybugDriver, llmClient, nil, config)
 ```
 
 ### Option 3: Full Setup with External Services
@@ -147,9 +147,9 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
-    "github.com/soundprediction/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/types"
 )
 
 func main() {
@@ -162,15 +162,15 @@ func main() {
     }
     defer ladybugDriver.Close(ctx)
 
-    // Create Graphiti client (no LLM or embedder required for basic usage)
-    config := &graphiti.Config{
+    // Create Predicato client (no LLM or embedder required for basic usage)
+    config := &predicato.Config{
         GroupID:  "getting-started",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
+    client := predicato.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
-    fmt.Println("Graphiti client created successfully with embedded database!")
+    fmt.Println("Predicato client created successfully with embedded database!")
 
     // Add some sample data
     episodes := []types.Episode{
@@ -207,11 +207,11 @@ import (
     "os"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
-    "github.com/soundprediction/go-graphiti/pkg/embedder"
-    "github.com/soundprediction/go-graphiti/pkg/llm"
-    "github.com/soundprediction/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/embedder"
+    "github.com/soundprediction/go-predicato/pkg/llm"
+    "github.com/soundprediction/go-predicato/pkg/types"
 )
 
 func main() {
@@ -242,15 +242,15 @@ func main() {
     }
     embedderClient := embedder.NewOpenAIEmbedder(os.Getenv("OPENAI_API_KEY"), embedderConfig)
 
-    // Create Graphiti client
-    config := &graphiti.Config{
+    // Create Predicato client
+    config := &predicato.Config{
         GroupID:  "getting-started",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, llmClient, embedderClient, config)
+    client := predicato.NewClient(ladybugDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
-    fmt.Println("Graphiti client created with LLM integration!")
+    fmt.Println("Predicato client created with LLM integration!")
 }
 ```
 
@@ -386,7 +386,7 @@ The library provides typed errors for common scenarios:
 ```go
 node, err := client.GetNode(ctx, "nonexistent-id")
 if err != nil {
-    if errors.Is(err, graphiti.ErrNodeNotFound) {
+    if errors.Is(err, predicato.ErrNodeNotFound) {
         fmt.Println("Node not found")
     } else {
         log.Printf("Error: %v", err)
@@ -400,12 +400,12 @@ Use GroupID to isolate data:
 
 ```go
 // User-specific client
-userConfig := &graphiti.Config{
+userConfig := &predicato.Config{
     GroupID: fmt.Sprintf("user-%s", userID),
 }
 
 // Organization-specific client  
-orgConfig := &graphiti.Config{
+orgConfig := &predicato.Config{
     GroupID: fmt.Sprintf("org-%s", orgID),
 }
 ```
@@ -439,9 +439,9 @@ Handle specific error types:
 ```go
 if err != nil {
     switch {
-    case errors.Is(err, graphiti.ErrNodeNotFound):
+    case errors.Is(err, predicato.ErrNodeNotFound):
         // Handle missing node
-    case errors.Is(err, graphiti.ErrInvalidEpisode):
+    case errors.Is(err, predicato.ErrInvalidEpisode):
         // Handle invalid input
     default:
         // Handle other errors

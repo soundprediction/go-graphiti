@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // NewCheckpoint creates a new checkpoint for an episode at the initial step

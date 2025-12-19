@@ -1,4 +1,4 @@
-package graphiti
+package predicato
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 	"time"
 
 	jsonrepair "github.com/kaptinlin/jsonrepair"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/prompts"
-	"github.com/soundprediction/go-graphiti/pkg/search"
-	"github.com/soundprediction/go-graphiti/pkg/types"
-	"github.com/soundprediction/go-graphiti/pkg/utils"
-	"github.com/soundprediction/go-graphiti/pkg/utils/maintenance"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/prompts"
+	"github.com/soundprediction/go-predicato/pkg/search"
+	"github.com/soundprediction/go-predicato/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/utils"
+	"github.com/soundprediction/go-predicato/pkg/utils/maintenance"
 )
 
 // retrieveAndValidateEpisode retrieves an existing episode and validates it.
@@ -1456,7 +1456,7 @@ func (c *Client) createEntityNodeEmbeddings(ctx context.Context, nodes []*types.
 	return nil
 }
 
-func GenerateViaCsv[T any](ctx context.Context, client Graphiti, messages []types.Message) ([]T, error) {
+func GenerateViaCsv[T any](ctx context.Context, client Predicato, messages []types.Message) ([]T, error) {
 	return nil, nil
 }
 

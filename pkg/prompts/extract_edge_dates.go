@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // ExtractEdgeDatesPrompt defines the interface for extract edge dates prompts.

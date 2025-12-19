@@ -1,6 +1,6 @@
 # Maintenance Package
 
-The maintenance package provides comprehensive utilities for maintaining and operating on graph nodes, edges, and temporal relationships in go-graphiti. This package is a complete Go implementation of the Python graphiti maintenance utilities found in `utils/maintenance/`.
+The maintenance package provides comprehensive utilities for maintaining and operating on graph nodes, edges, and temporal relationships in go-predicato. This package is a complete Go implementation of the Python predicato maintenance utilities found in `utils/maintenance/`.
 
 ## Overview
 
@@ -142,7 +142,7 @@ The maintenance package requires:
 
 ## Integration
 
-This package is designed to be used by the main graphiti client and can be integrated into processing pipelines for:
+This package is designed to be used by the main predicato client and can be integrated into processing pipelines for:
 - Episode ingestion and processing
 - Graph maintenance and cleanup
 - Data integrity validation
@@ -150,4 +150,4 @@ This package is designed to be used by the main graphiti client and can be integ
 
 ## Relationship to Python Implementation
 
-This Go implementation maintains functional parity with the Python graphiti maintenance utilities while leveraging Go's type safety, performance characteristics, and concurrent programming model. All major functions from the Python implementation are represented, with additional utility functions for enhanced graph management.
+This Go implementation maintains functional parity with the Python predicato maintenance utilities while leveraging Go's type safety, performance characteristics, and concurrent programming model. All major functions from the Python implementation are represented, with additional utility functions for enhanced graph management.

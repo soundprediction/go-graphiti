@@ -20,7 +20,7 @@ package main
 import (
     "context"
     "log"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 func main() {
@@ -78,7 +78,7 @@ package main
 
 import (
     "log"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 func main() {

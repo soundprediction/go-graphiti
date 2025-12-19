@@ -3,7 +3,7 @@ package logger_test
 import (
 	"log/slog"
 
-	"github.com/soundprediction/go-graphiti/pkg/logger"
+	"github.com/soundprediction/go-predicato/pkg/logger"
 )
 
 func ExampleNewDefaultLogger() {

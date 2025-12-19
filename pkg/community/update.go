@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // DetermineEntityCommunityResult represents the result of determining an entity's community

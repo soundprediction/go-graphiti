@@ -9,20 +9,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/server/dto"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/server/dto"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // IngestHandler handles data ingestion requests
 type IngestHandler struct {
-	graphiti graphiti.Graphiti
+	predicato predicato.Predicato
 }
 
 // NewIngestHandler creates a new ingest handler
-func NewIngestHandler(g graphiti.Graphiti) *IngestHandler {
+func NewIngestHandler(g predicato.Predicato) *IngestHandler {
 	return &IngestHandler{
-		graphiti: g,
+		predicato: g,
 	}
 }
 
@@ -77,7 +77,7 @@ func (h *IngestHandler) AddMessages(c *gin.Context) {
 
 		fmt.Printf("[%s] Starting processing of %d messages for group %s\n", processID, len(req.Messages), req.GroupID)
 
-		// Convert messages to episodes and add them to graphiti
+		// Convert messages to episodes and add them to predicato
 		var episodes []types.Episode
 		for i, msg := range req.Messages {
 			// Generate a unique ID for each episode
@@ -113,10 +113,10 @@ func (h *IngestHandler) AddMessages(c *gin.Context) {
 			episodes = append(episodes, episode)
 		}
 
-		// Add episodes to graphiti
-		if _, err := h.graphiti.Add(ctx, episodes, nil); err != nil {
+		// Add episodes to predicato
+		if _, err := h.predicato.Add(ctx, episodes, nil); err != nil {
 			// Log error but don't fail the entire request since it's async
-			fmt.Printf("[%s] Error adding episodes to graphiti for group %s: %v\n", processID, req.GroupID, err)
+			fmt.Printf("[%s] Error adding episodes to predicato for group %s: %v\n", processID, req.GroupID, err)
 		} else {
 			fmt.Printf("[%s] Successfully processed %d episodes for group %s\n", processID, len(episodes), req.GroupID)
 		}
@@ -160,7 +160,7 @@ func (h *IngestHandler) AddEntityNode(c *gin.Context) {
 	ctx := context.Background()
 
 	// Create an episode that mentions this entity to add it to the knowledge graph
-	// This leverages graphiti's entity extraction capabilities
+	// This leverages predicato's entity extraction capabilities
 	now := time.Now()
 	episodeID := fmt.Sprintf("%s-entity-%d", req.GroupID, now.Unix())
 
@@ -199,8 +199,8 @@ func (h *IngestHandler) AddEntityNode(c *gin.Context) {
 		Metadata:  metadata,
 	}
 
-	// Add the episode to graphiti which will extract and create the entity
-	if _, err := h.graphiti.Add(ctx, []types.Episode{episode}, nil); err != nil {
+	// Add the episode to predicato which will extract and create the entity
+	if _, err := h.predicato.Add(ctx, []types.Episode{episode}, nil); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "creation_failed",
 			Message: fmt.Sprintf("Failed to create entity node: %v", err),
@@ -246,8 +246,8 @@ func (h *IngestHandler) ClearData(c *gin.Context) {
 			continue
 		}
 
-		// Use graphiti's ClearGraph method to clear data for this group
-		if err := h.graphiti.ClearGraph(ctx, groupID); err != nil {
+		// Use predicato's ClearGraph method to clear data for this group
+		if err := h.predicato.ClearGraph(ctx, groupID); err != nil {
 			fmt.Printf("Error clearing data for group %s: %v\n", groupID, err)
 			failedGroups = append(failedGroups, groupID)
 		} else {

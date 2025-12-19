@@ -1,4 +1,4 @@
-package graphiti
+package predicato
 
 import (
 	"context"
@@ -11,21 +11,21 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/config"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
-	"github.com/soundprediction/go-graphiti/pkg/server"
-	"github.com/soundprediction/go-graphiti/pkg/telemetry"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/config"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	predicatoLogger "github.com/soundprediction/go-predicato/pkg/logger"
+	"github.com/soundprediction/go-predicato/pkg/server"
+	"github.com/soundprediction/go-predicato/pkg/telemetry"
 	"github.com/spf13/cobra"
 )
 
 var serverCmd = &cobra.Command{
 	Use:   "server",
-	Short: "Start the Go-Graphiti HTTP server",
-	Long: `Start the Go-Graphiti HTTP server to provide REST API access to the knowledge graph.
+	Short: "Start the Go-Predicato HTTP server",
+	Long: `Start the Go-Predicato HTTP server to provide REST API access to the knowledge graph.
 
 The server provides endpoints for:
 - Ingesting data (messages, entities)
@@ -91,15 +91,15 @@ func runServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Initialize Graphiti
-	fmt.Println("Initializing Graphiti...")
-	graphitiInstance, err := initializeGraphiti(cfg)
+	// Initialize Predicato
+	fmt.Println("Initializing Predicato...")
+	predicatoInstance, err := initializePredicato(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to initialize Graphiti: %w", err)
+		return fmt.Errorf("failed to initialize Predicato: %w", err)
 	}
 
 	// Create and setup server
-	srv := server.New(cfg, graphitiInstance)
+	srv := server.New(cfg, predicatoInstance)
 	srv.Setup()
 
 	// Setup graceful shutdown
@@ -219,11 +219,11 @@ func validateServerConfig(cfg *config.Config) error {
 	return nil
 }
 
-func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
+func initializePredicato(cfg *config.Config) (predicato.Predicato, error) {
 	// Initialize database driver
 	var graphDriver driver.GraphDriver
 	var err error
-	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(predicatoLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 	switch cfg.Database.Driver {
@@ -264,7 +264,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to get user home directory: %w", err)
 				}
-				trackingPath = fmt.Sprintf("%s/.graphiti/token_usage.duckdb", homeDir)
+				trackingPath = fmt.Sprintf("%s/.predicato/token_usage.duckdb", homeDir)
 			}
 
 			// Ensure directory exists
@@ -291,7 +291,7 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 
 				// Initialize Error Tracking Logger
 				// We wrap the existing color handler with our DuckDB handler
-				colorHandler := graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
+				colorHandler := predicatoLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 					Level: slog.LevelInfo,
 				})
 
@@ -324,16 +324,16 @@ func initializeGraphiti(cfg *config.Config) (graphiti.Graphiti, error) {
 		}
 	}
 
-	// Create Graphiti client configuration
-	graphitiConfig := &graphiti.Config{
+	// Create Predicato client configuration
+	predicatoConfig := &predicato.Config{
 		GroupID:  "default", // Default group ID - could be made configurable
 		TimeZone: time.UTC,
 	}
 
-	// Create and return Graphiti client
-	client := graphiti.NewClient(graphDriver, llmClient, embedderClient, graphitiConfig, logger)
+	// Create and return Predicato client
+	client := predicato.NewClient(graphDriver, llmClient, embedderClient, predicatoConfig, logger)
 
-	fmt.Printf("Graphiti initialized successfully with driver: %s\n", cfg.Database.Driver)
+	fmt.Printf("Predicato initialized successfully with driver: %s\n", cfg.Database.Driver)
 	if llmClient != nil {
 		fmt.Printf("LLM provider: %s, model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
 	}

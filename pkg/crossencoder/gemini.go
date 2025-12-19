@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // GeminiRerankerClient implements cross-encoder functionality using Google Gemini models

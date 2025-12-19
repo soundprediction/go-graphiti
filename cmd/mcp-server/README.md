@@ -1,10 +1,10 @@
-# Go-Graphiti MCP Server
+# Go-Predicato MCP Server
 
-A Model Context Protocol (MCP) server implementation for go-graphiti using Google's Genkit framework.
+A Model Context Protocol (MCP) server implementation for go-predicato using Google's Genkit framework.
 
 ## Overview
 
-This MCP server exposes Graphiti's temporal knowledge graph functionality through the Model Context Protocol, allowing AI assistants to store, search, and manage dynamic memory using a graph-based approach.
+This MCP server exposes Predicato's temporal knowledge graph functionality through the Model Context Protocol, allowing AI assistants to store, search, and manage dynamic memory using a graph-based approach.
 
 ## Features
 
@@ -168,7 +168,7 @@ Clear all data from the graph (placeholder - not yet implemented).
 The MCP server is built on:
 
 - **Genkit**: Google's framework for AI applications, handling MCP protocol
-- **go-graphiti**: Temporal knowledge graph implementation
+- **go-predicato**: Temporal knowledge graph implementation
 - **ladybug**: Default graph database backend (high-performance embedded graph database)
 - **Neo4j**: Alternative graph database backend (requires separate installation)
 - **OpenAI API**: LLM and embedding services
@@ -187,7 +187,7 @@ The implementation consists of:
 
 - `main.go`: Server initialization and configuration
 - `tools.go`: MCP tool implementations
-- Integration with go-graphiti's search and storage capabilities
+- Integration with go-predicato's search and storage capabilities
 
 ## Limitations
 
@@ -198,4 +198,4 @@ Current limitations (TODOs):
 
 ## License
 
-This implementation follows the same license as the go-graphiti project.
+This implementation follows the same license as the go-predicato project.

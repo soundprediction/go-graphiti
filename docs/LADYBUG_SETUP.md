@@ -1,6 +1,6 @@
 # Ladybug Driver Setup Guide
 
-This guide explains how to use the Ladybug graph database driver with go-graphiti.
+This guide explains how to use the Ladybug graph database driver with go-predicato.
 
 ## What is Ladybug?
 
@@ -8,7 +8,7 @@ This guide explains how to use the Ladybug graph database driver with go-graphit
 
 ## Why Ladybug is the Default
 
-Ladybug is the **default and recommended** database driver for go-graphiti because:
+Ladybug is the **default and recommended** database driver for go-predicato because:
 
 - **Zero Setup**: No external database server required
 - **Embedded**: Database files stored locally alongside your application
@@ -23,10 +23,10 @@ Ladybug is the **default and recommended** database driver for go-graphiti becau
 
 ## Installation
 
-No installation required! Ladybug is embedded and works immediately when you import go-graphiti.
+No installation required! Ladybug is embedded and works immediately when you import go-predicato.
 
 ```bash
-go get github.com/soundprediction/go-graphiti
+go get github.com/soundprediction/go-predicato
 ```
 
 ## Usage
@@ -43,9 +43,9 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
-    "github.com/soundprediction/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/types"
 )
 
 func main() {
@@ -58,12 +58,12 @@ func main() {
     }
     defer ladybugDriver.Close(ctx)
 
-    // Create Graphiti client
-    config := &graphiti.Config{
+    // Create Predicato client
+    config := &predicato.Config{
         GroupID:  "my-app",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, nil, nil, config)
+    client := predicato.NewClient(ladybugDriver, nil, nil, config)
     defer client.Close(ctx)
 
     log.Println("Ladybug-based knowledge graph ready!")
@@ -79,10 +79,10 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
-    "github.com/soundprediction/go-graphiti/pkg/embedder"
-    "github.com/soundprediction/go-graphiti/pkg/llm"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/embedder"
+    "github.com/soundprediction/go-predicato/pkg/llm"
 )
 
 func main() {
@@ -109,16 +109,16 @@ func main() {
     }
     embedderClient := embedder.NewOpenAIEmbedder("your-api-key", embedderConfig)
 
-    // Create Graphiti client with Ladybug
-    config := &graphiti.Config{
+    // Create Predicato client with Ladybug
+    config := &predicato.Config{
         GroupID:  "my-group",
         TimeZone: time.UTC,
     }
-    client := graphiti.NewClient(ladybugDriver, llmClient, embedderClient, config)
+    client := predicato.NewClient(ladybugDriver, llmClient, embedderClient, config)
     defer client.Close(ctx)
 
     // Use normally - Ladybug handles all graph operations locally
-    episodes := []graphiti.Episode{
+    episodes := []predicato.Episode{
         {
             ID:        "meeting-1",
             Name:      "Team Meeting",
@@ -150,7 +150,7 @@ func main() {
 // Create with custom database path
 driver, err := driver.NewLadybugDriver("/path/to/my/graph.db")
 
-// Create with default path (./ladybug_graphiti_db)
+// Create with default path (./ladybug_predicato_db)
 driver, err := driver.NewLadybugDriver("")
 ```
 
