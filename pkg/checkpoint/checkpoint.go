@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
-	"github.com/soundprediction/go-graphiti/pkg/utils"
+	"github.com/soundprediction/go-predicato/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/utils"
 )
 
 // ProcessingStep represents a step in the addEpisodeChunked pipeline
@@ -84,7 +84,7 @@ type EpisodeCheckpoint struct {
 	CommunityEdges []*types.Edge `json:"community_edges,omitempty"`
 }
 
-// AddEpisodeOptions is a copy of the graphiti.AddEpisodeOptions for checkpoint serialization
+// AddEpisodeOptions is a copy of the predicato.AddEpisodeOptions for checkpoint serialization
 type AddEpisodeOptions struct {
 	EntityTypes          map[string]interface{}            `json:"entity_types,omitempty"`
 	ExcludedEntityTypes  []string                          `json:"excluded_entity_types,omitempty"`
@@ -104,10 +104,10 @@ type CheckpointManager struct {
 }
 
 // NewCheckpointManager creates a new checkpoint manager
-// If checkpointDir is empty, uses os.TempDir()/graphiti-checkpoints
+// If checkpointDir is empty, uses os.TempDir()/predicato-checkpoints
 func NewCheckpointManager(checkpointDir string) (*CheckpointManager, error) {
 	if checkpointDir == "" {
-		checkpointDir = filepath.Join(os.TempDir(), "graphiti-checkpoints")
+		checkpointDir = filepath.Join(os.TempDir(), "predicato-checkpoints")
 	}
 
 	// Create checkpoint directory if it doesn't exist

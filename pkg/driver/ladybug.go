@@ -15,7 +15,7 @@ import (
 
 	ladybug "github.com/LadybugDB/go-ladybug"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // LadybugSchemaQueries defines the Ladybug database schema exactly as in Python implementation
@@ -1897,7 +1897,7 @@ func (k *LadybugDriver) GetCommunities(ctx context.Context, groupID string, leve
 // For production use with LLM-based community summarization, use the
 // community.Builder through the Client:
 //
-//	client := graphiti.NewClient(driver, llmClient, embedderClient, config)
+//	client := predicato.NewClient(driver, llmClient, embedderClient, config)
 //	result, err := client.Add(ctx, episodes)
 //
 // Or use the community.Builder directly:

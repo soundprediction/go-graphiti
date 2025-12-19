@@ -1,6 +1,6 @@
 # Ladybug + Ollama Example
 
-This example demonstrates using go-graphiti with a fully local setup combining:
+This example demonstrates using go-predicato with a fully local setup combining:
 
 - **Ladybug**: Embedded graph database (no server required)
 - **Ollama**: Local LLM inference (no cloud API required)
@@ -85,7 +85,7 @@ go run main.go
 ## Expected Output
 
 ```
-🚀 Starting go-graphiti example with Ladybug + Ollama
+🚀 Starting go-predicato example with Ladybug + Ollama
    This example demonstrates a fully local setup:
    - Ladybug: embedded graph database
    - Ollama: local LLM inference
@@ -103,8 +103,8 @@ go run main.go
    ✅ OpenAI embedder created (text-embedding-3-small)
    💡 For fully local setup, replace with local embedding service
 
-🌐 Setting up Graphiti client with local components...
-   ✅ Graphiti client created with local Ladybug + Ollama setup
+🌐 Setting up Predicato client with local components...
+   ✅ Predicato client created with local Ladybug + Ollama setup
 
 📝 Adding example episodes to the knowledge graph...
    ⚠️  Expected error with stub implementation: LadybugDriver not implemented
@@ -123,7 +123,7 @@ go run main.go
 📋 Example Summary:
    ✅ Ladybug driver: Created (stub implementation)
    ✅ Ollama client: Created and tested
-   ✅ Graphiti integration: Demonstrated
+   ✅ Predicato integration: Demonstrated
 
 🎉 Example completed successfully!
 ```

@@ -1,20 +1,20 @@
-package graphiti_test
+package predicato_test
 
 import (
 	"context"
 	"encoding/json"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // MockGraphDriver is a mock implementation for testing
 type MockGraphDriver struct{}
 
 func (m *MockGraphDriver) GetNode(ctx context.Context, nodeID, groupID string) (*types.Node, error) {
-	return nil, graphiti.ErrNodeNotFound
+	return nil, predicato.ErrNodeNotFound
 }
 
 func (m *MockGraphDriver) UpsertNode(ctx context.Context, node *types.Node) error {
@@ -30,7 +30,7 @@ func (m *MockGraphDriver) GetNodes(ctx context.Context, nodeIDs []string, groupI
 }
 
 func (m *MockGraphDriver) GetEdge(ctx context.Context, edgeID, groupID string) (*types.Edge, error) {
-	return nil, graphiti.ErrEdgeNotFound
+	return nil, predicato.ErrEdgeNotFound
 }
 
 func (m *MockGraphDriver) UpsertEdge(ctx context.Context, edge *types.Edge) error {

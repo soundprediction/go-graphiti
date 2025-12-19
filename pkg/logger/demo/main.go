@@ -3,7 +3,7 @@ package main
 import (
 	"log/slog"
 
-	"github.com/soundprediction/go-graphiti/pkg/logger"
+	"github.com/soundprediction/go-predicato/pkg/logger"
 )
 
 func main() {
@@ -11,7 +11,7 @@ func main() {
 	log := logger.NewDefaultLogger(slog.LevelDebug)
 
 	log.Info("============================================")
-	log.Info("    Graphiti Colored Logger Demo")
+	log.Info("    Predicato Colored Logger Demo")
 	log.Info("============================================")
 	log.Info("")
 

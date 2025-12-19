@@ -8,8 +8,8 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
-	"github.com/soundprediction/go-graphiti/pkg/cost"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/cost"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // TokenUsageRecord represents a single log entry for token usage

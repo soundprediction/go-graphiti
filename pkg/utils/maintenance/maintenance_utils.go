@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // MaintenanceUtils provides general utility functions for maintenance operations

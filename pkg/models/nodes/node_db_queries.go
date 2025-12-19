@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 // GetEpisodeNodeSaveQuery returns the episode node save query based on provider

@@ -1,8 +1,8 @@
-// Package main demonstrates how to build an interactive chat application using go-graphiti
+// Package main demonstrates how to build an interactive chat application using go-predicato
 // with both global knowledge base and user-specific episodic memory.
 //
 // This example shows how to:
-// - Create separate Graphiti clients for global knowledge and user-specific data
+// - Create separate Predicato clients for global knowledge and user-specific data
 // - Use episodes to track conversation history with AddToEpisode
 // - Search the global knowledge graph for context
 // - Maintain conversation continuity with UUID v7 episode IDs
@@ -32,11 +32,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // ChatSession holds the conversation state
@@ -55,8 +55,8 @@ type Message struct {
 
 // ChatClients holds all the clients needed for the chat application
 type ChatClients struct {
-	GlobalGraphiti *graphiti.Client // Global knowledge base (can be nil)
-	UserGraphiti   *graphiti.Client // User-specific episodic memory
+	GlobalPredicato *predicato.Client // Global knowledge base (can be nil)
+	UserPredicato   *predicato.Client // User-specific episodic memory
 	LLM            llm.Client
 	Context        context.Context
 }
@@ -78,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("🚀 Starting Graphiti Chat Example")
+	fmt.Println("🚀 Starting Predicato Chat Example")
 	fmt.Printf("   User ID: %s\n", *userID)
 	fmt.Println()
 
@@ -122,8 +122,8 @@ func initializeClients(apiKey, userID, globalDBPath, userDBDir string, skipGloba
 	embedderClient := embedder.NewOpenAIEmbedder(apiKey, embedderConfig)
 	fmt.Printf("   ✅ Embedder client created (model: %s)\n", embedderConfig.Model)
 
-	// Create global Graphiti client (if enabled)
-	var globalGraphitiClient *graphiti.Client
+	// Create global Predicato client (if enabled)
+	var globalPredicatoClient *predicato.Client
 	if !skipGlobal {
 		// Check if global database exists
 		if _, err := os.Stat(globalDBPath); err == nil {
@@ -132,11 +132,11 @@ func initializeClients(apiKey, userID, globalDBPath, userDBDir string, skipGloba
 				fmt.Printf("   ⚠️  Failed to load global ladybug database: %v\n", err)
 				fmt.Println("   Continuing without global knowledge base...")
 			} else {
-				globalConfig := &graphiti.Config{
+				globalConfig := &predicato.Config{
 					GroupID:  "global-knowledge",
 					TimeZone: time.UTC,
 				}
-				globalGraphitiClient = graphiti.NewClient(ladybugDriver, llmClient, embedderClient, globalConfig, nil)
+				globalPredicatoClient = predicato.NewClient(ladybugDriver, llmClient, embedderClient, globalConfig, nil)
 				fmt.Printf("   ✅ Global knowledge base loaded from %s\n", globalDBPath)
 			}
 		} else {
@@ -145,7 +145,7 @@ func initializeClients(apiKey, userID, globalDBPath, userDBDir string, skipGloba
 		}
 	}
 
-	// Create user-specific Graphiti client
+	// Create user-specific Predicato client
 	userDBPath := filepath.Join(userDBDir, fmt.Sprintf("user_%s.ladybugdb", userID))
 
 	// Create parent directory if it doesn't exist
@@ -158,27 +158,27 @@ func initializeClients(apiKey, userID, globalDBPath, userDBDir string, skipGloba
 		return nil, fmt.Errorf("failed to create user ladybug driver: %w", err)
 	}
 
-	userConfig := &graphiti.Config{
+	userConfig := &predicato.Config{
 		GroupID:  fmt.Sprintf("user-%s-chat", userID),
 		TimeZone: time.UTC,
 	}
-	userGraphitiClient := graphiti.NewClient(userLadybugDriver, llmClient, embedderClient, userConfig, nil)
+	userPredicatoClient := predicato.NewClient(userLadybugDriver, llmClient, embedderClient, userConfig, nil)
 	fmt.Printf("   ✅ User database initialized at %s\n", userDBPath)
 
 	return &ChatClients{
-		GlobalGraphiti: globalGraphitiClient,
-		UserGraphiti:   userGraphitiClient,
+		GlobalPredicato: globalPredicatoClient,
+		UserPredicato:   userPredicatoClient,
 		LLM:            llmClient,
 		Context:        ctx,
 	}, nil
 }
 
 func (c *ChatClients) Close() {
-	if c.GlobalGraphiti != nil {
-		c.GlobalGraphiti.Close(c.Context)
+	if c.GlobalPredicato != nil {
+		c.GlobalPredicato.Close(c.Context)
 	}
-	if c.UserGraphiti != nil {
-		c.UserGraphiti.Close(c.Context)
+	if c.UserPredicato != nil {
+		c.UserPredicato.Close(c.Context)
 	}
 	if c.LLM != nil {
 		c.LLM.Close()
@@ -199,7 +199,7 @@ func runChatLoop(clients *ChatClients, userID string) {
 
 	// Print welcome banner
 	fmt.Println("\n" + strings.Repeat("=", 70))
-	fmt.Println("💬 Graphiti Interactive Chat")
+	fmt.Println("💬 Predicato Interactive Chat")
 	fmt.Println(strings.Repeat("=", 70))
 	fmt.Println("\nCommands:")
 	fmt.Println("  Type your question and press Enter")
@@ -272,7 +272,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 
 		// Create episode in background
 		go func(ep types.Episode) {
-			result, err := clients.UserGraphiti.Add(ctx, []types.Episode{ep}, nil)
+			result, err := clients.UserPredicato.Add(ctx, []types.Episode{ep}, nil)
 			if err != nil {
 				fmt.Printf("⚠️  Background: Failed to create episode: %v\n", err)
 			} else if result != nil && len(result.Episodes) > 0 {
@@ -282,7 +282,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 	} else {
 		// Subsequent messages - append to existing episode in background
 		go func(episodeID, content string) {
-			_, err := clients.UserGraphiti.AddToEpisode(ctx, episodeID, content, nil)
+			_, err := clients.UserPredicato.AddToEpisode(ctx, episodeID, content, nil)
 			if err != nil {
 				fmt.Printf("⚠️  Background: Failed to append to episode: %v\n", err)
 			}
@@ -291,7 +291,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 
 	// Search global knowledge base if available
 	var contextNodes []*types.Node
-	if clients.GlobalGraphiti != nil {
+	if clients.GlobalPredicato != nil {
 		fmt.Println("🔍 Searching global knowledge base...")
 		searchConfig := &types.SearchConfig{
 			Limit:              5,
@@ -300,7 +300,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 			IncludeEdges:       true,
 		}
 
-		results, err := clients.GlobalGraphiti.Search(ctx, input, searchConfig)
+		results, err := clients.GlobalPredicato.Search(ctx, input, searchConfig)
 		if err != nil {
 			fmt.Printf("⚠️  Search failed: %v\n", err)
 		} else if results != nil && len(results.Nodes) > 0 {
@@ -351,7 +351,7 @@ func processQuery(clients *ChatClients, session *ChatSession, userID, input stri
 	if session.EpisodeID != "" {
 		go func(episodeID, resp string) {
 			assistantTurn := fmt.Sprintf("Assistant: %s\n", resp)
-			_, err := clients.UserGraphiti.AddToEpisode(ctx, episodeID, assistantTurn, nil)
+			_, err := clients.UserPredicato.AddToEpisode(ctx, episodeID, assistantTurn, nil)
 			if err != nil {
 				fmt.Printf("⚠️  Background: Failed to append assistant response: %v\n", err)
 			}
@@ -408,7 +408,7 @@ func showHistory(session *ChatSession) {
 }
 
 func searchGlobalKnowledge(clients *ChatClients, query string) {
-	if clients.GlobalGraphiti == nil {
+	if clients.GlobalPredicato == nil {
 		fmt.Println("⚠️  Global knowledge base not available")
 		return
 	}
@@ -422,7 +422,7 @@ func searchGlobalKnowledge(clients *ChatClients, query string) {
 		IncludeEdges:       true,
 	}
 
-	results, err := clients.GlobalGraphiti.Search(clients.Context, query, searchConfig)
+	results, err := clients.GlobalPredicato.Search(clients.Context, query, searchConfig)
 	if err != nil {
 		fmt.Printf("❌ Search failed: %v\n", err)
 		return

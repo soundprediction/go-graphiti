@@ -1,4 +1,4 @@
-package graphiti
+package predicato
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/community"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/search"
-	"github.com/soundprediction/go-graphiti/pkg/types"
-	"github.com/soundprediction/go-graphiti/pkg/utils/maintenance"
+	"github.com/soundprediction/go-predicato/pkg/community"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/search"
+	"github.com/soundprediction/go-predicato/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/utils/maintenance"
 )
 
 // driverWrapper wraps driver.GraphDriver to implement types.EdgeOperations
@@ -48,10 +48,10 @@ func (w *nodeOpsWrapper) ResolveExtractedNodes(ctx context.Context, extractedNod
 	return nodes, uuidMap, pairs, err
 }
 
-// Graphiti is the main interface for interacting with temporal knowledge graphs.
+// Predicato is the main interface for interacting with temporal knowledge graphs.
 // It provides methods for building, querying, and maintaining temporally-aware
 // knowledge graphs designed for AI agents.
-type Graphiti interface {
+type Predicato interface {
 	// Add processes and adds new episodes to the knowledge graph.
 	// Episodes can be text, conversations, or any temporal data.
 	// Options parameter is optional and can be nil for default behavior.
@@ -95,7 +95,7 @@ type Graphiti interface {
 	UpdateCommunities(ctx context.Context, episodeUUID string, groupID string) ([]*types.Node, []*types.Edge, error)
 }
 
-// Client is the main implementation of the Graphiti interface.
+// Client is the main implementation of the Predicato interface.
 type Client struct {
 	driver    driver.GraphDriver
 	llm       llm.Client
@@ -106,7 +106,7 @@ type Client struct {
 	logger    *slog.Logger
 }
 
-// Config holds configuration for the Graphiti client.
+// Config holds configuration for the Predicato client.
 type Config struct {
 	// GroupID is used to isolate data for multi-tenant scenarios
 	GroupID string
@@ -140,7 +140,7 @@ type AddEpisodeOptions struct {
 	MaxCharacters      int
 }
 
-// NewClient creates a new Graphiti client with the provided configuration.
+// NewClient creates a new Predicato client with the provided configuration.
 func NewClient(driver driver.GraphDriver, llmClient llm.Client, embedderClient embedder.Client, config *Config, logger *slog.Logger) *Client {
 	if config == nil {
 		config = &Config{

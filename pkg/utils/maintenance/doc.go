@@ -1,6 +1,6 @@
 // Package maintenance provides utilities for maintaining and operating on graph edges.
 //
-// This package implements the missing functionality from the Python graphiti edge_operations.py module,
+// This package implements the missing functionality from the Python predicato edge_operations.py module,
 // providing Go implementations for:
 //
 // - Building episodic edges between episodes and entities

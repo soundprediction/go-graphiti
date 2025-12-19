@@ -9,7 +9,7 @@ import (
 	"runtime"
 
 	"github.com/google/uuid"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // DuckDBHandler is a slog.Handler that writes error logs to DuckDB

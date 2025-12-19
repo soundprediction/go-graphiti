@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // mockClient is a mock LLM client for testing

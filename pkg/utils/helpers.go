@@ -16,7 +16,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/driver"
 )
 
 const (

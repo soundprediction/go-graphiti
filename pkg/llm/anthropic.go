@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // AnthropicClient implements the Client interface for Anthropic Claude models.

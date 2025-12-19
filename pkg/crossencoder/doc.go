@@ -71,7 +71,7 @@ Cross-encoders are typically used as rerankers in multi-stage retrieval systems:
 1. Initial retrieval using fast methods (e.g., BM25, vector similarity)
 2. Reranking top candidates using cross-encoder for improved relevance
 
-The package integrates with the search functionality in go-graphiti to provide
+The package integrates with the search functionality in go-predicato to provide
 reranking capabilities for nodes, edges, episodes, and communities.
 
 # Performance Considerations

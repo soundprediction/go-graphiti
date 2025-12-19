@@ -1,10 +1,10 @@
 # Examples
 
-This document provides practical examples of using go-graphiti for various use cases.
+This document provides practical examples of using go-predicato for various use cases.
 
 ## Quick Start Approach
 
-go-graphiti is designed to work out-of-the-box with minimal dependencies:
+go-predicato is designed to work out-of-the-box with minimal dependencies:
 
 - **Default Database**: ladybug embedded database (no external setup required)
 - **LLM Integration**: Any OpenAI-compatible API (OpenAI, Ollama, LocalAI, vLLM, etc.)
@@ -27,11 +27,11 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/types"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/types"
 )
 
-func buildKnowledge(client graphiti.Graphiti) {
+func buildKnowledge(client predicato.Predicato) {
     ctx := context.Background()
 
     episodes := []types.Episode{
@@ -88,7 +88,7 @@ func buildKnowledge(client graphiti.Graphiti) {
 Process meeting minutes into structured knowledge:
 
 ```go
-func processMeetingMinutes(client graphiti.Graphiti) {
+func processMeetingMinutes(client predicato.Predicato) {
     ctx := context.Background()
 
     meetingMinutes := `
@@ -154,7 +154,7 @@ Handle multiple organizations or users:
 ```go
 func multiTenantExample() {
     // Client for Organization A
-    configA := &graphiti.Config{
+    configA := &predicato.Config{
         GroupID: "org-a",
         TimeZone: time.UTC,
     }
@@ -162,7 +162,7 @@ func multiTenantExample() {
     defer clientA.Close(context.Background())
 
     // Client for Organization B
-    configB := &graphiti.Config{
+    configB := &predicato.Config{
         GroupID: "org-b", 
         TimeZone: time.UTC,
     }
@@ -212,7 +212,7 @@ func multiTenantExample() {
 Build a customer support knowledge base:
 
 ```go
-func customerSupportKB(client graphiti.Graphiti) {
+func customerSupportKB(client predicato.Predicato) {
     ctx := context.Background()
 
     supportEpisodes := []types.Episode{
@@ -294,7 +294,7 @@ func customerSupportKB(client graphiti.Graphiti) {
 Analyze and connect research papers:
 
 ```go
-func researchPaperAnalysis(client graphiti.Graphiti) {
+func researchPaperAnalysis(client predicato.Predicato) {
     ctx := context.Background()
 
     papers := []types.Episode{
@@ -384,7 +384,7 @@ func researchPaperAnalysis(client graphiti.Graphiti) {
 Build a personal knowledge base:
 
 ```go
-func personalKnowledgeManagement(client graphiti.Graphiti) {
+func personalKnowledgeManagement(client predicato.Predicato) {
     ctx := context.Background()
 
     personalNotes := []types.Episode{
@@ -476,7 +476,7 @@ func personalKnowledgeManagement(client graphiti.Graphiti) {
 
 ### Complete Local Setup with ladybug + Ollama
 
-For maximum privacy and control, you can run go-graphiti entirely locally using:
+For maximum privacy and control, you can run go-predicato entirely locally using:
 - **ladybug**: Embedded graph database (no server required)
 - **Ollama**: Local LLM inference (no cloud API required)  
 - **Local embeddings**: Optional local embedding service
@@ -491,10 +491,10 @@ import (
     "log"
     "time"
 
-    "github.com/soundprediction/go-graphiti"
-    "github.com/soundprediction/go-graphiti/pkg/driver"
-    "github.com/soundprediction/go-graphiti/pkg/embedder"
-    "github.com/soundprediction/go-graphiti/pkg/llm"
+    "github.com/soundprediction/go-predicato"
+    "github.com/soundprediction/go-predicato/pkg/driver"
+    "github.com/soundprediction/go-predicato/pkg/embedder"
+    "github.com/soundprediction/go-predicato/pkg/llm"
 )
 
 func main() {
@@ -523,15 +523,15 @@ func main() {
     })
     defer embedder.Close()
 
-    // 4. Create fully local Graphiti client
-    client := graphiti.NewClient(ladybugDriver, ollama, embedder, &graphiti.Config{
+    // 4. Create fully local Predicato client
+    client := predicato.NewClient(ladybugDriver, ollama, embedder, &predicato.Config{
         GroupID: "local-setup",
     })
     defer client.Close(ctx)
 
     // Use normally - everything runs locally!
     // (Current implementation uses stub drivers)
-    log.Println("Local Graphiti client ready!")
+    log.Println("Local Predicato client ready!")
 }
 ```
 
@@ -569,7 +569,7 @@ custom, err := llm.NewOpenAICompatibleClient("http://localhost:1234", "", "my-mo
 
 ```go
 // Create a standard client configuration
-func createStandardClient() graphiti.Graphiti {
+func createStandardClient() predicato.Predicato {
     // ladybug embedded driver (recommended default)
     driver, err := driver.NewLadybugDriver(os.Getenv("ladybug_DB_PATH")) // defaults to "./ladybug_db"
     if err != nil {
@@ -605,17 +605,17 @@ func createStandardClient() graphiti.Graphiti {
     }
     embedderClient := embedder.NewOpenAIEmbedder(os.Getenv("OPENAI_API_KEY"), embedConfig)
 
-    // Graphiti configuration
-    config := &graphiti.Config{
+    // Predicato configuration
+    config := &predicato.Config{
         GroupID:  "default",
         TimeZone: time.UTC,
     }
 
-    return graphiti.NewClient(driver, llmClient, embedderClient, config)
+    return predicato.NewClient(driver, llmClient, embedderClient, config)
 }
 
 // Batch process episodes
-func batchProcessEpisodes(client graphiti.Graphiti, episodes []types.Episode, batchSize int) error {
+func batchProcessEpisodes(client predicato.Predicato, episodes []types.Episode, batchSize int) error {
     ctx := context.Background()
     
     for i := 0; i < len(episodes); i += batchSize {
@@ -637,7 +637,7 @@ func batchProcessEpisodes(client graphiti.Graphiti, episodes []types.Episode, ba
 }
 
 // Search with retry logic
-func searchWithRetry(client graphiti.Graphiti, query string, maxRetries int) (*types.SearchResults, error) {
+func searchWithRetry(client predicato.Predicato, query string, maxRetries int) (*types.SearchResults, error) {
     var results *types.SearchResults
     var err error
     
@@ -699,13 +699,13 @@ func printSearchResults(results *types.SearchResults) {
 ## Error Handling Examples
 
 ```go
-func handleErrors(client graphiti.Graphiti) {
+func handleErrors(client predicato.Predicato) {
     ctx := context.Background()
 
     // Handle node not found
     node, err := client.GetNode(ctx, "nonexistent-id")
     if err != nil {
-        if errors.Is(err, graphiti.ErrNodeNotFound) {
+        if errors.Is(err, predicato.ErrNodeNotFound) {
             fmt.Println("Node not found - this is expected")
         } else {
             log.Printf("Unexpected error: %v", err)
@@ -732,7 +732,7 @@ func handleErrors(client graphiti.Graphiti) {
     }
 
     if err := client.Add(ctx, episodes); err != nil {
-        if errors.Is(err, graphiti.ErrInvalidEpisode) {
+        if errors.Is(err, predicato.ErrInvalidEpisode) {
             fmt.Println("Episode validation failed")
         } else {
             log.Printf("Processing error: %v", err)
@@ -741,4 +741,4 @@ func handleErrors(client graphiti.Graphiti) {
 }
 ```
 
-These examples demonstrate various use cases and patterns for working with go-graphiti. The library's flexibility allows it to be adapted for many different knowledge management scenarios while maintaining temporal awareness and multi-tenancy support.
+These examples demonstrate various use cases and patterns for working with go-predicato. The library's flexibility allows it to be adapted for many different knowledge management scenarios while maintaining temporal awareness and multi-tenancy support.

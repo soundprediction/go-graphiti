@@ -1,4 +1,4 @@
-package graphiti
+package predicato
 
 import (
 	"fmt"
@@ -16,9 +16,9 @@ var (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
-	Long:  "Print version, commit, and build date information for Go-Graphiti",
+	Long:  "Print version, commit, and build date information for Go-Predicato",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Go-Graphiti\n")
+		fmt.Printf("Go-Predicato\n")
 		fmt.Printf("Version:    %s\n", version)
 		fmt.Printf("Commit:     %s\n", commit)
 		fmt.Printf("Build Date: %s\n", buildDate)

@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/sashabaranov/go-openai"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // OpenAIClient implements the Client interface for OpenAI's language models.

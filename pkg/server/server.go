@@ -6,25 +6,25 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/config"
-	"github.com/soundprediction/go-graphiti/pkg/server/handlers"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/config"
+	"github.com/soundprediction/go-predicato/pkg/server/handlers"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Server represents the HTTP server
 type Server struct {
 	config   *config.Config
 	router   *gin.Engine
-	graphiti graphiti.Graphiti
+	predicato predicato.Predicato
 	server   *http.Server
 }
 
 // New creates a new server instance
-func New(cfg *config.Config, graphitiClient graphiti.Graphiti) *Server {
+func New(cfg *config.Config, predicatoClient predicato.Predicato) *Server {
 	return &Server{
 		config:   cfg,
-		graphiti: graphitiClient,
+		predicato: predicatoClient,
 	}
 }
 
@@ -56,9 +56,9 @@ func (s *Server) Setup() {
 // setupRoutes sets up all the routes
 func (s *Server) setupRoutes() {
 	// Create handlers
-	healthHandler := handlers.NewHealthHandler(s.graphiti)
-	ingestHandler := handlers.NewIngestHandler(s.graphiti)
-	retrieveHandler := handlers.NewRetrieveHandler(s.graphiti)
+	healthHandler := handlers.NewHealthHandler(s.predicato)
+	ingestHandler := handlers.NewIngestHandler(s.predicato)
+	retrieveHandler := handlers.NewRetrieveHandler(s.predicato)
 
 	// Health endpoints
 	s.router.GET("/health", healthHandler.HealthCheck)

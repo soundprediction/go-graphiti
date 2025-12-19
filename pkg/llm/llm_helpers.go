@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	jsonrepair "github.com/kaptinlin/jsonrepair"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // GenerateJSONResponseWithContinuation makes repeated LLM calls with continuation prompts

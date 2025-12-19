@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Example usage of GenerateJSONResponseWithContinuation

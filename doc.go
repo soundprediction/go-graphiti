@@ -1,12 +1,12 @@
-// Package graphiti provides a temporal knowledge graph library for Go.
+// Package predicato provides a temporal knowledge graph library for Go.
 //
-// Graphiti is designed for building temporally-aware knowledge graphs for AI agents,
+// Predicato is designed for building temporally-aware knowledge graphs for AI agents,
 // enabling real-time incremental updates without batch recomputation. It supports
 // hybrid search combining semantic embeddings, keyword search, and graph traversal.
 //
 // # Basic Usage
 //
-// Create a new Graphiti client with the required components:
+// Create a new Predicato client with the required components:
 //
 //	// Create Neo4j driver
 //	driver, err := driver.NewNeo4jDriver("bolt://localhost:7687", "neo4j", "password", "neo4j")
@@ -23,9 +23,9 @@
 //	embConfig := embedder.Config{Model: "text-embedding-3-small"}
 //	embedderClient := embedder.NewOpenAIEmbedder("your-api-key", embConfig)
 //
-//	// Create Graphiti client
-//	config := &graphiti.Config{GroupID: "my-group"}
-//	client := graphiti.NewClient(driver, llmClient, embedderClient, config)
+//	// Create Predicato client
+//	config := &predicato.Config{GroupID: "my-group"}
+//	client := predicato.NewClient(driver, llmClient, embedderClient, config)
 //
 // # Adding Episodes
 //
@@ -62,7 +62,7 @@
 //
 // # Node Types
 //
-// Graphiti supports three types of nodes:
+// Predicato supports three types of nodes:
 //
 //   - EntityNode: Represents entities extracted from content (people, places, concepts)
 //   - EpisodicNode: Represents episodic memories or events
@@ -89,7 +89,7 @@
 //
 // Use GroupID to isolate data for different users or contexts:
 //
-//	config := &graphiti.Config{
+//	config := &predicato.Config{
 //		GroupID: "user-123",
 //		TimeZone: time.UTC,
 //	}
@@ -113,4 +113,4 @@
 //
 // This design allows easy extension with additional database backends,
 // LLM providers, and embedding services.
-package graphiti
+package predicato

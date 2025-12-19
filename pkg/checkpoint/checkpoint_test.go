@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCheckpointManager(t *testing.T) {
 	// Create temporary directory for tests
-	tmpDir, err := os.MkdirTemp("", "graphiti-checkpoint-test-*")
+	tmpDir, err := os.MkdirTemp("", "predicato-checkpoint-test-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -31,7 +31,7 @@ func TestCheckpointManager(t *testing.T) {
 	t.Run("Create manager with default directory", func(t *testing.T) {
 		manager, err := NewCheckpointManager("")
 		require.NoError(t, err)
-		expectedDir := filepath.Join(os.TempDir(), "graphiti-checkpoints")
+		expectedDir := filepath.Join(os.TempDir(), "predicato-checkpoints")
 		assert.Equal(t, expectedDir, manager.GetCheckpointDir())
 	})
 

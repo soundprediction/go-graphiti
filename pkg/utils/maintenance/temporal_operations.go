@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/prompts"
-	"github.com/soundprediction/go-graphiti/pkg/types"
-	"github.com/soundprediction/go-graphiti/pkg/utils"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/prompts"
+	"github.com/soundprediction/go-predicato/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/utils"
 )
 
 // TemporalOperations provides temporal analysis and edge dating operations

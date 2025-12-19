@@ -5,11 +5,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Example demonstrating the combination of:
@@ -18,13 +18,13 @@ import (
 // - OpenAI embeddings (or could be replaced with local embeddings)
 //
 // This setup provides maximum privacy and minimal dependencies while
-// maintaining full Graphiti functionality. Ollama's OpenAI-compatible API
+// maintaining full Predicato functionality. Ollama's OpenAI-compatible API
 // allows seamless integration with existing OpenAI client code.
 
 func main() {
 	ctx := context.Background()
 
-	log.Println("🚀 Starting go-graphiti example with Ladybug + Ollama (OpenAI-compatible)")
+	log.Println("🚀 Starting go-predicato example with Ladybug + Ollama (OpenAI-compatible)")
 	log.Println("   This example demonstrates a fully local setup:")
 	log.Println("   - Ladybug: embedded graph database")
 	log.Println("   - Ollama: local LLM inference via OpenAI-compatible API")
@@ -95,23 +95,23 @@ func main() {
 	log.Println("   💡 For fully local setup, replace with local embedding service")
 
 	// ========================================
-	// 4. Create Graphiti Client
+	// 4. Create Predicato Client
 	// ========================================
-	log.Println("\n🌐 Setting up Graphiti client with local components...")
+	log.Println("\n🌐 Setting up Predicato client with local components...")
 
-	graphitiConfig := &graphiti.Config{
+	predicatoConfig := &predicato.Config{
 		GroupID:  "ladybug-ollama-example",
 		TimeZone: time.UTC,
 	}
 
-	client := graphiti.NewClient(ladybugDriver, ollama, embedderClient, graphitiConfig, nil)
+	client := predicato.NewClient(ladybugDriver, ollama, embedderClient, predicatoConfig, nil)
 	defer func() {
 		if err := client.Close(ctx); err != nil {
-			log.Printf("Error closing Graphiti client: %v", err)
+			log.Printf("Error closing Predicato client: %v", err)
 		}
 	}()
 
-	log.Println("   ✅ Graphiti client created with local Ladybug + Ollama setup")
+	log.Println("   ✅ Predicato client created with local Ladybug + Ollama setup")
 
 	// ========================================
 	// 5. Add Some Example Episodes
@@ -224,7 +224,7 @@ func main() {
 	log.Println("\n📋 Example Summary:")
 	log.Println("   ✅ Ladybug driver: Created (stub implementation)")
 	log.Println("   ✅ Ollama client: Created using OpenAI-compatible API and tested")
-	log.Println("   ✅ Graphiti integration: Demonstrated with modern API approach")
+	log.Println("   ✅ Predicato integration: Demonstrated with modern API approach")
 	log.Println("\n🔮 Future State (when Ladybug library is available):")
 	log.Println("   🚀 Full local operation with no cloud dependencies")
 	log.Println("   📊 Embedded graph database for fast local queries")

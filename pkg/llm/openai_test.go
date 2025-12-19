@@ -3,7 +3,7 @@ package llm_test
 import (
 	"testing"
 
-	"github.com/soundprediction/go-graphiti/pkg/llm"
+	"github.com/soundprediction/go-predicato/pkg/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

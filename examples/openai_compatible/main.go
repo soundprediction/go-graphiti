@@ -8,12 +8,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/soundprediction/go-graphiti"
-	"github.com/soundprediction/go-graphiti/pkg/driver"
-	"github.com/soundprediction/go-graphiti/pkg/embedder"
-	"github.com/soundprediction/go-graphiti/pkg/llm"
-	graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato"
+	"github.com/soundprediction/go-predicato/pkg/driver"
+	"github.com/soundprediction/go-predicato/pkg/embedder"
+	"github.com/soundprediction/go-predicato/pkg/llm"
+	predicatoLogger "github.com/soundprediction/go-predicato/pkg/logger"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 func main() {
@@ -41,10 +41,10 @@ func main() {
 		log.Printf("Custom service example failed: %v", err)
 	}
 
-	// Example 5: Using with full Graphiti client
-	fmt.Println("\n=== Full Graphiti Integration Example ===")
-	if err := runGraphitiIntegrationExample(); err != nil {
-		log.Printf("Graphiti integration example failed: %v", err)
+	// Example 5: Using with full Predicato client
+	fmt.Println("\n=== Full Predicato Integration Example ===")
+	if err := runPredicatoIntegrationExample(); err != nil {
+		log.Printf("Predicato integration example failed: %v", err)
 	}
 }
 
@@ -210,11 +210,11 @@ func runCustomServiceExample() error {
 	return nil
 }
 
-func runGraphitiIntegrationExample() error {
-	fmt.Println("Creating Graphiti client with Ollama LLM...")
+func runPredicatoIntegrationExample() error {
+	fmt.Println("Creating Predicato client with Ollama LLM...")
 
 	// This example shows how to integrate the OpenAI-compatible client
-	// with the full Graphiti system
+	// with the full Predicato system
 
 	// Create Neo4j driver (you'll need Neo4j running)
 	neo4jURI := os.Getenv("NEO4J_URI")
@@ -261,7 +261,7 @@ func runGraphitiIntegrationExample() error {
 	// a local embedding service
 	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
 	if openaiAPIKey == "" {
-		fmt.Println("Warning: OPENAI_API_KEY not set, skipping Graphiti integration")
+		fmt.Println("Warning: OPENAI_API_KEY not set, skipping Predicato integration")
 		return nil
 	}
 
@@ -271,24 +271,24 @@ func runGraphitiIntegrationExample() error {
 	})
 	defer embedderClient.Close()
 
-	// Create Graphiti client with local LLM and cloud embeddings
-	config := &graphiti.Config{
+	// Create Predicato client with local LLM and cloud embeddings
+	config := &predicato.Config{
 		GroupID:  "ollama-example",
 		TimeZone: time.UTC,
 	}
 
-	logger := slog.New(graphitiLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(predicatoLogger.NewColorHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
-	graphitiClient := graphiti.NewClient(neo4jDriver, llmClient, embedderClient, config, logger)
-	defer graphitiClient.Close(context.Background())
+	predicatoClient := predicato.NewClient(neo4jDriver, llmClient, embedderClient, config, logger)
+	defer predicatoClient.Close(context.Background())
 
 	// Add some sample data
 	episodes := []types.Episode{
 		{
 			ID:        "local-llm-test",
 			Name:      "Local LLM Testing",
-			Content:   "We successfully integrated Ollama (local LLM) with Graphiti for knowledge graph processing. This allows us to run entirely locally except for embeddings.",
+			Content:   "We successfully integrated Ollama (local LLM) with Predicato for knowledge graph processing. This allows us to run entirely locally except for embeddings.",
 			Reference: time.Now(),
 			CreatedAt: time.Now(),
 			GroupID:   "ollama-example",
@@ -301,14 +301,14 @@ func runGraphitiIntegrationExample() error {
 
 	ctx := context.Background()
 	fmt.Println("Adding episodes to knowledge graph...")
-	if _, err := graphitiClient.Add(ctx, episodes, nil); err != nil {
+	if _, err := predicatoClient.Add(ctx, episodes, nil); err != nil {
 		// Note: This might fail if the LLM processing pipeline isn't fully implemented yet
 		fmt.Printf("Warning: Episode processing not yet implemented: %v\n", err)
 	} else {
 		fmt.Println("Successfully processed episodes with local LLM!")
 
 		// Search the knowledge graph
-		results, err := graphitiClient.Search(ctx, "local LLM integration", nil)
+		results, err := predicatoClient.Search(ctx, "local LLM integration", nil)
 		if err != nil {
 			fmt.Printf("Warning: Search not yet implemented: %v\n", err)
 		} else {
@@ -332,19 +332,19 @@ func init() {
 	fmt.Println("OpenAI-Compatible Client Examples")
 	fmt.Println("=================================")
 	fmt.Println()
-	fmt.Println("This example demonstrates how to use go-graphiti with various")
+	fmt.Println("This example demonstrates how to use go-predicato with various")
 	fmt.Println("OpenAI-compatible services. Make sure you have the following")
 	fmt.Println("services running:")
 	fmt.Println()
 	fmt.Println("1. Ollama: Install and run 'ollama serve', then 'ollama pull llama2:7b'")
 	fmt.Println("2. LocalAI: Run LocalAI server on http://localhost:8080")
 	fmt.Println("3. vLLM: Run vLLM server on the specified URL")
-	fmt.Println("4. Neo4j: Required for full Graphiti integration")
+	fmt.Println("4. Neo4j: Required for full Predicato integration")
 	fmt.Println()
 	fmt.Println("Set these environment variables:")
 	fmt.Println("- NEO4J_URI (default: bolt://localhost:7687)")
 	fmt.Println("- NEO4J_USER (default: neo4j)")
-	fmt.Println("- NEO4J_PASSWORD (required for Graphiti integration)")
+	fmt.Println("- NEO4J_PASSWORD (required for Predicato integration)")
 	fmt.Println("- OPENAI_API_KEY (optional, for embeddings)")
 	fmt.Println()
 }

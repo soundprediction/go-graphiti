@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // FormatEdgeDateRange formats the valid and invalid dates of an edge for display

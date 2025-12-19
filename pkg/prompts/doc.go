@@ -2,7 +2,7 @@
 Package prompts provides a comprehensive collection of prompts for knowledge graph extraction
 and processing operations.
 
-This package is a Go port of the prompts from the Python graphiti project. It includes
+This package is a Go port of the prompts from the Python predicato project. It includes
 prompts for:
 
   - Extracting nodes (entities) from text, conversations, and JSON

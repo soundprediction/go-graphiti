@@ -1,11 +1,11 @@
-# Go-Graphiti CLI
+# Go-Predicato CLI
 
-The Go-Graphiti CLI provides command-line access to the Graphiti knowledge graph framework.
+The Go-Predicato CLI provides command-line access to the Predicato knowledge graph framework.
 
 ## Installation
 
 ```bash
-go build -o graphiti ./cmd/main.go
+go build -o predicato ./cmd/main.go
 ```
 
 ## Configuration
@@ -17,7 +17,7 @@ Configuration can be provided through:
 
 ### Configuration File
 
-Copy `.graphiti.example.yaml` to `.graphiti.yaml` and customize:
+Copy `.predicato.example.yaml` to `.predicato.yaml` and customize:
 
 ```yaml
 # Server configuration
@@ -66,13 +66,13 @@ Key environment variables:
 Start the HTTP server:
 
 ```bash
-./graphiti server
+./predicato server
 ```
 
 With custom configuration:
 
 ```bash
-./graphiti server --port 9090 --llm-api-key your-key-here
+./predicato server --port 9090 --llm-api-key your-key-here
 ```
 
 The server provides REST API endpoints:
@@ -88,7 +88,7 @@ The server provides REST API endpoints:
 Show version information:
 
 ```bash
-./graphiti version
+./predicato version
 ```
 
 ### Help
@@ -96,8 +96,8 @@ Show version information:
 Get help for any command:
 
 ```bash
-./graphiti --help
-./graphiti server --help
+./predicato --help
+./predicato server --help
 ```
 
 ## API Examples

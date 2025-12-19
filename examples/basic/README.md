@@ -1,13 +1,13 @@
-# Basic Go-Graphiti Example (Neo4j + OpenAI)
+# Basic Go-Predicato Example (Neo4j + OpenAI)
 
-This example demonstrates using go-graphiti with external services: Neo4j database and OpenAI APIs.
+This example demonstrates using go-predicato with external services: Neo4j database and OpenAI APIs.
 
 > **Note**: For the recommended minimal setup, see the [ladybug + Ollama example](../ladybug_ollama/) which requires no external dependencies.
 
 ## Features
 
 This example shows how to:
-- Create and configure a Graphiti client with external Neo4j database and OpenAI APIs
+- Create and configure a Predicato client with external Neo4j database and OpenAI APIs
 - Add episodes (data) to the knowledge graph
 - Search the knowledge graph for relevant information
 
@@ -68,7 +68,7 @@ This example shows how to:
 
 When run successfully, you'll see output similar to:
 ```
-🚀 Starting go-graphiti basic example
+🚀 Starting go-predicato basic example
    Neo4j URI: bolt://localhost:7687
    Neo4j User: neo4j
 
@@ -81,8 +81,8 @@ When run successfully, you'll see output similar to:
 🔤 Creating OpenAI embedder client...
    ✅ OpenAI embedder client created (model: text-embedding-3-small)
 
-🌐 Creating Graphiti client...
-   ✅ Graphiti client created (group: example-group)
+🌐 Creating Predicato client...
+   ✅ Predicato client created (group: example-group)
 
 📝 Preparing sample episodes...
 Adding episodes to the knowledge graph...
@@ -121,7 +121,7 @@ If you see error messages about missing environment variables, the example will 
 
 ## What This Example Demonstrates
 
-1. **Client Setup**: How to create and configure all the necessary clients (Neo4j, OpenAI LLM, OpenAI Embedder, Graphiti)
+1. **Client Setup**: How to create and configure all the necessary clients (Neo4j, OpenAI LLM, OpenAI Embedder, Predicato)
 2. **Data Ingestion**: Adding structured episodes to the knowledge graph
 3. **Information Retrieval**: Searching the knowledge graph with natural language queries
 4. **Error Handling**: Graceful handling of missing dependencies or configuration issues

@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/soundprediction/go-graphiti/cmd/graphiti"
+	"github.com/soundprediction/go-predicato/cmd/predicato"
 )
 
 func main() {
-	if err := graphiti.Execute(); err != nil {
+	if err := predicato.Execute(); err != nil {
 		os.Exit(1)
 	}
 }

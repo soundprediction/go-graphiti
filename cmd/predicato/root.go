@@ -1,4 +1,4 @@
-package graphiti
+package predicato
 
 import (
 	"fmt"
@@ -11,13 +11,13 @@ import (
 var (
 	cfgFile string
 	rootCmd = &cobra.Command{
-		Use:   "graphiti",
-		Short: "Go-Graphiti: Knowledge Graph Tool",
-		Long: `Go-Graphiti is a Go implementation of the Graphiti knowledge graph framework.
+		Use:   "predicato",
+		Short: "Go-Predicato: Knowledge Graph Tool",
+		Long: `Go-Predicato is a Go implementation of the Predicato knowledge graph framework.
 It provides tools for building temporally-aware knowledge graphs with real-time 
 incremental updates.
 
-Complete documentation is available at https://github.com/soundprediction/go-graphiti`,
+Complete documentation is available at https://github.com/soundprediction/go-predicato`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Initialize configuration
 			initConfig()
@@ -34,7 +34,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.graphiti.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.predicato.yaml)")
 	rootCmd.PersistentFlags().String("log-level", "info", "log level (debug, info, warn, error)")
 
 	// Bind flags to viper
@@ -51,11 +51,11 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".graphiti" (without extension).
+		// Search config in home directory with name ".predicato" (without extension).
 		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".graphiti")
+		viper.SetConfigName(".predicato")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

@@ -1,6 +1,6 @@
 # Logger Package
 
-This package provides colored logging support for go-graphiti using Go's standard `log/slog` library.
+This package provides colored logging support for go-predicato using Go's standard `log/slog` library.
 
 ## Features
 
@@ -17,7 +17,7 @@ This package provides colored logging support for go-graphiti using Go's standar
 ```go
 import (
     "log/slog"
-    "github.com/soundprediction/go-graphiti/pkg/logger"
+    "github.com/soundprediction/go-predicato/pkg/logger"
 )
 
 // Create a logger with default settings (stderr, Info level)
@@ -36,7 +36,7 @@ log.Error("Failed to connect to DB")         // Red colored output
 import (
     "os"
     "log/slog"
-    "github.com/soundprediction/go-graphiti/pkg/logger"
+    "github.com/soundprediction/go-predicato/pkg/logger"
 )
 
 // Create a logger with custom writer and options
@@ -51,19 +51,19 @@ log.Warn("Warning message")
 log.Error("Error occurred", "error", err, "context", "database")
 ```
 
-### Integration with Graphiti
+### Integration with Predicato
 
-The colored logger is automatically used in go-graphiti commands and examples:
+The colored logger is automatically used in go-predicato commands and examples:
 
 ```go
 import (
     "log/slog"
-    "github.com/soundprediction/go-graphiti"
-    graphitiLogger "github.com/soundprediction/go-graphiti/pkg/logger"
+    "github.com/soundprediction/go-predicato"
+    predicatoLogger "github.com/soundprediction/go-predicato/pkg/logger"
 )
 
-logger := graphitiLogger.NewDefaultLogger(slog.LevelInfo)
-client := graphiti.NewClient(driver, llmClient, embedderClient, config, logger)
+logger := predicatoLogger.NewDefaultLogger(slog.LevelInfo)
+client := predicato.NewClient(driver, llmClient, embedderClient, config, logger)
 ```
 
 ## API Reference

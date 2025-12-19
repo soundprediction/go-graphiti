@@ -5,7 +5,7 @@ package checkpoint
 // for implementing checkpoint/resume functionality.
 
 /*
-Example integration into graphiti.Client.addEpisodeChunked:
+Example integration into predicato.Client.addEpisodeChunked:
 
 func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, options *AddEpisodeOptions, maxCharacters int) (*types.AddEpisodeResults, error) {
 	// Initialize checkpoint manager
@@ -14,7 +14,7 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 		return nil, fmt.Errorf("failed to create checkpoint manager: %w", err)
 	}
 
-	// Convert graphiti options to checkpoint options
+	// Convert predicato options to checkpoint options
 	cpOptions := convertToCheckpointOptions(options)
 
 	// Try to load existing checkpoint
@@ -301,8 +301,8 @@ func (c *Client) addEpisodeChunked(ctx context.Context, episode types.Episode, o
 	return result, nil
 }
 
-// Helper function to convert graphiti.AddEpisodeOptions to checkpoint.AddEpisodeOptions
-func convertToCheckpointOptions(opts *graphiti.AddEpisodeOptions) *checkpoint.AddEpisodeOptions {
+// Helper function to convert predicato.AddEpisodeOptions to checkpoint.AddEpisodeOptions
+func convertToCheckpointOptions(opts *predicato.AddEpisodeOptions) *checkpoint.AddEpisodeOptions {
 	if opts == nil {
 		return nil
 	}

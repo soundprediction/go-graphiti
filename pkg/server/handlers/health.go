@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/soundprediction/go-graphiti"
+	"github.com/soundprediction/go-predicato"
 )
 
 // Build information - can be set at build time using ldflags
@@ -21,13 +21,13 @@ var (
 
 // HealthHandler handles health check requests
 type HealthHandler struct {
-	graphiti graphiti.Graphiti
+	predicato predicato.Predicato
 }
 
 // NewHealthHandler creates a new health handler
-func NewHealthHandler(g graphiti.Graphiti) *HealthHandler {
+func NewHealthHandler(g predicato.Predicato) *HealthHandler {
 	return &HealthHandler{
-		graphiti: g,
+		predicato: g,
 	}
 }
 
@@ -35,7 +35,7 @@ func NewHealthHandler(g graphiti.Graphiti) *HealthHandler {
 func (h *HealthHandler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "healthy",
-		"service":   "go-graphiti",
+		"service":   "go-predicato",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"version":   Version,
 	})
@@ -48,7 +48,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 
 	response := gin.H{
 		"status":    "ready",
-		"service":   "go-graphiti",
+		"service":   "go-predicato",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"checks":    gin.H{},
 	}
@@ -57,12 +57,12 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 	checks := response["checks"].(gin.H)
 
 	// Check database connectivity by performing a simple operation
-	if h.graphiti != nil {
+	if h.predicato != nil {
 		dbStartTime := time.Now()
 
 		// Test database connectivity with a simple GetNode call using a non-existent ID
 		// This will test if we can connect to the database without side effects
-		_, err := h.graphiti.GetNode(ctx, "health-check-non-existent-id")
+		_, err := h.predicato.GetNode(ctx, "health-check-non-existent-id")
 		dbDuration := time.Since(dbStartTime)
 
 		if err != nil {
@@ -93,7 +93,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 
 		// Test database indices creation capability (optional advanced check)
 		indicesStartTime := time.Now()
-		indicesErr := h.graphiti.CreateIndices(ctx)
+		indicesErr := h.predicato.CreateIndices(ctx)
 		indicesDuration := time.Since(indicesStartTime)
 
 		if indicesErr != nil && ctx.Err() != nil {
@@ -112,7 +112,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 	} else {
 		checks["database"] = gin.H{
 			"status": "unhealthy",
-			"error":  "graphiti client not initialized",
+			"error":  "predicato client not initialized",
 		}
 		allHealthy = false
 	}
@@ -138,7 +138,7 @@ func (h *HealthHandler) LivenessCheck(c *gin.Context) {
 	// Simple liveness check - just confirm the service is running
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "alive",
-		"service":   "go-graphiti",
+		"service":   "go-predicato",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	})
 }
@@ -151,7 +151,7 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 	startTime := time.Now()
 	response := gin.H{
 		"status":  "healthy",
-		"service": "go-graphiti",
+		"service": "go-predicato",
 		"version": Version,
 		"build_info": gin.H{
 			"git_commit": GitCommit,
@@ -171,10 +171,10 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 	checks := response["checks"].(gin.H)
 
 	// Test all critical dependencies
-	if h.graphiti != nil {
+	if h.predicato != nil {
 		// Database connectivity check
 		dbStartTime := time.Now()
-		_, err := h.graphiti.GetNode(ctx, "health-check-detailed")
+		_, err := h.predicato.GetNode(ctx, "health-check-detailed")
 		dbDuration := time.Since(dbStartTime)
 
 		dbStatus := gin.H{
@@ -196,7 +196,7 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 
 		// Database operations check
 		opsStartTime := time.Now()
-		indicesErr := h.graphiti.CreateIndices(ctx)
+		indicesErr := h.predicato.CreateIndices(ctx)
 		opsDuration := time.Since(opsStartTime)
 
 		opsStatus := gin.H{
@@ -217,7 +217,7 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 
 		// Optional: Test search functionality
 		searchStartTime := time.Now()
-		_, searchErr := h.graphiti.Search(ctx, "health-check", nil)
+		_, searchErr := h.predicato.Search(ctx, "health-check", nil)
 		searchDuration := time.Since(searchStartTime)
 
 		searchStatus := gin.H{
@@ -236,7 +236,7 @@ func (h *HealthHandler) DetailedHealthCheck(c *gin.Context) {
 
 		checks["search_functionality"] = searchStatus
 	} else {
-		checks["graphiti_client"] = gin.H{
+		checks["predicato_client"] = gin.H{
 			"status": "unhealthy",
 			"error":  "client not initialized",
 		}

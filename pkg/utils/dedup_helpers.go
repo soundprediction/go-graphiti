@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // Constants for deduplication heuristics

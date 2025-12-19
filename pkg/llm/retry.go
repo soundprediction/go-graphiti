@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundprediction/go-graphiti/pkg/types"
+	"github.com/soundprediction/go-predicato/pkg/types"
 )
 
 // RetryConfig holds configuration for retry behavior
