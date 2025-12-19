@@ -372,15 +372,12 @@ cd examples/chat
 go run main.go
 ```
 
-## Contributing
-
-This project follows the same patterns as [go-light-rag](https://github.com/soundprediction/go-light-rag) for consistency. Contributions are welcome!
 
 ## License
 
-Apache 2.0 License - see the original [Predicato license](https://github.com/getzep/predicato/blob/main/LICENSE)
+Apache 2.0
 
 ## Acknowledgments
 
-- Original [Predicato](https://github.com/getzep/predicato) Python library by Zep
-- [go-light-rag](https://github.com/soundprediction/go-light-rag) for Go patterns and inspiration
+- This package takes inspiration from the original [Graphiti](https://github.com/getzep/graphiti) Python library by Zep
+
