@@ -1,10 +1,10 @@
 module ladybug_ollama_example
 
-go 1.25.5
+go 1.25.2
 
 replace github.com/soundprediction/go-graphiti => ../..
 
-require github.com/soundprediction/go-graphiti v0.0.0-20251026194926-8a7a03fd639b
+require github.com/soundprediction/go-predicato v0.0.0-20251220002243-e8d7cce458cd
 
 require (
 	github.com/LadybugDB/go-ladybug v0.12.2-patch2 // indirect

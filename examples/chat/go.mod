@@ -1,6 +1,6 @@
 module github.com/soundprediction/go-graphiti/examples/chat
 
-go 1.24.7
+go 1.25.2
 
 replace github.com/soundprediction/go-graphiti => ../../
 
