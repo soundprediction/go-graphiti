@@ -1,12 +1,15 @@
 module github.com/soundprediction/go-predicato
 
-go 1.25.5
+go 1.25.2
 
 require (
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
 	github.com/sashabaranov/go-openai v1.41.2
+	github.com/soundprediction/go-embedeverything v0.0.0-local
 	github.com/stretchr/testify v1.11.1
 )
+
+replace github.com/soundprediction/go-embedeverything => ../go-embedeverything
 
 require (
 	github.com/LadybugDB/go-ladybug v0.12.2-patch2
@@ -17,7 +20,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/kaptinlin/jsonrepair v0.2.4
 	github.com/sony/gobreaker v1.0.0
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 )
 
