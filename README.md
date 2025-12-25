@@ -1,6 +1,6 @@
 # go-predicato
 
-A production-ready Temporal Knowledge Graph library for Go, designed for building robust, context-aware AI applications.
+A production-ready Temporal Knowledge Graph library for Go, designed for extracting, organizing, and querying predicate logic.
 
 ## Core Advancements
 
