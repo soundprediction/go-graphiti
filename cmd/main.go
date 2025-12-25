@@ -1,5 +1,7 @@
 package main
 
+//go:generate sh -c "cd $(go list -f '{{.Dir}}' -m github.com/LadybugDB/go-ladybug) && go generate ./..."
+
 import (
 	"os"
 
