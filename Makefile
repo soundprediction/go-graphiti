@@ -4,18 +4,21 @@
 
 # Build the project
 build:
-	go build ./...
+	go generate ./cmd/main.go
+	go build -tags system_ladybug ./...
 
 # Build CLI binary
 build-cli:
-	go build -o bin/predicato ./cmd/main.go
+	go generate ./cmd/main.go
+	go build -tags system_ladybug -o bin/predicato ./cmd/main.go
 
 # Build CLI for multiple platforms
 build-cli-all:
-	GOOS=linux GOARCH=amd64 go build -o bin/predicato-linux-amd64 ./cmd/main.go
-	GOOS=darwin GOARCH=amd64 go build -o bin/predicato-darwin-amd64 ./cmd/main.go
-	GOOS=darwin GOARCH=arm64 go build -o bin/predicato-darwin-arm64 ./cmd/main.go
-	GOOS=windows GOARCH=amd64 go build -o bin/predicato-windows-amd64.exe ./cmd/main.go
+	go generate ./cmd/main.go
+	GOOS=linux GOARCH=amd64 go build -tags system_ladybug -o bin/predicato-linux-amd64 ./cmd/main.go
+	GOOS=darwin GOARCH=amd64 go build -tags system_ladybug -o bin/predicato-darwin-amd64 ./cmd/main.go
+	GOOS=darwin GOARCH=arm64 go build -tags system_ladybug -o bin/predicato-darwin-arm64 ./cmd/main.go
+	GOOS=windows GOARCH=amd64 go build -tags system_ladybug -o bin/predicato-windows-amd64.exe ./cmd/main.go
 
 # Run tests
 test:
@@ -57,11 +60,13 @@ run-example:
 
 # Run server (requires environment variables)
 run-server:
-	go run ./cmd/main.go server
+	go generate ./cmd/main.go
+	go run -tags system_ladybug ./cmd/main.go server
 
 # Run server with debug mode
 run-server-debug:
-	go run ./cmd/main.go server --mode debug --log-level debug
+	go generate ./cmd/main.go
+	go run -tags system_ladybug ./cmd/main.go server --mode debug --log-level debug
 
 # Development workflow
 dev: fmt vet test

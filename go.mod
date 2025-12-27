@@ -11,8 +11,6 @@ require (
 
 replace github.com/soundprediction/go-embedeverything => ../go-embedeverything
 
-replace github.com/LadybugDB/go-ladybug => ../go-ladybug
-
 require (
 	github.com/LadybugDB/go-ladybug v0.12.2-patch2
 	github.com/dgraph-io/badger/v4 v4.9.0

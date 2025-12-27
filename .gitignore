@@ -57,3 +57,6 @@ examples/chat/chat
 examples/ladybug_ollama/ladybug_ollama
 examples/openai_compatible/openai_compatible
 go.work.sum
+
+# Ladybug libraries
+lib-ladybug/

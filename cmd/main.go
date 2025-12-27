@@ -1,6 +1,13 @@
 package main
 
-//go:generate sh -c "cd $(go list -f '{{.Dir}}' -m github.com/LadybugDB/go-ladybug) && go generate ./..."
+//go:generate sh -c "curl -sL https://raw.githubusercontent.com/LadybugDB/go-ladybug/refs/heads/master/download_lbug.sh | bash -s -- -out lib-ladybug"
+
+/*
+#cgo darwin LDFLAGS: -L${SRCDIR}/lib-ladybug -Wl,-rpath,${SRCDIR}/lib-ladybug
+#cgo linux LDFLAGS: -L${SRCDIR}/lib-ladybug -Wl,-rpath,${SRCDIR}/lib-ladybug
+#cgo windows LDFLAGS: -L${SRCDIR}/lib-ladybug
+*/
+import "C"
 
 import (
 	"os"
