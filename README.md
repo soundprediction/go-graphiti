@@ -34,6 +34,14 @@ A production-ready Temporal Knowledge Graph library for Go, designed for extract
 go get github.com/soundprediction/go-predicato
 ```
 
+**Note:** If building from source, you must run `go generate` to download the ladybug library and use the `system_ladybug` build tag:
+
+```bash
+go generate ./...
+go build -tags system_ladybug ./...
+```
+
+
 ## Quick Start
 
 ### Prerequisites
@@ -213,11 +221,12 @@ Go-Predicato includes a command-line interface for managing the knowledge graph 
 ### Installation
 
 ```bash
-# Build from source
+# Build from source using Makefile (recommended)
 make build-cli
 
-# Or build directly
-go build -o bin/predicato ./cmd/main.go
+# Or build manually
+go generate ./cmd/main.go
+go build -tags system_ladybug -o bin/predicato ./cmd/main.go
 ```
 
 ### Server Command
@@ -361,15 +370,18 @@ go build ./...
 ```bash
 # Basic example (no external dependencies)
 cd examples/basic
-go run main.go
+go generate ./...
+go run -tags system_ladybug main.go
 
 # Or with local LLM
 cd examples/ladybug_ollama
-go run main.go
+go generate ./...
+go run -tags system_ladybug main.go
 
 # Chat interface example
 cd examples/chat
-go run main.go
+go generate ./...
+go run -tags system_ladybug main.go
 ```
 
 
